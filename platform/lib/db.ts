@@ -6,6 +6,6 @@ const pool = new Pool({
 })
 
 export const db = {
-  query: <T = unknown>(text: string, params?: unknown[]) =>
+  query: <T extends Record<string, unknown> = Record<string, unknown>>(text: string, params?: unknown[]) =>
     pool.query<T>(text, params),
 }
