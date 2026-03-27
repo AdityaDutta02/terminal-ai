@@ -14,17 +14,6 @@ export const auth = betterAuth({
       maxAge: 60 * 5,
     },
   },
-  databaseHooks: {
-    user: {
-      create: {
-        after: async (user) => {
-          const pool = new Pool({ connectionString: process.env.DATABASE_URL! })
-          await pool.query('UPDATE "user" SET credits = 200 WHERE id = $1', [user.id])
-          await pool.end()
-        },
-      },
-    },
-  },
   user: {
     additionalFields: {
       credits: {
