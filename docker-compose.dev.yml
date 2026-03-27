@@ -1,0 +1,16 @@
+# Dev override: exposes platform on port 80 directly, no Traefik needed.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+services:
+  traefik:
+    profiles: ['prod']  # disabled in dev
+
+  platform:
+    ports:
+      - '80:3000'
+    environment:
+      BETTER_AUTH_URL: http://${VPS_IP:-localhost}
+      NEXT_PUBLIC_APP_URL: http://${VPS_IP:-localhost}
+
+  gateway:
+    ports:
+      - '3001:3001'
