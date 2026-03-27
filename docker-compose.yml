@@ -1,0 +1,110 @@
+services:
+  traefik:
+    image: traefik:v3.2
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./infra/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./infra/traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - letsencrypt:/letsencrypt
+    networks:
+      - proxy
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: terminalai
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./infra/postgres/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    networks:
+      - internal
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks:
+      - internal
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  platform:
+    build:
+      context: ./platform
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/terminalai
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL}
+      EMBED_TOKEN_SECRET: ${EMBED_TOKEN_SECRET}
+      NEXT_PUBLIC_APP_URL: ${BETTER_AUTH_URL}
+      GATEWAY_INTERNAL_URL: http://gateway:3001
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - proxy
+      - internal
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.platform.rule=Host(`terminalai.app`) || Host(`www.terminalai.app`)
+      - traefik.http.routers.platform.entrypoints=websecure
+      - traefik.http.routers.platform.tls.certresolver=letsencrypt
+      - traefik.http.routers.platform.middlewares=secure-headers@file
+      - traefik.http.services.platform.loadbalancer.server.port=3000
+
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/terminalai
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      EMBED_TOKEN_SECRET: ${EMBED_TOKEN_SECRET}
+      PORT: '3001'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - proxy
+      - internal
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.gateway.rule=Host(`api.terminalai.app`)
+      - traefik.http.routers.gateway.entrypoints=websecure
+      - traefik.http.routers.gateway.tls.certresolver=letsencrypt
+      - traefik.http.routers.gateway.middlewares=secure-headers@file,rate-limit@file
+      - traefik.http.services.gateway.loadbalancer.server.port=3001
+
+volumes:
+  postgres_data:
+  redis_data:
+  letsencrypt:
+
+networks:
+  proxy:
+    external: true
+  internal:
+    internal: true
