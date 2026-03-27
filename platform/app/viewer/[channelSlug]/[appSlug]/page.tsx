@@ -2,7 +2,7 @@ import { db } from '@/lib/db'
 import { notFound } from 'next/navigation'
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
-import ViewerShell from './viewer-shell'
+import { ViewerShell } from './viewer-shell'
 
 type AppRow = { id: string; name: string; iframe_url: string; credits_per_session: number }
 
@@ -29,5 +29,5 @@ export default async function ViewerPage({
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) notFound()
 
-  return <ViewerShell appId={app.id} appName={app.name} iframeUrl={app.iframe_url} />
+  return <ViewerShell appId={app.id} appName={app.name} channelSlug={channelSlug} iframeUrl={app.iframe_url} />
 }
