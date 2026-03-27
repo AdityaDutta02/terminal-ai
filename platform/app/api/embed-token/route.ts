@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
   if (!appId) return NextResponse.json({ error: 'appId required' }, { status: 400 })
 
   // Verify app exists and is live
-  const appResult = await db.query(
+  const appResult = await db.query<{ id: string; credits_per_session: number }>(
     `SELECT id, credits_per_session FROM marketplace.apps WHERE id = $1 AND status = 'live' AND deleted_at IS NULL`,
     [appId]
   )
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     [session.user.id]
   )
   const credits = userResult.rows[0]?.credits ?? 0
-  const required = appResult.rows[0].credits_per_session as number
+  const required = appResult.rows[0].credits_per_session
   if (credits < required) {
     return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 })
   }
