@@ -1,0 +1,71 @@
+# IP-based testing — no domain, no TLS, ports exposed directly
+# Usage: docker compose -f docker-compose.test.yml up -d
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: terminalai
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./infra/postgres/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  platform:
+    build:
+      context: ./platform
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/terminalai
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL}
+      EMBED_TOKEN_SECRET: ${EMBED_TOKEN_SECRET}
+      NEXT_PUBLIC_APP_URL: ${BETTER_AUTH_URL}
+      GATEWAY_INTERNAL_URL: http://gateway:3001
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - '3001:3001'
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/terminalai
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      EMBED_TOKEN_SECRET: ${EMBED_TOKEN_SECRET}
+      PORT: '3001'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
