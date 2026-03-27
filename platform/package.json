@@ -17,6 +17,8 @@
     "jose": "^5.9.3",
     "uuid": "^11.0.0",
     "@radix-ui/react-slot": "^1.1.0",
+    "class-variance-authority": "^0.7.1",
+    "lucide-react": "^0.469.0",
     "clsx": "^2.1.1",
     "tailwind-merge": "^2.5.4"
   },
