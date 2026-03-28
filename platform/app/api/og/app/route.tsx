@@ -94,5 +94,5 @@ export async function GET(request: Request) {
   const image = new ImageResponse(buildImage(app), { ...OG_DIMENSIONS, fonts: fontConfig(fonts) })
   const buffer = await sharp(Buffer.from(await image.arrayBuffer())).png({ compressionLevel: 9 }).toBuffer()
   await redis.set(cacheKey, buffer, 'EX', 3600)
-  return new Response(buffer, { headers: PNG_HEADERS })
+  return new Response(new Uint8Array(buffer), { headers: PNG_HEADERS })
 }
