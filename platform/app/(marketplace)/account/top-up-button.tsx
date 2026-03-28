@@ -52,8 +52,8 @@ export function TopUpButton(props: TopUpButtonProps) {
         const body = await res.json().catch(() => ({})) as { error?: string }
         throw new Error(body.error ?? 'Failed to create order')
       }
-      const { orderId, amount } = await res.json() as { orderId: string; amount: number }
-      const rzpOpts: Record<string, unknown> = { key: razorpayKeyId, amount, currency: 'INR', order_id: orderId }
+      const { orderId } = await res.json() as { orderId: string; amount: number }
+      const rzpOpts: Record<string, unknown> = { key: razorpayKeyId, currency: 'INR', order_id: orderId }
       rzpOpts.name = 'Terminal AI'
       rzpOpts.description = `${credits.toLocaleString()} credits`
       rzpOpts.prefill = { email: userEmail, name: userName }
