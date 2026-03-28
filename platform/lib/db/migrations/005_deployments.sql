@@ -17,3 +17,5 @@ CREATE TABLE IF NOT EXISTS deployments.deployments (
 );
 CREATE INDEX IF NOT EXISTS deployments_app_id_idx ON deployments.deployments(app_id);
 CREATE INDEX IF NOT EXISTS deployments_status_idx ON deployments.deployments(status);
+ALTER TABLE deployments.deployments ADD COLUMN IF NOT EXISTS url TEXT;
+ALTER TABLE deployments.deployments ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;

@@ -18,10 +18,13 @@ CREATE INDEX IF NOT EXISTS signals_app_id_idx ON optimizer.behavioral_signals(ap
 CREATE INDEX IF NOT EXISTS signals_created_at_idx ON optimizer.behavioral_signals(created_at DESC);
 CREATE SCHEMA IF NOT EXISTS mcp;
 CREATE TABLE IF NOT EXISTS mcp.api_keys (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  creator_id TEXT NOT NULL REFERENCES "user"("id") ON DELETE CASCADE,
-  key_hash BYTEA NOT NULL UNIQUE,
-  label TEXT,
-  revoked_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id   TEXT NOT NULL REFERENCES "user"("id") ON DELETE CASCADE,
+  name         TEXT NOT NULL,
+  token_hash   TEXT NOT NULL UNIQUE,
+  prefix       TEXT NOT NULL,
+  last_used_at TIMESTAMPTZ,
+  revoked_at   TIMESTAMPTZ,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+CREATE INDEX IF NOT EXISTS api_keys_creator_id_idx ON mcp.api_keys(creator_id) WHERE revoked_at IS NULL;
