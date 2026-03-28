@@ -6,7 +6,10 @@ import { db } from '../lib/db'
 import { logger } from '../lib/logger'
 const redisConnection = { host: process.env.REDIS_HOST ?? 'redis', port: 6379 }
 export const deployQueue = new Queue('deploys', { connection: redisConnection })
+const GITHUB_REPO_RE = /^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/
+
 async function cloneRepo(githubRepo: string, dest: string): Promise<void> {
+  if (!GITHUB_REPO_RE.test(githubRepo)) throw new Error(`Invalid githubRepo format: ${githubRepo}`)
   const { execFile } = await import('child_process')
   const { promisify } = await import('util')
   const execFileAsync = promisify(execFile)
