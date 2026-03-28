@@ -78,7 +78,7 @@ export async function GET(request: Request) {
   if (!appId) return new Response('Missing id', { status: 400 })
   const cacheKey = `og:app:${appId}`
   const cached = await redis.getBuffer(cacheKey)
-  if (cached) return new Response(cached, { headers: PNG_HEADERS })
+  if (cached) return new Response(new Uint8Array(cached), { headers: PNG_HEADERS })
   const result = await db.query<AppRow>(
     `SELECT a.name, a.description, a.category, a.framework,
             u.display_name, u.avatar_url

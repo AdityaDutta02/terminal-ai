@@ -88,7 +88,7 @@ export async function GET(request: Request) {
   if (!slug) return new Response('Missing slug', { status: 400 })
   const cacheKey = `og:channel:${slug}`
   const cached = await redis.getBuffer(cacheKey)
-  if (cached) return new Response(cached, { headers: PNG_HEADERS })
+  if (cached) return new Response(new Uint8Array(cached), { headers: PNG_HEADERS })
   const result = await db.query<ChannelRow>(
     `SELECT ch.name, ch.description, u.display_name, u.avatar_url,
             COUNT(DISTINCT s.id) as subscriber_count,
