@@ -4,8 +4,12 @@ import { auth } from '@/lib/auth'
 import { notFound } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { ShareButton } from '@/components/share-button'
 import { ArrowLeft, Coins, ExternalLink, Layers } from 'lucide-react'
-
+import type { Metadata } from 'next'
+function appOgUrl(base: string, id: string) {
+  return base + '/api/og/app?id=' + id
+}
 type AppRow = {
   id: string
   slug: string
@@ -15,7 +19,6 @@ type AppRow = {
   credits_per_session: number
 }
 type ChannelRow = { id: string; slug: string; name: string }
-
 async function getData(channelSlug: string, appSlug: string) {
   const ch = await db.query<ChannelRow>(
     `SELECT id, slug, name FROM marketplace.channels
@@ -23,7 +26,6 @@ async function getData(channelSlug: string, appSlug: string) {
     [channelSlug],
   )
   if (!ch.rows[0]) return null
-
   const ap = await db.query<AppRow>(
     `SELECT id, slug, name, description, thumbnail_url, credits_per_session
      FROM marketplace.apps
@@ -31,25 +33,41 @@ async function getData(channelSlug: string, appSlug: string) {
     [ch.rows[0].id, appSlug],
   )
   if (!ap.rows[0]) return null
-
   return { channel: ch.rows[0], app: ap.rows[0] }
 }
-
-export default async function AppDetailPage({
-  params,
-}: {
-  params: Promise<{ channelSlug: string; appSlug: string }>
-}) {
+type PageProps = { params: Promise<{ channelSlug: string; appSlug: string }> }
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { channelSlug, appSlug } = await params
+  const data = await getData(channelSlug, appSlug)
+  if (!data) return {}
+  const { channel, app } = data
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://terminalai.app'
+  const ogUrl = appOgUrl(appUrl, app.id)
+  return {
+    title: `${app.name} — Terminal AI`,
+    description: app.description ?? `An AI-powered app in ${channel.name}`,
+    openGraph: {
+      title: app.name,
+      description: app.description ?? `An AI-powered app in ${channel.name}`,
+      images: [{ url: ogUrl, width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: app.name,
+      description: app.description ?? `An AI-powered app in ${channel.name}`,
+      images: [ogUrl],
+    },
+  }
+}
+export default async function AppDetailPage({ params }: PageProps) {
   const { channelSlug, appSlug } = await params
   const data = await getData(channelSlug, appSlug)
   if (!data) notFound()
-
   const { channel, app } = data
   const session = await auth.api.getSession({ headers: await headers() })
-
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://terminalai.app'
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
-      {/* Breadcrumb */}
       <a
         href={`/c/${channel.slug}`}
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors"
@@ -57,11 +75,8 @@ export default async function AppDetailPage({
         <ArrowLeft className="h-3.5 w-3.5" />
         {channel.name}
       </a>
-
-      {/* Main card */}
       <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
         <div className="flex flex-col gap-8 p-8 sm:flex-row">
-          {/* Thumbnail */}
           <div className="flex-shrink-0">
             {app.thumbnail_url ? (
               <img
@@ -75,19 +90,16 @@ export default async function AppDetailPage({
               </div>
             )}
           </div>
-
-          {/* Info */}
           <div className="flex flex-1 flex-col">
             <div className="mb-2 flex items-start gap-2 flex-wrap">
               <Badge variant="violet">AI App</Badge>
+              <ShareButton url={appUrl + '/c/' + channel.slug + '/' + app.slug} title={app.name} description={app.description ?? ''} type="app" />
             </div>
             <h1 className="text-3xl font-bold text-gray-900">{app.name}</h1>
             <p className="mt-1 text-sm text-gray-400">in {channel.name}</p>
-
             {app.description && (
               <p className="mt-4 text-gray-600 leading-relaxed">{app.description}</p>
             )}
-
             <div className="mt-6 flex items-center gap-2 rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
               <Coins className="h-4 w-4 text-violet-500" />
               <span className="text-sm text-gray-600">
@@ -95,7 +107,6 @@ export default async function AppDetailPage({
                 {' '}per session
               </span>
             </div>
-
             <div className="mt-6">
               {session ? (
                 <Button size="lg" asChild className="w-full sm:w-auto">

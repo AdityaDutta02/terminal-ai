@@ -2,8 +2,12 @@ import { db } from '@/lib/db'
 import { notFound } from 'next/navigation'
 import { Avatar } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
+import { ShareButton } from '@/components/share-button'
 import { ArrowLeft, Coins, Layers } from 'lucide-react'
-
+import type { Metadata } from 'next'
+function channelOgUrl(base: string, slug: string) {
+  return base + '/api/og/channel?slug=' + slug
+}
 type App = {
   id: string
   slug: string
@@ -20,7 +24,6 @@ type Channel = {
   banner_url: string | null
   avatar_url: string | null
 }
-
 async function getData(slug: string) {
   const ch = await db.query<Channel>(
     `SELECT id, slug, name, description, banner_url, avatar_url
@@ -30,7 +33,6 @@ async function getData(slug: string) {
   )
   if (!ch.rows[0]) return null
   const channel = ch.rows[0]
-
   const apps = await db.query<App>(
     `SELECT id, slug, name, description, thumbnail_url, credits_per_session
      FROM marketplace.apps
@@ -40,22 +42,42 @@ async function getData(slug: string) {
   )
   return { channel, apps: apps.rows }
 }
-
-export default async function ChannelPage({ params }: { params: Promise<{ channelSlug: string }> }) {
+type PageProps = { params: Promise<{ channelSlug: string }> }
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { channelSlug } = await params
+  const data = await getData(channelSlug)
+  if (!data) return {}
+  const { channel } = data
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://terminalai.app'
+  const ogUrl = channelOgUrl(appUrl, channelSlug)
+  return {
+    title: `${channel.name} — Terminal AI`,
+    description: channel.description ?? `AI-powered apps in ${channel.name}`,
+    openGraph: {
+      title: channel.name,
+      description: channel.description ?? `AI-powered apps in ${channel.name}`,
+      images: [{ url: ogUrl, width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: channel.name,
+      description: channel.description ?? `AI-powered apps in ${channel.name}`,
+      images: [ogUrl],
+    },
+  }
+}
+export default async function ChannelPage({ params }: PageProps) {
   const { channelSlug } = await params
   const data = await getData(channelSlug)
   if (!data) notFound()
   const { channel, apps } = data
-
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://terminalai.app'
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
-      {/* Back */}
       <a href="/" className="mb-6 inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors">
         <ArrowLeft className="h-3.5 w-3.5" />
         All channels
       </a>
-
-      {/* Channel header */}
       <div className="mb-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         {channel.banner_url && (
           <div className="mb-6 -mx-6 -mt-6 h-36 overflow-hidden rounded-t-2xl">
@@ -70,14 +92,13 @@ export default async function ChannelPage({ params }: { params: Promise<{ channe
             {channel.description && (
               <p className="mt-2 text-sm text-gray-600">{channel.description}</p>
             )}
-            <div className="mt-3">
+            <div className="mt-3 flex items-center gap-2">
               <Badge variant="outline">{apps.length} apps</Badge>
+              <ShareButton url={appUrl + '/c/' + channelSlug} title={channel.name} type="channel" />
             </div>
           </div>
         </div>
       </div>
-
-      {/* Apps */}
       <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-gray-400">Apps</h2>
       {apps.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-200 py-16 text-center">
