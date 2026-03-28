@@ -5,9 +5,9 @@ interface Fonts {
   bold: ArrayBuffer
 }
 
-// jsDelivr CDN — Geist Sans from the geist npm package
-const CDN_REGULAR = 'https://cdn.jsdelivr.net/npm/geist@1/dist/fonts/geist-sans/Geist-Regular.woff2'
-const CDN_BOLD = 'https://cdn.jsdelivr.net/npm/geist@1/dist/fonts/geist-sans/Geist-Bold.woff2'
+// jsDelivr CDN — Geist Sans TTF (Satori requires TTF/OTF, not WOFF2)
+const CDN_REGULAR = 'https://cdn.jsdelivr.net/npm/geist@1/dist/fonts/geist-sans/Geist-Regular.ttf'
+const CDN_BOLD = 'https://cdn.jsdelivr.net/npm/geist@1/dist/fonts/geist-sans/Geist-Bold.ttf'
 
 let fontsCache: Fonts | null = null
 
