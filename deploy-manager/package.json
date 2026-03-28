@@ -1,0 +1,20 @@
+{
+  "name": "deploy-manager",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "bullmq": "^5.0.0",
+    "hono": "^4.6.0",
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8",
+    "bun-types": "latest",
+    "vitest": "^1.0.0"
+  }
+}

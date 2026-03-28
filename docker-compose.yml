@@ -58,10 +58,24 @@ services:
       EMBED_TOKEN_SECRET: ${EMBED_TOKEN_SECRET}
       NEXT_PUBLIC_APP_URL: ${BETTER_AUTH_URL}
       GATEWAY_INTERNAL_URL: http://gateway:3001
+      MEILISEARCH_URL: http://meilisearch:7700
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET}
+      NEXT_PUBLIC_RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: terminalai
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     networks:
       - proxy
@@ -98,9 +112,108 @@ services:
       - traefik.http.routers.gateway.middlewares=secure-headers@file,rate-limit@file
       - traefik.http.services.gateway.loadbalancer.server.port=3001
 
+  meilisearch:
+    image: getmeili/meilisearch:v1.7
+    restart: unless-stopped
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY}
+      MEILI_ENV: production
+    volumes:
+      - meili_data:/meili_data
+    networks:
+      - internal
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:7700/health']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    networks:
+      - internal
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  clamav:
+    image: clamav/clamav:latest
+    restart: unless-stopped
+    environment:
+      CLAMD_CONF_ScanOnAccess: 'no'
+    volumes:
+      - clamav_db:/var/lib/clamav
+    networks:
+      - internal
+    healthcheck:
+      test: ['CMD', 'clamdcheck']
+      interval: 60s
+      timeout: 10s
+      retries: 5
+
+  deploy-manager:
+    build:
+      context: ./deploy-manager
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/terminalai
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      COOLIFY_URL: ${COOLIFY_URL}
+      COOLIFY_TOKEN: ${COOLIFY_TOKEN}
+      CLOUDFLARE_TOKEN: ${CLOUDFLARE_TOKEN}
+      CLOUDFLARE_ZONE_ID: ${CLOUDFLARE_ZONE_ID}
+      VPS2_IP: ${VPS2_IP}
+      GATEWAY_URL: http://gateway:3001
+      PORT: '3002'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  mcp-server:
+    build:
+      context: ./mcp-server
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/terminalai
+      PORT: '3003'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - proxy
+      - internal
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.mcp.rule=Host(`mcp.terminalai.app`)
+      - traefik.http.routers.mcp.entrypoints=websecure
+      - traefik.http.routers.mcp.tls.certresolver=letsencrypt
+      - traefik.http.routers.mcp.middlewares=secure-headers@file,rate-limit@file
+      - traefik.http.services.mcp.loadbalancer.server.port=3003
+
 volumes:
   postgres_data:
   redis_data:
+  meili_data:
+  minio_data:
+  clamav_db:
   letsencrypt:
 
 networks:

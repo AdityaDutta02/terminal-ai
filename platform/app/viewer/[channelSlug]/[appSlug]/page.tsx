@@ -12,9 +12,20 @@ async function getApp(channelSlug: string, appSlug: string): Promise<AppRow | nu
      FROM marketplace.apps a
      JOIN marketplace.channels c ON c.id = a.channel_id
      WHERE c.slug = $1 AND a.slug = $2 AND a.status = 'live' AND a.deleted_at IS NULL`,
-    [channelSlug, appSlug]
+    [channelSlug, appSlug],
   )
   return result.rows[0] ?? null
+}
+
+async function getCredits(userId: string): Promise<number> {
+  const res = await db.query<{ credits: number }>(
+    `SELECT COALESCE(
+       (SELECT balance_after FROM subscriptions.credit_ledger WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1),
+       (SELECT credits FROM "user" WHERE id = $1), 0
+     ) AS credits`,
+    [userId],
+  ).catch(() => null)
+  return res?.rows[0]?.credits ?? 0
 }
 
 export default async function ViewerPage({
@@ -23,11 +34,21 @@ export default async function ViewerPage({
   params: Promise<{ channelSlug: string; appSlug: string }>
 }) {
   const { channelSlug, appSlug } = await params
-  const app = await getApp(channelSlug, appSlug)
-  if (!app) notFound()
-
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) notFound()
-
-  return <ViewerShell appId={app.id} appName={app.name} channelSlug={channelSlug} iframeUrl={app.iframe_url} />
+  const [app, credits] = await Promise.all([
+    getApp(channelSlug, appSlug),
+    getCredits(session.user.id),
+  ])
+  if (!app) notFound()
+  return (
+    <ViewerShell
+      appId={app.id}
+      appName={app.name}
+      channelSlug={channelSlug}
+      iframeUrl={app.iframe_url}
+      initialCredits={credits}
+      userName={session.user.name ?? session.user.email ?? ''}
+    />
+  )
 }

@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import { proxy } from './routes/proxy.js'
+import { uploadRouter } from './routes/upload.js'
 
 const app = new Hono()
 
@@ -29,6 +30,7 @@ app.use(
 
 app.get('/health', (c) => c.json({ status: 'ok' }))
 
+app.route('/upload', uploadRouter)
 app.route('/', proxy)
 
 const port = parseInt(process.env.PORT ?? '3001', 10)

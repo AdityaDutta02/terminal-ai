@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { Avatar } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
+import { SearchBar } from '@/components/search-bar'
 import { ArrowRight, Layers } from 'lucide-react'
 
 type Channel = {
@@ -40,6 +41,9 @@ export default async function HomePage() {
         <p className="mt-4 text-lg text-gray-500">
           Curated tools built by creators. Start with 200 free credits.
         </p>
+        <div className="mt-6 flex justify-center">
+          <SearchBar />
+        </div>
       </div>
 
       {/* Channels */}

@@ -1,42 +1,41 @@
 'use client'
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { X, Coins, RefreshCw, AlertCircle } from 'lucide-react'
+import { X, RefreshCw, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { CreditsPill } from '@/components/ui/credits-pill'
 
 interface Props {
   appId: string
   appName: string
   channelSlug: string
   iframeUrl: string
+  initialCredits: number
+  userName: string
 }
 
 type Status = 'loading' | 'ready' | 'error'
 
-export function ViewerShell({ appId, appName, channelSlug, iframeUrl }: Props) {
+export function ViewerShell(props: Props) {
+  const { appId, appName, channelSlug, iframeUrl, initialCredits, userName } = props
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const tokenRef = useRef<string | null>(null)
   const [status, setStatus] = useState<Status>('loading')
   const [errorMsg, setErrorMsg] = useState('')
-
+  const [credits, setCredits] = useState(initialCredits)
   const fetchAndDeliverToken = useCallback(async () => {
-    try {
-      const res = await fetch('/api/embed-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appId }),
-      })
-      if (!res.ok) {
-        const data = await res.json() as { error?: string }
-        throw new Error(data.error ?? 'Failed to get token')
-      }
-      const { token } = await res.json() as { token: string }
-      tokenRef.current = token
-      return token
-    } catch (err) {
-      throw err
+    const res = await fetch('/api/embed-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appId }),
+    })
+    if (!res.ok) {
+      const data = await res.json() as { error?: string }
+      throw new Error(data.error ?? 'Failed to get token')
     }
+    const { token } = await res.json() as { token: string }
+    tokenRef.current = token
+    return token
   }, [appId])
-
   function deliverToken(token: string) {
     const iframe = iframeRef.current
     if (!iframe?.contentWindow) return
@@ -45,7 +44,6 @@ export function ViewerShell({ appId, appName, channelSlug, iframeUrl }: Props) {
       new URL(iframeUrl).origin,
     )
   }
-
   async function init() {
     setStatus('loading')
     setErrorMsg('')
@@ -58,44 +56,44 @@ export function ViewerShell({ appId, appName, channelSlug, iframeUrl }: Props) {
       setStatus('error')
     }
   }
-
   useEffect(() => {
     void init()
-    // Refresh token every 12 minutes (before 15m expiry)
-    const interval = setInterval(
-      async () => {
-        try {
-          const token = await fetchAndDeliverToken()
-          deliverToken(token)
-        } catch {
-          // Silently fail — next interval will retry
-        }
-      },
-      12 * 60 * 1000,
-    )
+    const interval = setInterval(async () => {
+      try {
+        const token = await fetchAndDeliverToken()
+        deliverToken(token)
+      } catch {
+        // Silently fail — next interval will retry
+      }
+    }, 12 * 60 * 1000)
     return () => clearInterval(interval)
   }, [appId]) // eslint-disable-line react-hooks/exhaustive-deps
-
+  useEffect(() => {
+    function handleMessage(event: MessageEvent) {
+      if (event.origin !== new URL(iframeUrl).origin) return
+      if (event.data?.type === 'TERMINAL_AI_CREDITS_UPDATE' && typeof event.data.balance === 'number') {
+        setCredits(event.data.balance)
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [iframeUrl])
   function handleIframeLoad() {
     if (tokenRef.current) {
       deliverToken(tokenRef.current)
     }
   }
-
+  const initials = userName.charAt(0).toUpperCase()
   return (
     <div className="flex h-screen flex-col bg-gray-50">
-      {/* Top bar */}
       <div className="flex h-12 flex-shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4">
         <div className="flex items-center gap-3">
-          <a
-            href={`/c/${channelSlug}`}
-            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
-          >
+          <a href={`/c/${channelSlug}`} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors">
             <X className="h-4 w-4" />
           </a>
           <span className="text-sm font-medium text-gray-900">{appName}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {status === 'loading' && (
             <div className="flex items-center gap-1.5 text-xs text-gray-400">
               <RefreshCw className="h-3 w-3 animate-spin" />
@@ -108,10 +106,16 @@ export function ViewerShell({ appId, appName, channelSlug, iframeUrl }: Props) {
               Retry
             </Button>
           )}
+          <CreditsPill credits={credits} />
+          <a
+            href="/account"
+            className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-600 text-xs font-bold text-white hover:bg-violet-700 transition-colors"
+            title={userName}
+          >
+            {initials}
+          </a>
         </div>
       </div>
-
-      {/* Content */}
       <div className="relative flex-1">
         {status === 'error' ? (
           <div className="flex h-full items-center justify-center">
