@@ -21,9 +21,25 @@ export function ShareButton({ url, title, description = '', type }: ShareButtonP
     return () => document.removeEventListener('mousedown', handler)
   }, [])
   const copyLink = async () => {
-    await navigator.clipboard.writeText(url)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(url)
+      } else {
+        const ta = document.createElement('textarea')
+        ta.value = url
+        ta.style.position = 'fixed'
+        ta.style.opacity = '0'
+        document.body.appendChild(ta)
+        ta.focus()
+        ta.select()
+        document.execCommand('copy')
+        document.body.removeChild(ta)
+      }
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      console.warn('[ShareButton] Failed to copy link to clipboard')
+    }
   }
   const shareX = () => {
     const text = title + ' on Terminal AI — ' + description.slice(0, 100)
