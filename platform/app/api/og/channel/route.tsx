@@ -59,7 +59,7 @@ function buildImage(channel: ChannelRow, slug: string) {
           {channel.image && (
             <img src={channel.image} width={56} height={56} style={avatarStyle()} />
           )}
-          <div>
+          <div style={{ display: 'flex', flexDirection: 'column' as const }}>
             <div style={nameStyle()}>{channel.display_name}</div>
             <div style={handleStyle()}>@{slug}</div>
           </div>
