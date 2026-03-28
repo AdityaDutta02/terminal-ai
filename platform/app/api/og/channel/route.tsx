@@ -61,7 +61,7 @@ function buildImage(channel: ChannelRow, slug: string) {
           )}
           <div style={{ display: 'flex', flexDirection: 'column' as const }}>
             <div style={nameStyle()}>{channel.display_name}</div>
-            <div style={handleStyle()}>@{slug}</div>
+            <div style={handleStyle()}>{`@${slug}`}</div>
           </div>
         </div>
         <div style={brandStyle()}>terminal ai</div>
@@ -69,7 +69,7 @@ function buildImage(channel: ChannelRow, slug: string) {
       <div style={titleStyle()}>{channel.name}</div>
       <div style={descStyle()}>{truncated}</div>
       <div style={footerStyle()}>
-        <span>● {channel.subscriber_count} subscribers</span>
+        <span>{`● ${channel.subscriber_count} subscribers`}</span>
         {priceLabel && <span style={badgeStyle()}>{priceLabel}</span>}
       </div>
     </div>
