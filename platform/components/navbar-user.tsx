@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { LogOut, Settings, LayoutDashboard, ShieldCheck, ChevronDown } from 'lucide-react'
+import { LogOut, Settings, LayoutDashboard, ShieldCheck, ChevronDown, Code2 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 interface NavbarUserProps {
@@ -51,6 +51,7 @@ export function NavbarUser({ name, email, credits, role }: NavbarUserProps) {
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <NavMenuLink href="/account" icon={Settings} label="Account & Credits" />
+          <NavMenuLink href="/developers" icon={Code2} label="Developer API" />
           {isCreator && <NavMenuLink href="/creator" icon={LayoutDashboard} label="Creator Dashboard" />}
           {role === 'admin' && <NavMenuLink href="/admin" icon={ShieldCheck} label="Admin Panel" />}
           <DropdownMenuSeparator />
