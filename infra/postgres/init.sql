@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS "user" (
   "emailVerified" BOOLEAN NOT NULL DEFAULT false,
   "image"         TEXT,
   "credits"       INTEGER NOT NULL DEFAULT 200,
+  "role"          TEXT NOT NULL DEFAULT 'user',
   "createdAt"     TIMESTAMP NOT NULL,
   "updatedAt"     TIMESTAMP NOT NULL
 );

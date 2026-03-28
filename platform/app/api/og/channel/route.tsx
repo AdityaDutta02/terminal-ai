@@ -42,7 +42,7 @@ type ChannelRow = {
   name: string
   description: string
   display_name: string
-  avatar_url: string | null
+  image: string | null
   subscriber_count: string
   min_price: string | null
 }
@@ -55,8 +55,8 @@ function buildImage(channel: ChannelRow, slug: string) {
     <div style={wrapStyle()}>
       <div style={headerStyle()}>
         <div style={authorStyle()}>
-          {channel.avatar_url && (
-            <img src={channel.avatar_url} width={56} height={56} style={avatarStyle()} />
+          {channel.image && (
+            <img src={channel.image} width={56} height={56} style={avatarStyle()} />
           )}
           <div>
             <div style={nameStyle()}>{channel.display_name}</div>
@@ -90,15 +90,15 @@ export async function GET(request: Request) {
   const cached = await redis.getBuffer(cacheKey)
   if (cached) return new Response(new Uint8Array(cached), { headers: PNG_HEADERS })
   const result = await db.query<ChannelRow>(
-    `SELECT ch.name, ch.description, u.display_name, u.avatar_url,
+    `SELECT ch.name, ch.description, u.name AS display_name, u.image,
             COUNT(DISTINCT s.id) as subscriber_count,
             MIN(pl.price_inr) as min_price
      FROM marketplace.channels ch
-     JOIN auth.users u ON u.id = ch.creator_id
+     JOIN "user" u ON u.id = ch.creator_id
      LEFT JOIN subscriptions.subscriptions s ON s.channel_id = ch.id AND s.status = 'active'
      LEFT JOIN subscriptions.plans pl ON pl.channel_id = ch.id
      WHERE ch.slug = $1 AND ch.deleted_at IS NULL
-     GROUP BY ch.name, ch.description, u.display_name, u.avatar_url`,
+     GROUP BY ch.name, ch.description, u.name, u.image`,
     [slug]
   )
   const channel = result.rows[0]
