@@ -42,6 +42,7 @@ export async function createApp(params: {
       name: params.name,
       git_repository: params.githubRepo,
       git_branch: params.branch,
+      build_pack: 'dockerfile',
       ports_exposes: String(params.port),
       environment_variables: params.envVars,
     }),

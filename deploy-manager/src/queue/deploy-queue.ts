@@ -51,10 +51,11 @@ export function startDeployWorker(): Worker {
       },
     })
     await triggerDeploy(coolifyId)
+    const appUrl = `https://${subdomain}.apps.terminalai.app`
     await db.query(
-      `UPDATE deployments.deployments SET status = 'live', coolify_app_id = $2 WHERE id = $1`,
-      [deploymentId, coolifyId]
+      `UPDATE deployments.deployments SET status = 'live', coolify_app_id = $2, url = $3, completed_at = NOW() WHERE id = $1`,
+      [deploymentId, coolifyId, appUrl]
     )
-    logger.info({ msg: 'deploy_complete', deploymentId, subdomain })
+    logger.info({ msg: 'deploy_complete', deploymentId, subdomain, url: appUrl })
   }, { connection: redisConnection, concurrency: 3 })
 }
