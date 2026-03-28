@@ -14,13 +14,13 @@ function tagStyle() {
   return { background: COLORS.accent, color: '#fff', padding: '4px 12px', borderRadius: '6px', fontSize: '14px', fontWeight: 600 }
 }
 function brandStyle() {
-  return { color: COLORS.secondaryText, fontSize: '18px', fontWeight: 700 }
+  return { display: 'flex', color: COLORS.secondaryText, fontSize: '18px', fontWeight: 700 }
 }
 function titleStyle() {
-  return { color: COLORS.primaryText, fontSize: '52px', fontWeight: 700, lineHeight: 1.1, marginBottom: '16px' }
+  return { display: 'flex', color: COLORS.primaryText, fontSize: '52px', fontWeight: 700, lineHeight: 1.1, marginBottom: '16px' }
 }
 function descStyle() {
-  return { color: COLORS.secondaryText, fontSize: '20px', marginBottom: 'auto' }
+  return { display: 'flex', color: COLORS.secondaryText, fontSize: '20px', marginBottom: 'auto' }
 }
 function footerStyle() {
   return { display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: COLORS.secondaryText, fontSize: '15px' }
