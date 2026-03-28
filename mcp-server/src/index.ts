@@ -8,6 +8,11 @@ import { getProvidersJson } from './tools/providers'
 import { db } from './lib/db'
 import { logger } from './lib/logger'
 
+if (!process.env.INTERNAL_SERVICE_TOKEN) {
+  logger.error({ msg: 'missing_env_var', var: 'INTERNAL_SERVICE_TOKEN' })
+  process.exit(1)
+}
+
 const app = new Hono()
 
 app.get('/health', (c) => c.json({ status: 'ok' }))
@@ -166,7 +171,7 @@ app.get('/sse', async (c) => {
             appId: result.data.id,
             deploymentId: result.data.deploymentId,
             deploymentQueued: result.data.deploymentQueued,
-            statusTool: 'Use get_deployment_status with deploymentId to poll for completion',
+            statusTool: 'Use get_deployment_status with appId to poll for completion',
           }),
         }],
       }

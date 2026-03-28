@@ -23,10 +23,8 @@ export async function GET(req: Request): Promise<Response> {
       return NextResponse.json({ error: 'Invalid API key' }, { status: 401 })
     }
     const userId = result.rows[0].creator_id
-    await db.query(
-      `UPDATE mcp.api_keys SET last_used_at = NOW() WHERE token_hash = $1`,
-      [tokenHash]
-    )
+    db.query(`UPDATE mcp.api_keys SET last_used_at = NOW() WHERE token_hash = $1`, [tokenHash])
+      .catch(err => logger.warn({ msg: 'internal_me_last_used_update_failed', err }))
     logger.info({ msg: 'internal_me_resolved', userId })
     return NextResponse.json({ userId })
   } catch (err) {
