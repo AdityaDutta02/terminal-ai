@@ -7,15 +7,26 @@ interface Fonts {
 
 let fontsCache: Fonts | null = null
 
-export const loadFonts = cache(async (): Promise<Fonts> => {
+export const loadFonts = cache(async (): Promise<Fonts | null> => {
   if (fontsCache) return fontsCache
-  const MINIO_URL = process.env.MINIO_PUBLIC_URL!
-  const [regular, bold] = await Promise.all([
-    fetch(`${MINIO_URL}/assets/fonts/GeistSans-Regular.otf`).then(r => r.arrayBuffer()),
-    fetch(`${MINIO_URL}/assets/fonts/GeistSans-Bold.otf`).then(r => r.arrayBuffer()),
-  ])
-  fontsCache = { regular, bold }
-  return fontsCache
+  const baseUrl = process.env.MINIO_PUBLIC_URL ?? process.env.MINIO_ENDPOINT
+  if (!baseUrl) return null
+  try {
+    const [regular, bold] = await Promise.all([
+      fetch(`${baseUrl}/terminalai/assets/fonts/GeistSans-Regular.otf`).then(r => {
+        if (!r.ok) throw new Error(`Font fetch failed: ${r.status}`)
+        return r.arrayBuffer()
+      }),
+      fetch(`${baseUrl}/terminalai/assets/fonts/GeistSans-Bold.otf`).then(r => {
+        if (!r.ok) throw new Error(`Font fetch failed: ${r.status}`)
+        return r.arrayBuffer()
+      }),
+    ])
+    fontsCache = { regular, bold }
+    return fontsCache
+  } catch {
+    return null
+  }
 })
 
 export const OG_DIMENSIONS = { width: 1200, height: 630 }

@@ -101,7 +101,8 @@ export async function GET(request: Request) {
   const channel = result.rows[0]
   if (!channel) return new Response('Not found', { status: 404 })
   const fonts = await loadFonts()
-  const image = new ImageResponse(buildImage(channel, slug), { ...OG_DIMENSIONS, fonts: fontConfig(fonts) })
+  const fontsCfg = fonts ? fontConfig(fonts) : []
+  const image = new ImageResponse(buildImage(channel, slug), { ...OG_DIMENSIONS, fonts: fontsCfg })
   const buffer = await sharp(Buffer.from(await image.arrayBuffer())).png({ compressionLevel: 9 }).toBuffer()
   await redis.set(cacheKey, buffer, 'EX', 3600)
   return new Response(new Uint8Array(buffer), { headers: PNG_HEADERS })
