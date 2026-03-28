@@ -68,6 +68,7 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       MINIO_BUCKET: terminalai
+      DEPLOY_MANAGER_URL: http://deploy-manager:3002
     depends_on:
       postgres:
         condition: service_healthy

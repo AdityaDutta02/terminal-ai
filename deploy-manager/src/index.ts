@@ -26,6 +26,12 @@ app.get('/deployments/:id', async (c) => {
   }
   return c.json(deployment)
 })
+app.post('/deploy', async (c) => {
+  const body = await c.req.json() as { deploymentId: string; appId: string; githubRepo: string; branch: string; subdomain: string }
+  await deployQueue.add('deploy', body)
+  logger.info({ msg: 'deploy_queued', deploymentId: body.deploymentId })
+  return c.json({ queued: true })
+})
 app.post('/deployments/:id/retry', async (c) => {
   const id = c.req.param('id')
   const { rows } = await db.query(
