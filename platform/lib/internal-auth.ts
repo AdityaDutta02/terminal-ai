@@ -1,3 +1,5 @@
+import { timingSafeEqual } from 'crypto'
+
 /**
  * Internal service authentication helpers.
  * Used by platform API routes that are only callable by internal services
@@ -12,9 +14,17 @@ export function validateServiceToken(req: Request): boolean {
   const expected = process.env.INTERNAL_SERVICE_TOKEN
   if (!expected) return false
   const provided = req.headers.get('X-Service-Token')
-  return provided === expected
+  if (!provided) return false
+  const expectedBuf = Buffer.from(expected)
+  const providedBuf = Buffer.from(provided)
+  if (expectedBuf.length !== providedBuf.length) return false
+  return timingSafeEqual(expectedBuf, providedBuf)
 }
 
+/**
+ * Returns the raw X-Creator-Id header value.
+ * Caller must validate this is a known creator before using in DB writes.
+ */
 export function getCreatorIdFromRequest(req: Request): string | null {
   return req.headers.get('X-Creator-Id')
 }

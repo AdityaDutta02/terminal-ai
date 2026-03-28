@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 
 vi.stubEnv('INTERNAL_SERVICE_TOKEN', 'test-secret-token-abc123')
 
+// Dynamic import is required so vi.stubEnv takes effect before the module loads
 const { validateServiceToken, getCreatorIdFromRequest, unauthorizedResponse } = await import('./internal-auth')
 
 describe('validateServiceToken', () => {
@@ -22,6 +23,15 @@ describe('validateServiceToken', () => {
       headers: { 'X-Service-Token': 'wrong-token' }
     })
     expect(validateServiceToken(req)).toBe(false)
+  })
+
+  it('returns false when INTERNAL_SERVICE_TOKEN is empty string', () => {
+    vi.stubEnv('INTERNAL_SERVICE_TOKEN', '')
+    const req = new Request('http://localhost', {
+      headers: { 'X-Service-Token': 'test-secret-token-abc123' }
+    })
+    expect(validateServiceToken(req)).toBe(false)
+    vi.stubEnv('INTERNAL_SERVICE_TOKEN', 'test-secret-token-abc123')
   })
 })
 
