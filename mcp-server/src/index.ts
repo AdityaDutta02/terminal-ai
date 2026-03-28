@@ -2,12 +2,58 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js'
 import { Hono } from 'hono'
 import { z } from 'zod'
+import crypto from 'crypto'
 import { scaffoldApp } from './tools/scaffold'
 import { getProvidersJson } from './tools/providers'
 import { db } from './lib/db'
 import { logger } from './lib/logger'
+
 const app = new Hono()
+
 app.get('/health', (c) => c.json({ status: 'ok' }))
+
+/** Result type returned by callPlatform. */
+type PlatformResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: string; status: number }
+
+/**
+ * POST JSON to an internal platform endpoint.
+ * Centralises network error handling and non-2xx response parsing so
+ * individual tool handlers stay concise and DRY.
+ */
+async function callPlatform<T>(
+  path: string,
+  body: unknown,
+  creatorId: string
+): Promise<PlatformResult<T>> {
+  const platformUrl = process.env.PLATFORM_URL ?? 'http://platform:3000'
+  let res: Response
+  try {
+    res = await fetch(`${platformUrl}${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Service-Token': process.env.INTERNAL_SERVICE_TOKEN ?? '',
+        'X-Creator-Id': creatorId,
+      },
+      body: JSON.stringify(body),
+    })
+  } catch (err) {
+    logger.error({ msg: 'platform_fetch_failed', path, err, creatorId })
+    return { ok: false, error: 'Failed to reach platform: network error', status: 0 }
+  }
+
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({ error: 'unknown' })) as { error?: string }
+    logger.warn({ msg: 'platform_error_response', path, status: res.status, error: errBody.error, creatorId })
+    return { ok: false, error: errBody.error ?? res.statusText, status: res.status }
+  }
+
+  const data = await res.json() as T
+  return { ok: true, data }
+}
+
 const ScaffoldSchema = {
   framework: z.enum(['nextjs', 'python', 'streamlit', 'static']),
   app_name: z.string(),
@@ -17,20 +63,41 @@ const ScaffoldSchema = {
   uses_file_upload: z.boolean(),
   generates_artifacts: z.boolean(),
 }
+
+const DeployAppSchema = {
+  channelId: z.string().describe('Channel ID returned from create_channel'),
+  name: z.string().min(1).max(80).describe('App name'),
+  description: z.string().max(500).optional(),
+  githubRepo: z.string().describe('Full GitHub repo URL, e.g. https://github.com/user/repo'),
+  githubBranch: z.string().default('main').describe('Branch to deploy'),
+  framework: z.enum(['nextjs', 'react', 'vue', 'svelte', 'static']).default('nextjs'),
+}
+
 app.get('/sse', async (c) => {
   const apiKey = c.req.header('Authorization')?.replace('Bearer ', '')
   if (!apiKey) return c.text('Unauthorized', 401)
+
+  const tokenHash = crypto.createHash('sha256').update(apiKey).digest('hex')
   const keyResult = await db.query(
-    `SELECT creator_id FROM mcp.api_keys WHERE key_hash = digest($1, 'sha256') AND revoked_at IS NULL`,
-    [apiKey]
+    `SELECT creator_id FROM mcp.api_keys WHERE token_hash = $1 AND revoked_at IS NULL`,
+    [tokenHash]
   )
   if (!keyResult.rows[0]) return c.text('Invalid API key', 401)
+
   const creatorId = keyResult.rows[0].creator_id as string
+
+  // Update last_used_at asynchronously — do not block the SSE handshake
+  db.query(`UPDATE mcp.api_keys SET last_used_at = NOW() WHERE token_hash = $1`, [tokenHash]).catch(
+    (err: unknown) => logger.warn({ msg: 'failed_to_update_last_used_at', err })
+  )
+
   const server = new McpServer({ name: 'terminal-ai', version: '1.0.0' })
+
   server.tool('scaffold_app', ScaffoldSchema, async (input) => {
     const result = scaffoldApp(input)
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] }
   })
+
   server.tool('get_deployment_status', { app_id: z.string().uuid() }, async ({ app_id }) => {
     const result = await db.query(
       `SELECT d.status, d.subdomain, d.created_at, d.coolify_app_id
@@ -43,14 +110,75 @@ app.get('/sse', async (c) => {
     if (!result.rows[0]) return { content: [{ type: 'text', text: 'App not found' }] }
     return { content: [{ type: 'text', text: JSON.stringify(result.rows[0], null, 2) }] }
   })
+
   server.tool('list_supported_providers', {}, async () => {
     return { content: [{ type: 'text', text: getProvidersJson() }] }
   })
+
+  server.tool(
+    'create_channel',
+    'Create a new channel on Terminal AI for publishing apps. Returns the channel id and slug needed for deploy_app.',
+    {
+      name: z.string().min(1).max(80).describe('Human-readable channel name, e.g. "My Portfolio Apps"'),
+      description: z.string().max(500).optional().describe('Short description shown on the channel page'),
+    },
+    async ({ name, description }) => {
+      const result = await callPlatform<{ id: string; slug: string }>(
+        '/api/internal/channels',
+        { name, description },
+        creatorId
+      )
+      if (!result.ok) {
+        return { content: [{ type: 'text', text: `Failed to create channel: ${result.error}` }], isError: true }
+      }
+      logger.info({ msg: 'create_channel_success', channelId: result.data.id, creatorId })
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            channelId: result.data.id,
+            slug: result.data.slug,
+            url: `https://terminalai.app/c/${result.data.slug}`,
+          }),
+        }],
+      }
+    }
+  )
+
+  server.tool(
+    'deploy_app',
+    'Register a GitHub repo as an app on Terminal AI and trigger deployment. The app will be built and deployed to *.apps.terminalai.app.',
+    DeployAppSchema,
+    async (input) => {
+      const result = await callPlatform<{ id: string; deploymentId: string; deploymentQueued: boolean }>(
+        '/api/internal/apps',
+        input,
+        creatorId
+      )
+      if (!result.ok) {
+        return { content: [{ type: 'text', text: `Failed to register app: ${result.error}` }], isError: true }
+      }
+      logger.info({ msg: 'deploy_app_success', appId: result.data.id, deploymentId: result.data.deploymentId, creatorId })
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            appId: result.data.id,
+            deploymentId: result.data.deploymentId,
+            deploymentQueued: result.data.deploymentQueued,
+            statusTool: 'Use get_deployment_status with deploymentId to poll for completion',
+          }),
+        }],
+      }
+    }
+  )
+
   const transport = new SSEServerTransport('/sse', c.env.outgoing)
   await server.connect(transport)
   logger.info({ msg: 'mcp_connection', creatorId })
   return new Response(null)
 })
+
 const port = parseInt(process.env.PORT ?? '3003', 10)
 logger.info({ msg: 'mcp_server_started', port })
 export default { port, fetch: app.fetch }
