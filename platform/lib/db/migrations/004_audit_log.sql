@@ -10,5 +10,5 @@ CREATE TABLE IF NOT EXISTS audit.events (
   metadata    JSONB,
   created_at  TIMESTAMPTZ DEFAULT now() NOT NULL
 );
-CREATE INDEX ON audit.events(actor_id, created_at DESC);
-CREATE INDEX ON audit.events(action, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_events_actor ON audit.events(actor_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_events_action ON audit.events(action, created_at DESC);

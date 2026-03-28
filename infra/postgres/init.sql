@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS "user" (
   "emailVerified" BOOLEAN NOT NULL DEFAULT false,
   "image"         TEXT,
   "credits"       INTEGER NOT NULL DEFAULT 200,
-  "role"          TEXT NOT NULL DEFAULT 'user',
+  "role"          TEXT NOT NULL DEFAULT 'user' CHECK ("role" IN ('user', 'creator', 'admin')),
   "createdAt"     TIMESTAMP NOT NULL,
   "updatedAt"     TIMESTAMP NOT NULL
 );
@@ -177,8 +177,8 @@ CREATE TABLE IF NOT EXISTS audit.events (
   metadata    JSONB,
   created_at  TIMESTAMPTZ DEFAULT now() NOT NULL
 );
-CREATE INDEX ON audit.events(actor_id, created_at DESC);
-CREATE INDEX ON audit.events(action, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_events_actor ON audit.events(actor_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_events_action ON audit.events(action, created_at DESC);
 
 -- ============================================================
 -- Migration 005: deployments

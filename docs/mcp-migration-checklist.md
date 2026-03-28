@@ -11,6 +11,8 @@
 SSH into VPS1:
 
 ```bash
+cd /opt/terminal-ai  # adjust if your project lives elsewhere
+
 # Copy migration files to postgres container
 docker cp platform/lib/db/migrations/002_credit_ledger.sql postgres:/tmp/
 docker cp platform/lib/db/migrations/003_creator_ownership.sql postgres:/tmp/
@@ -45,7 +47,7 @@ INTERNAL_SERVICE_TOKEN=<same value as platform>
 Add to deploy-manager `.env` (restart deploy-manager after):
 ```
 COOLIFY_URL=http://<VPS2_IP>:8000
-COOLIFY_TOKEN=<from Coolify → API → Tokens — set up in step 4>
+COOLIFY_TOKEN=<from Coolify → API → Tokens — set up in section 3 below>
 VPS2_IP=<your VPS2 public IP>
 CLOUDFLARE_ZONE_ID=<Cloudflare Dashboard → terminalai.app → Overview → Zone ID>
 CLOUDFLARE_API_TOKEN=<Cloudflare API token with DNS:Edit scope>
