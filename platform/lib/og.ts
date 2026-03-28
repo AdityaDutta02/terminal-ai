@@ -5,27 +5,39 @@ interface Fonts {
   bold: ArrayBuffer
 }
 
+// jsDelivr CDN — Geist Sans from the geist npm package
+const CDN_REGULAR = 'https://cdn.jsdelivr.net/npm/geist@1/dist/fonts/geist-sans/Geist-Regular.woff2'
+const CDN_BOLD = 'https://cdn.jsdelivr.net/npm/geist@1/dist/fonts/geist-sans/Geist-Bold.woff2'
+
 let fontsCache: Fonts | null = null
 
-export const loadFonts = cache(async (): Promise<Fonts | null> => {
+export const loadFonts = cache(async (): Promise<Fonts> => {
   if (fontsCache) return fontsCache
-  const baseUrl = process.env.MINIO_PUBLIC_URL ?? process.env.MINIO_ENDPOINT
-  if (!baseUrl) return null
+
+  // Try MinIO first if configured, fall back to CDN
+  const minioBase = process.env.MINIO_PUBLIC_URL ?? process.env.MINIO_ENDPOINT
+  const [regularUrl, boldUrl] = minioBase
+    ? [
+        `${minioBase}/terminalai/assets/fonts/GeistSans-Regular.otf`,
+        `${minioBase}/terminalai/assets/fonts/GeistSans-Bold.otf`,
+      ]
+    : [CDN_REGULAR, CDN_BOLD]
+
+  const fetchFont = (url: string) =>
+    fetch(url).then(r => {
+      if (!r.ok) throw new Error(`Font fetch failed ${r.status}: ${url}`)
+      return r.arrayBuffer()
+    })
+
   try {
-    const [regular, bold] = await Promise.all([
-      fetch(`${baseUrl}/terminalai/assets/fonts/GeistSans-Regular.otf`).then(r => {
-        if (!r.ok) throw new Error(`Font fetch failed: ${r.status}`)
-        return r.arrayBuffer()
-      }),
-      fetch(`${baseUrl}/terminalai/assets/fonts/GeistSans-Bold.otf`).then(r => {
-        if (!r.ok) throw new Error(`Font fetch failed: ${r.status}`)
-        return r.arrayBuffer()
-      }),
-    ])
+    const [regular, bold] = await Promise.all([fetchFont(regularUrl), fetchFont(boldUrl)])
     fontsCache = { regular, bold }
     return fontsCache
   } catch {
-    return null
+    // MinIO failed — retry from CDN
+    const [regular, bold] = await Promise.all([fetchFont(CDN_REGULAR), fetchFont(CDN_BOLD)])
+    fontsCache = { regular, bold }
+    return fontsCache
   }
 })
 
