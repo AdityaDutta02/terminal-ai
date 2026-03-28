@@ -36,10 +36,34 @@ export async function* streamChat(
     yield decoder.decode(value)
   }
 }`
+const NEXTJS_DOCKERFILE = `FROM node:20-alpine AS base
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+
+FROM base AS builder
+RUN npm ci
+COPY . .
+RUN npm run build
+
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+EXPOSE 3000
+ENV PORT 3000
+ENV HOSTNAME "0.0.0.0"
+CMD ["node", "server.js"]
+`
+
 function buildNextjsFiles(input: ScaffoldInput): Record<string, string> {
   const files: Record<string, string> = {}
   files['app/api/health/route.ts'] = `import { NextResponse } from 'next/server'\nexport async function GET() {\n  return NextResponse.json({ ok: true })\n}`
   files['.env.example'] = `TERMINAL_AI_GATEWAY_URL=\nTERMINAL_AI_APP_ID=`
+  files['next.config.js'] = `/** @type {import('next').NextConfig} */\nconst nextConfig = {\n  output: 'standalone',\n}\nmodule.exports = nextConfig\n`
+  files['Dockerfile'] = NEXTJS_DOCKERFILE
   if (input.uses_ai) {
     files['lib/terminal-ai.ts'] = GATEWAY_SDK
   }
@@ -75,7 +99,7 @@ export function scaffoldApp(input: ScaffoldInput): ScaffoldOutput {
   }
   return {
     files,
-    instructions: '1. Clone this scaffold\n2. Add your logic\n3. Push to GitHub\n4. Deploy via Terminal AI dashboard',
+    instructions: '1. Clone this scaffold\n2. Add your logic\n3. Ensure next.config.js has output: "standalone"\n4. Push to GitHub\n5. Deploy via Terminal AI: use create_channel then deploy_app',
     required_env_vars: ['TERMINAL_AI_GATEWAY_URL', 'TERMINAL_AI_APP_ID'],
     notes: [
       'Do NOT call OpenAI/Anthropic directly — all AI calls go through TERMINAL_AI_GATEWAY_URL',

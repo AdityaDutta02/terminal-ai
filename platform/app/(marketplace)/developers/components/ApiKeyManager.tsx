@@ -22,6 +22,7 @@ export function ApiKeyManager() {
 
   async function loadKeys() {
     const res = await fetch('/api/developer/keys')
+    if (!res.ok) throw new Error('Failed to load keys')
     const data = await res.json() as { keys: ApiKey[] }
     setKeys(data.keys)
   }
@@ -66,11 +67,15 @@ export function ApiKeyManager() {
     }
   }
 
-  function copyToken() {
+  async function copyToken() {
     if (!newToken) return
-    navigator.clipboard.writeText(newToken)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    try {
+      await navigator.clipboard.writeText(newToken)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setError('Failed to copy to clipboard')
+    }
   }
 
   return (

@@ -5,6 +5,18 @@ import { ChevronDown, ChevronUp, Copy } from 'lucide-react'
 
 type Editor = 'claude-code' | 'cursor' | 'windsurf' | 'continue'
 
+function mcpServerJson() {
+  return JSON.stringify({
+    mcpServers: {
+      'terminal-ai': {
+        transport: 'sse',
+        url: 'https://terminalai.app/mcp',
+        headers: { Authorization: 'Bearer YOUR_API_KEY' },
+      },
+    },
+  }, null, 2)
+}
+
 const EDITOR_CONFIGS: Record<Editor, { label: string; config: string; path: string }> = {
   'claude-code': {
     label: 'Claude Code',
@@ -14,28 +26,12 @@ const EDITOR_CONFIGS: Record<Editor, { label: string; config: string; path: stri
   cursor: {
     label: 'Cursor',
     path: '~/.cursor/mcp.json',
-    config: JSON.stringify({
-      mcpServers: {
-        'terminal-ai': {
-          transport: 'sse',
-          url: 'https://terminalai.app/mcp',
-          headers: { Authorization: 'Bearer YOUR_API_KEY' },
-        },
-      },
-    }, null, 2),
+    config: mcpServerJson(),
   },
   windsurf: {
     label: 'Windsurf',
     path: '~/.codeium/windsurf/mcp_config.json',
-    config: JSON.stringify({
-      mcpServers: {
-        'terminal-ai': {
-          transport: 'sse',
-          url: 'https://terminalai.app/mcp',
-          headers: { Authorization: 'Bearer YOUR_API_KEY' },
-        },
-      },
-    }, null, 2),
+    config: mcpServerJson(),
   },
   continue: {
     label: 'Continue.dev',
@@ -51,10 +47,14 @@ const EDITOR_CONFIGS: Record<Editor, { label: string; config: string; path: stri
 function CodeBlock({ code }: { code: string }) {
   const [copied, setCopied] = useState(false)
 
-  function handleCopy() {
-    navigator.clipboard.writeText(code)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(code)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // clipboard unavailable (no focus or permission denied)
+    }
   }
 
   return (
