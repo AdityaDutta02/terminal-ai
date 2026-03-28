@@ -36,7 +36,6 @@ type AppRow = {
   name: string
   description: string
   category: string
-  framework: string
   display_name: string
   image: string | null
 }
@@ -59,7 +58,6 @@ function buildImage(app: AppRow) {
           )}
           <span>{app.display_name}</span>
         </div>
-        <span>{app.framework}</span>
       </div>
     </div>
   )
@@ -80,11 +78,10 @@ export async function GET(request: Request) {
   const cached = await redis.getBuffer(cacheKey)
   if (cached) return new Response(new Uint8Array(cached), { headers: PNG_HEADERS })
   const result = await db.query<AppRow>(
-    `SELECT a.name, a.description, a.category, a.framework,
-            u.name AS display_name, u.image
+    `SELECT a.name, a.description, ch.name AS category,
+            ch.name AS display_name, NULL AS image
      FROM marketplace.apps a
      JOIN marketplace.channels ch ON ch.id = a.channel_id
-     JOIN "user" u ON u.id = ch.creator_id
      WHERE a.id = $1 AND a.deleted_at IS NULL`,
     [appId]
   )

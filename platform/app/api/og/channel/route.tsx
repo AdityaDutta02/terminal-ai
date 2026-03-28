@@ -45,6 +45,7 @@ type ChannelRow = {
   image: string | null
   subscriber_count: string
   min_price: string | null
+  slug: string
 }
 
 function buildImage(channel: ChannelRow, slug: string) {
@@ -90,15 +91,11 @@ export async function GET(request: Request) {
   const cached = await redis.getBuffer(cacheKey)
   if (cached) return new Response(new Uint8Array(cached), { headers: PNG_HEADERS })
   const result = await db.query<ChannelRow>(
-    `SELECT ch.name, ch.description, u.name AS display_name, u.image,
-            COUNT(DISTINCT s.id) as subscriber_count,
-            MIN(pl.price_inr) as min_price
+    `SELECT ch.name, ch.description, ch.slug,
+            ch.name AS display_name, ch.avatar_url AS image,
+            0 AS subscriber_count, NULL AS min_price
      FROM marketplace.channels ch
-     JOIN "user" u ON u.id = ch.creator_id
-     LEFT JOIN subscriptions.subscriptions s ON s.channel_id = ch.id AND s.status = 'active'
-     LEFT JOIN subscriptions.plans pl ON pl.channel_id = ch.id
-     WHERE ch.slug = $1 AND ch.deleted_at IS NULL
-     GROUP BY ch.name, ch.description, u.name, u.image`,
+     WHERE ch.slug = $1 AND ch.deleted_at IS NULL`,
     [slug]
   )
   const channel = result.rows[0]
