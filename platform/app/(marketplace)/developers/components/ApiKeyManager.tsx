@@ -20,11 +20,14 @@ export function ApiKeyManager() {
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  async function loadKeys() {
+    const res = await fetch('/api/developer/keys')
+    const data = await res.json() as { keys: ApiKey[] }
+    setKeys(data.keys)
+  }
+
   useEffect(() => {
-    fetch('/api/developer/keys')
-      .then(r => r.json())
-      .then((d: { keys: ApiKey[] }) => setKeys(d.keys))
-      .catch(() => setError('Failed to load keys'))
+    loadKeys().catch(() => setError('Failed to load keys'))
   }, [])
 
   async function createKey() {
@@ -44,9 +47,7 @@ export function ApiKeyManager() {
       const created = await res.json() as { id: string; token: string; prefix: string }
       setNewToken(created.token)
       setNewKeyName('')
-      const listRes = await fetch('/api/developer/keys')
-      const listData = await listRes.json() as { keys: ApiKey[] }
-      setKeys(listData.keys)
+      await loadKeys()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
@@ -56,8 +57,13 @@ export function ApiKeyManager() {
 
   async function revokeKey(id: string) {
     if (!confirm('Revoke this API key? This cannot be undone.')) return
-    await fetch(`/api/developer/keys/${id}`, { method: 'DELETE' })
-    setKeys(prev => prev.filter(k => k.id !== id))
+    try {
+      const res = await fetch(`/api/developer/keys/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to revoke key')
+      setKeys(prev => prev.filter(k => k.id !== id))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to revoke key')
+    }
   }
 
   function copyToken() {
