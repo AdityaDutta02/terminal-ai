@@ -20,13 +20,13 @@ function handleStyle() {
   return { color: COLORS.secondaryText, fontSize: '14px' }
 }
 function brandStyle() {
-  return { color: COLORS.secondaryText, fontSize: '20px', fontWeight: 700 }
+  return { display: 'flex', color: COLORS.secondaryText, fontSize: '20px', fontWeight: 700 }
 }
 function titleStyle() {
-  return { color: COLORS.primaryText, fontSize: '48px', fontWeight: 700, lineHeight: 1.1, marginBottom: '16px' }
+  return { display: 'flex', color: COLORS.primaryText, fontSize: '48px', fontWeight: 700, lineHeight: 1.1, marginBottom: '16px' }
 }
 function descStyle() {
-  return { color: COLORS.secondaryText, fontSize: '20px', marginBottom: 'auto' }
+  return { display: 'flex', color: COLORS.secondaryText, fontSize: '20px', marginBottom: 'auto' }
 }
 function footerStyle() {
   return { display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: COLORS.secondaryText, fontSize: '16px' }
