@@ -103,6 +103,8 @@ services:
       context: ./gateway
       dockerfile: Dockerfile
     restart: unless-stopped
+    ports:
+      - '3001:3001'
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/terminalai
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
@@ -184,7 +186,7 @@ services:
       CLOUDFLARE_TOKEN: ${CLOUDFLARE_TOKEN}
       CLOUDFLARE_ZONE_ID: ${CLOUDFLARE_ZONE_ID}
       VPS2_IP: ${VPS2_IP}
-      GATEWAY_URL: http://gateway:3001
+      GATEWAY_URL: http://178.104.124.224:3001
       PORT: '3002'
     depends_on:
       postgres:

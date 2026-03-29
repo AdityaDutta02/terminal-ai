@@ -20,12 +20,13 @@ const GATEWAY_SDK = `// Terminal AI Gateway SDK
 const GATEWAY_URL = process.env.TERMINAL_AI_GATEWAY_URL!
 export async function* streamChat(
   messages: { role: string; content: string }[],
-  embedToken: string
+  embedToken: string,
+  model = 'anthropic/claude-3-5-haiku'
 ) {
-  const res = await fetch(\`\${GATEWAY_URL}/proxy\`, {
+  const res = await fetch(\`\${GATEWAY_URL}/v1/chat/completions\`, {
     method: 'POST',
     headers: { Authorization: \`Bearer \${embedToken}\`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ provider: 'openrouter', model: 'claude-3-5-haiku', messages, stream: true }),
+    body: JSON.stringify({ model, messages, stream: true }),
   })
   if (!res.ok) throw new Error(\`Gateway error: \${res.status}\`)
   const reader = res.body!.getReader()
