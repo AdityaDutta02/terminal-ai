@@ -5,12 +5,14 @@ import { ChevronDown, ChevronUp, Copy } from 'lucide-react'
 
 type Editor = 'claude-code' | 'cursor' | 'windsurf' | 'continue'
 
+const MCP_URL = 'http://178.104.124.224/mcp'
+
 function mcpServerJson() {
   return JSON.stringify({
     mcpServers: {
       'terminal-ai': {
         transport: 'sse',
-        url: 'https://terminalai.app/mcp',
+        url: MCP_URL,
         headers: { Authorization: 'Bearer YOUR_API_KEY' },
       },
     },
@@ -21,7 +23,7 @@ const EDITOR_CONFIGS: Record<Editor, { label: string; config: string; path: stri
   'claude-code': {
     label: 'Claude Code',
     path: 'Run in terminal:',
-    config: `claude mcp add \\\n  --transport sse \\\n  terminal-ai \\\n  https://terminalai.app/mcp`,
+    config: `claude mcp add --transport sse terminal-ai ${MCP_URL}`,
   },
   cursor: {
     label: 'Cursor',
@@ -38,7 +40,7 @@ const EDITOR_CONFIGS: Record<Editor, { label: string; config: string; path: stri
     path: '~/.continue/config.json (mcpServers section)',
     config: JSON.stringify({
       name: 'terminal-ai',
-      transport: { type: 'sse', url: 'https://terminalai.app/mcp' },
+      transport: { type: 'sse', url: MCP_URL },
       headers: { Authorization: 'Bearer YOUR_API_KEY' },
     }, null, 2),
   },
@@ -158,7 +160,7 @@ export function McpConnectionGuide() {
         body={
           <div className="space-y-3">
             <p className="text-sm text-gray-600">Open a new chat and paste this prompt:</p>
-            <CodeBlock code={`Use the terminal-ai MCP to scaffold a Next.js app called "my-app" with a simple landing page. Then create a channel called "My Apps" and deploy the app to it. Commit everything to GitHub and trigger the deployment. Let me know the URL when it's live.`} />
+            <CodeBlock code={`Use the terminal-ai MCP to scaffold a Next.js app called "my-app"\nwith a simple landing page.\n\nThen create a channel called "My Apps" and deploy the app to it.\nCommit everything to GitHub and trigger the deployment.\nLet me know the URL when it's live.`} />
             <p className="text-xs text-gray-500">
               The AI will call scaffold_app → create_channel → deploy_app automatically. No manual steps needed.
             </p>

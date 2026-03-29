@@ -78,7 +78,7 @@ const DeployAppSchema = {
   framework: z.enum(['nextjs', 'react', 'vue', 'svelte', 'static']).default('nextjs'),
 }
 
-app.get('/sse', async (c) => {
+app.get('/mcp', async (c) => {
   const apiKey = c.req.header('Authorization')?.replace('Bearer ', '')
   if (!apiKey) return c.text('Unauthorized', 401)
 
@@ -178,7 +178,7 @@ app.get('/sse', async (c) => {
     }
   )
 
-  const transport = new SSEServerTransport('/sse', c.env.outgoing)
+  const transport = new SSEServerTransport('/mcp', c.env.outgoing)
   await server.connect(transport)
   logger.info({ msg: 'mcp_connection', creatorId })
   return new Response(null)

@@ -3,6 +3,34 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 
+const USE_CASE = {
+  title: 'Embed a Terminal AI app in your website',
+  steps: [
+    {
+      label: '1. Fetch a channel by slug',
+      code: `const res = await fetch('https://terminalai.app/api/creator/channels/my-channel')
+const { apps } = await res.json()
+// apps = [{ id, name, slug, description }]`,
+    },
+    {
+      label: '2. Get the embed URL for a specific app',
+      code: `const appRes = await fetch(\`https://terminalai.app/api/creator/apps/\${apps[0].id}\`)
+const app = await appRes.json()
+// app = { id, name, embed_url, channel }`,
+    },
+    {
+      label: '3. Embed in your page',
+      code: `<iframe
+  src={app.embed_url}
+  width="100%"
+  height="600"
+  style={{ border: 'none', borderRadius: '12px' }}
+  allow="clipboard-write"
+/>`,
+    },
+  ],
+}
+
 type Method = 'GET' | 'POST' | 'DELETE' | 'PATCH'
 
 type Endpoint = {
@@ -84,16 +112,51 @@ const METHOD_COLORS: Record<Method, string> = {
 
 export function ApiReferenceSection() {
   const [openIndex, setOpenIndex] = useState<number | null>(null)
+  const [tab, setTab] = useState<'endpoints' | 'usecase'>('usecase')
 
   function handleToggle(index: number) {
     setOpenIndex(prev => (prev === index ? null : index))
   }
 
   return (
-    <div
-      className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white"
-      data-testid="api-reference-section"
-    >
+    <div className="space-y-4" data-testid="api-reference-section">
+      <div className="flex gap-2">
+        {(['usecase', 'endpoints'] as const).map(t => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+              tab === t
+                ? 'bg-violet-600 text-white'
+                : 'border border-gray-200 bg-white text-gray-600 hover:border-violet-300'
+            }`}
+          >
+            {t === 'usecase' ? 'Use Case' : 'Endpoints'}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'usecase' && (
+        <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-5">
+          <div>
+            <p className="text-sm font-semibold text-gray-900">{USE_CASE.title}</p>
+            <p className="text-xs text-gray-500 mt-1">
+              No API key required — public channels and apps are readable without auth.
+            </p>
+          </div>
+          {USE_CASE.steps.map(step => (
+            <div key={step.label} className="space-y-2">
+              <p className="text-xs font-medium text-gray-700">{step.label}</p>
+              <pre className="overflow-x-auto rounded-lg bg-gray-950 p-4 text-xs text-gray-100">{step.code}</pre>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab === 'endpoints' && (
+      <div
+        className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white"
+      >
       {ENDPOINTS.map((ep, i) => (
         <div key={`${ep.method}-${ep.path}`}>
           <button
@@ -131,6 +194,8 @@ export function ApiReferenceSection() {
           )}
         </div>
       ))}
+      </div>
+      )}
     </div>
   )
 }
