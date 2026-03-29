@@ -1,5 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js'
+import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
 import { Hono } from 'hono'
 import { z } from 'zod'
 import crypto from 'crypto'
@@ -78,16 +78,16 @@ const DeployAppSchema = {
   framework: z.enum(['nextjs', 'react', 'vue', 'svelte', 'static']).default('nextjs'),
 }
 
-app.get('/mcp', async (c) => {
+app.all('/mcp', async (c) => {
   const apiKey = c.req.header('Authorization')?.replace('Bearer ', '')
-  if (!apiKey) return c.text('Unauthorized', 401)
+  if (!apiKey) return c.text('Unauthorized', 401, { 'WWW-Authenticate': 'Bearer' })
 
   const tokenHash = crypto.createHash('sha256').update(apiKey).digest('hex')
   const keyResult = await db.query(
     `SELECT creator_id FROM mcp.api_keys WHERE token_hash = $1 AND revoked_at IS NULL`,
     [tokenHash]
   )
-  if (!keyResult.rows[0]) return c.text('Invalid API key', 401)
+  if (!keyResult.rows[0]) return c.text('Invalid API key', 401, { 'WWW-Authenticate': 'Bearer error="invalid_token"' })
 
   const creatorId = keyResult.rows[0].creator_id as string
 
@@ -178,10 +178,10 @@ app.get('/mcp', async (c) => {
     }
   )
 
-  const transport = new SSEServerTransport('/mcp', c.env.outgoing)
+  const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined })
   await server.connect(transport)
   logger.info({ msg: 'mcp_connection', creatorId })
-  return new Response(null)
+  return transport.handleRequest(c.req.raw)
 })
 
 const port = parseInt(process.env.PORT ?? '3003', 10)
