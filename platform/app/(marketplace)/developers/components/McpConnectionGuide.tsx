@@ -21,7 +21,7 @@ const EDITOR_CONFIGS: Record<Editor, { label: string; config: string; path: stri
   'claude-code': {
     label: 'Claude Code',
     path: 'Run in terminal:',
-    config: `claude mcp add --transport sse terminal-ai https://terminalai.app/mcp`,
+    config: `claude mcp add \\\n  --transport sse \\\n  terminal-ai \\\n  https://terminalai.app/mcp`,
   },
   cursor: {
     label: 'Cursor',
