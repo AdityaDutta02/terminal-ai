@@ -3,34 +3,6 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 
-const USE_CASE = {
-  title: 'Embed a Terminal AI app in your website',
-  steps: [
-    {
-      label: '1. Fetch a channel by slug',
-      code: `const res = await fetch('https://terminalai.app/api/creator/channels/my-channel')
-const { apps } = await res.json()
-// apps = [{ id, name, slug, description }]`,
-    },
-    {
-      label: '2. Get the embed URL for a specific app',
-      code: `const appRes = await fetch(\`https://terminalai.app/api/creator/apps/\${apps[0].id}\`)
-const app = await appRes.json()
-// app = { id, name, embed_url, channel }`,
-    },
-    {
-      label: '3. Embed in your page',
-      code: `<iframe
-  src={app.embed_url}
-  width="100%"
-  height="600"
-  style={{ border: 'none', borderRadius: '12px' }}
-  allow="clipboard-write"
-/>`,
-    },
-  ],
-}
-
 type Method = 'GET' | 'POST' | 'DELETE' | 'PATCH'
 
 type Endpoint = {
@@ -45,39 +17,57 @@ type Endpoint = {
 const ENDPOINTS: Endpoint[] = [
   {
     method: 'GET',
-    path: '/api/channels',
-    description: 'List all public channels',
+    path: '/api/search?q=',
+    description: 'Search apps by keyword',
     auth: 'None',
-    response: '{ channels: [{ id, name, slug, description, subscriber_count }] }',
+    response: '{ hits: [{ id, name, description, channel }], estimatedTotalHits }',
   },
   {
     method: 'GET',
-    path: '/api/channels/:slug',
-    description: 'Get a single channel by slug',
-    auth: 'None',
-    response: '{ id, name, slug, description, apps: [...] }',
+    path: '/api/creator/channels',
+    description: 'List your channels',
+    auth: 'Session cookie',
+    response: '{ channels: [{ id, name, slug }] }',
   },
   {
     method: 'POST',
-    path: '/api/channels',
-    description: 'Create a new channel (creator only)',
-    auth: 'Session cookie (must be logged in)',
-    body: '{ name: string, description?: string }',
-    response: '{ id, slug }',
+    path: '/api/creator/channels',
+    description: 'Create a channel',
+    auth: 'Session cookie (creator role)',
+    body: '{ name: string, slug: string, description?: string }',
+    response: '{ slug }',
   },
   {
-    method: 'GET',
-    path: '/api/apps',
-    description: 'List apps (supports ?channelId=)',
-    auth: 'None',
-    response: '{ apps: [{ id, name, description, channel_id }] }',
+    method: 'PATCH',
+    path: '/api/creator/channels/:slug',
+    description: 'Update channel metadata',
+    auth: 'Session cookie (owner)',
+    body: '{ name?: string, description?: string }',
+    response: '{ ok: true }',
   },
   {
-    method: 'GET',
-    path: '/api/apps/:id',
-    description: 'Get a single app by ID',
-    auth: 'None',
-    response: '{ id, name, description, embed_url, channel }',
+    method: 'POST',
+    path: '/api/creator/channels/:slug/apps',
+    description: 'Add an iframe app to a channel',
+    auth: 'Session cookie (owner)',
+    body: '{ name, slug, iframeUrl, description?, creditsPerSession? }',
+    response: '{ ok: true }',
+  },
+  {
+    method: 'POST',
+    path: '/api/creator/apps',
+    description: 'Deploy a GitHub repo as an app — queues build',
+    auth: 'Session cookie',
+    body: '{ name, githubRepo, channelId, branch?, description? }',
+    response: '202 { appId, deploymentId, subdomain }',
+  },
+  {
+    method: 'PATCH',
+    path: '/api/creator/apps/:id',
+    description: 'Update app name or description',
+    auth: 'Session cookie (owner)',
+    body: '{ name?: string, description?: string }',
+    response: '{ ok: true }',
   },
   {
     method: 'GET',
@@ -112,51 +102,16 @@ const METHOD_COLORS: Record<Method, string> = {
 
 export function ApiReferenceSection() {
   const [openIndex, setOpenIndex] = useState<number | null>(null)
-  const [tab, setTab] = useState<'endpoints' | 'usecase'>('usecase')
 
   function handleToggle(index: number) {
     setOpenIndex(prev => (prev === index ? null : index))
   }
 
   return (
-    <div className="space-y-4" data-testid="api-reference-section">
-      <div className="flex gap-2">
-        {(['usecase', 'endpoints'] as const).map(t => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-              tab === t
-                ? 'bg-violet-600 text-white'
-                : 'border border-gray-200 bg-white text-gray-600 hover:border-violet-300'
-            }`}
-          >
-            {t === 'usecase' ? 'Use Case' : 'Endpoints'}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'usecase' && (
-        <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-5">
-          <div>
-            <p className="text-sm font-semibold text-gray-900">{USE_CASE.title}</p>
-            <p className="text-xs text-gray-500 mt-1">
-              No API key required — public channels and apps are readable without auth.
-            </p>
-          </div>
-          {USE_CASE.steps.map(step => (
-            <div key={step.label} className="space-y-2">
-              <p className="text-xs font-medium text-gray-700">{step.label}</p>
-              <pre className="overflow-x-auto rounded-lg bg-gray-950 p-4 text-xs text-gray-100">{step.code}</pre>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {tab === 'endpoints' && (
-      <div
-        className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white"
-      >
+    <div
+      className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white"
+      data-testid="api-reference-section"
+    >
       {ENDPOINTS.map((ep, i) => (
         <div key={`${ep.method}-${ep.path}`}>
           <button
@@ -194,8 +149,6 @@ export function ApiReferenceSection() {
           )}
         </div>
       ))}
-      </div>
-      )}
     </div>
   )
 }

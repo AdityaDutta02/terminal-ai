@@ -23,7 +23,7 @@ const EDITOR_CONFIGS: Record<Editor, { label: string; config: string; path: stri
   'claude-code': {
     label: 'Claude Code',
     path: 'Run in terminal:',
-    config: `claude mcp add --transport sse terminal-ai ${MCP_URL}`,
+    config: `claude mcp add --transport sse --header "Authorization: Bearer YOUR_API_KEY" terminal-ai ${MCP_URL}`,
   },
   cursor: {
     label: 'Cursor',
