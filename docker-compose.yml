@@ -183,6 +183,7 @@ services:
       redis:
         condition: service_healthy
     networks:
+      - proxy
       - internal
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
