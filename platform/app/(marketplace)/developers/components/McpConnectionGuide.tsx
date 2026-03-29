@@ -5,7 +5,7 @@ import { ChevronDown, ChevronUp, Copy } from 'lucide-react'
 
 type Editor = 'claude-code' | 'cursor' | 'windsurf' | 'continue'
 
-const MCP_URL = 'http://178.104.124.224/mcp'
+const MCP_URL = 'http://178.104.124.224:3003/mcp'
 
 function mcpServerJson() {
   return JSON.stringify({

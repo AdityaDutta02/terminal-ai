@@ -30,7 +30,7 @@ function PageSection(props: PageSectionProps) {
 
 const MCP_SERVER_ITEMS = [
   { label: 'Transport', value: 'SSE (Server-Sent Events)' },
-  { label: 'Endpoint', value: 'http://178.104.124.224/mcp' },
+  { label: 'Endpoint', value: 'http://178.104.124.224:3003/mcp' },
   { label: 'Auth', value: 'Bearer <your-api-key>' },
   {
     label: 'Available Tools',
