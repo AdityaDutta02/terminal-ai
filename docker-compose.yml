@@ -1,6 +1,6 @@
 services:
   traefik:
-    image: traefik:v3.2
+    image: traefik:v3.6
     restart: unless-stopped
     ports:
       - '80:80'
@@ -10,6 +10,8 @@ services:
       - ./infra/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
       - ./infra/traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
       - letsencrypt:/letsencrypt
+    environment:
+      DOCKER_API_VERSION: "1.45"
     networks:
       - proxy
 
@@ -50,6 +52,8 @@ services:
       context: ./platform
       dockerfile: Dockerfile
     restart: unless-stopped
+    ports:
+      - '3000:3000'
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/terminalai
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
@@ -69,6 +73,7 @@ services:
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       MINIO_BUCKET: terminalai
       DEPLOY_MANAGER_URL: http://deploy-manager:3002
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
     depends_on:
       postgres:
         condition: service_healthy
@@ -88,6 +93,10 @@ services:
       - traefik.http.routers.platform.tls.certresolver=letsencrypt
       - traefik.http.routers.platform.middlewares=secure-headers@file
       - traefik.http.services.platform.loadbalancer.server.port=3000
+      - traefik.http.routers.platform-http.rule=PathPrefix(`/`)
+      - traefik.http.routers.platform-http.entrypoints=web
+      - traefik.http.routers.platform-http.service=platform
+      - traefik.http.routers.platform-http.priority=1
 
   gateway:
     build:
@@ -193,8 +202,11 @@ services:
       context: ./mcp-server
       dockerfile: Dockerfile
     restart: unless-stopped
+    ports:
+      - '3003:3003'
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/terminalai
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
       PORT: '3003'
     depends_on:
       postgres:
@@ -209,6 +221,10 @@ services:
       - traefik.http.routers.mcp.tls.certresolver=letsencrypt
       - traefik.http.routers.mcp.middlewares=secure-headers@file,rate-limit@file
       - traefik.http.services.mcp.loadbalancer.server.port=3003
+      - traefik.http.routers.mcp-http.rule=PathPrefix(`/mcp`)
+      - traefik.http.routers.mcp-http.entrypoints=web
+      - traefik.http.routers.mcp-http.priority=10
+      - traefik.http.routers.mcp-http.service=mcp
 
 volumes:
   postgres_data:
