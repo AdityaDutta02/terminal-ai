@@ -11,7 +11,7 @@ function mcpServerJson() {
   return JSON.stringify({
     mcpServers: {
       'terminal-ai': {
-        transport: 'sse',
+        transport: 'http',
         url: MCP_URL,
         headers: { Authorization: 'Bearer YOUR_API_KEY' },
       },
@@ -22,8 +22,8 @@ function mcpServerJson() {
 const EDITOR_CONFIGS: Record<Editor, { label: string; config: string; path: string }> = {
   'claude-code': {
     label: 'Claude Code',
-    path: 'Run in terminal:',
-    config: `claude mcp add --transport sse terminal-ai ${MCP_URL} --header "Authorization: Bearer YOUR_API_KEY"`,
+    path: 'Run in terminal (project-scoped):',
+    config: `claude mcp add --transport http terminal-ai ${MCP_URL} --header "Authorization: Bearer YOUR_API_KEY"`,
   },
   cursor: {
     label: 'Cursor',
@@ -40,7 +40,7 @@ const EDITOR_CONFIGS: Record<Editor, { label: string; config: string; path: stri
     path: '~/.continue/config.json (mcpServers section)',
     config: JSON.stringify({
       name: 'terminal-ai',
-      transport: { type: 'sse', url: MCP_URL },
+      transport: { type: 'http', url: MCP_URL },
       headers: { Authorization: 'Bearer YOUR_API_KEY' },
     }, null, 2),
   },
@@ -164,6 +164,16 @@ export function McpConnectionGuide() {
             <p className="text-xs text-gray-500">
               Replace <code className="rounded bg-gray-100 px-1">{'<your-api-key>'}</code> with the key you copied in step 1.
             </p>
+            {editor === 'claude-code' && (
+              <p className="text-xs text-gray-500">
+                To install globally (available in all projects), add{' '}
+                <code className="rounded bg-gray-100 px-1">--scope global</code>{' '}
+                to the command above — e.g.{' '}
+                <code className="rounded bg-gray-100 px-1">
+                  {'claude mcp add --scope global --transport sse terminal-ai ...'}
+                </code>
+              </p>
+            )}
           </div>
         }
       />

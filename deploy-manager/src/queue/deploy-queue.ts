@@ -4,7 +4,11 @@ import { createApp, triggerDeploy } from '../services/coolify'
 import { createSubdomain } from '../services/dns'
 import { db } from '../lib/db'
 import { logger } from '../lib/logger'
-const redisConnection = { host: process.env.REDIS_HOST ?? 'redis', port: 6379 }
+const redisConnection = {
+  host: process.env.REDIS_HOST ?? 'redis',
+  port: 6379,
+  ...(process.env.REDIS_PASSWORD ? { password: process.env.REDIS_PASSWORD } : {}),
+}
 export const deployQueue = new Queue('deploys', { connection: redisConnection })
 const GITHUB_REPO_RE = /^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/
 
