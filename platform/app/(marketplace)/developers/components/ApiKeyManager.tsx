@@ -11,13 +11,31 @@ type ApiKey = {
   last_used_at: string | null
 }
 
+function copyToClipboard(text: string): Promise<void> {
+  if (navigator.clipboard && window.isSecureContext) {
+    return navigator.clipboard.writeText(text)
+  }
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.style.cssText = 'position:fixed;opacity:0;pointer-events:none'
+  document.body.appendChild(textarea)
+  textarea.focus()
+  textarea.select()
+  try {
+    document.execCommand('copy')
+  } finally {
+    document.body.removeChild(textarea)
+  }
+  return Promise.resolve()
+}
+
 export function ApiKeyManager() {
   const [keys, setKeys] = useState<ApiKey[]>([])
   const [newKeyName, setNewKeyName] = useState('')
   const [creating, setCreating] = useState(false)
-  const [newToken, setNewToken] = useState<string | null>(null)
-  const [showToken, setShowToken] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [revealedTokens, setRevealedTokens] = useState<Map<string, string>>(new Map())
+  const [visibleIds, setVisibleIds] = useState<Set<string>>(new Set())
+  const [copiedId, setCopiedId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   async function loadKeys() {
@@ -46,7 +64,8 @@ export function ApiKeyManager() {
         throw new Error(body.error ?? 'Failed to create key')
       }
       const created = await res.json() as { id: string; token: string; prefix: string }
-      setNewToken(created.token)
+      setRevealedTokens(prev => new Map(prev).set(created.id, created.token))
+      setVisibleIds(prev => new Set(prev).add(created.id))
       setNewKeyName('')
       await loadKeys()
     } catch (err) {
@@ -62,20 +81,29 @@ export function ApiKeyManager() {
       const res = await fetch(`/api/developer/keys/${id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Failed to revoke key')
       setKeys(prev => prev.filter(k => k.id !== id))
+      setRevealedTokens(prev => { const m = new Map(prev); m.delete(id); return m })
+      setVisibleIds(prev => { const s = new Set(prev); s.delete(id); return s })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to revoke key')
     }
   }
 
-  async function copyToken() {
-    if (!newToken) return
+  async function copyKey(id: string, token: string) {
     try {
-      await navigator.clipboard.writeText(newToken)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      await copyToClipboard(token)
+      setCopiedId(id)
+      setTimeout(() => setCopiedId(null), 2000)
     } catch {
       setError('Failed to copy to clipboard')
     }
+  }
+
+  function toggleVisible(id: string) {
+    setVisibleIds(prev => {
+      const s = new Set(prev)
+      s.has(id) ? s.delete(id) : s.add(id)
+      return s
+    })
   }
 
   return (
@@ -103,58 +131,59 @@ export function ApiKeyManager() {
 
       {error && <p className="text-sm text-red-500" data-testid="key-error">{error}</p>}
 
-      {newToken && (
-        <div className="rounded-xl border border-violet-200 bg-violet-50 p-4" data-testid="new-token-banner">
-          <p className="mb-2 text-sm font-semibold text-violet-800">
-            Copy your new API key — it will only be shown once.
-          </p>
-          <div className="flex items-center gap-2 rounded-lg border border-violet-200 bg-white px-3 py-2">
-            <code className="flex-1 text-sm text-violet-900">
-              {showToken ? newToken : '•'.repeat(40)}
-            </code>
-            <button
-              onClick={() => setShowToken(s => !s)}
-              className="text-violet-400 hover:text-violet-700"
-              aria-label={showToken ? 'Hide token' : 'Show token'}
-            >
-              {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
-            <button
-              onClick={copyToken}
-              className="text-violet-400 hover:text-violet-700"
-              aria-label="Copy token"
-            >
-              <Copy className="h-4 w-4" />
-            </button>
-            {copied && <span className="text-xs text-violet-600">Copied!</span>}
-          </div>
-        </div>
-      )}
-
       <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white" data-testid="keys-list">
         {keys.length === 0 && (
           <div className="px-4 py-8 text-center text-sm text-gray-400">
             No API keys yet. Generate one above.
           </div>
         )}
-        {keys.map(key => (
-          <div key={key.id} className="flex items-center justify-between px-4 py-3" data-testid="key-row">
-            <div>
-              <p className="text-sm font-medium text-gray-900">{key.name}</p>
-              <p className="text-xs text-gray-400">
-                {key.prefix}… · Created {new Date(key.created_at).toLocaleDateString()}
-              </p>
+        {keys.map(key => {
+          const token = revealedTokens.get(key.id)
+          const visible = visibleIds.has(key.id)
+          return (
+            <div key={key.id} className="space-y-2 px-4 py-3" data-testid="key-row">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{key.name}</p>
+                  <p className="text-xs text-gray-400">
+                    {key.prefix}… · Created {new Date(key.created_at).toLocaleDateString()}
+                    {key.last_used_at && ` · Last used ${new Date(key.last_used_at).toLocaleDateString()}`}
+                  </p>
+                </div>
+                <button
+                  onClick={() => revokeKey(key.id)}
+                  className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                  title="Revoke key"
+                  aria-label={`Revoke key ${key.name}`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+              {token && (
+                <div className="flex items-center gap-2 rounded-lg border border-violet-100 bg-violet-50 px-3 py-2">
+                  <code className="flex-1 truncate text-xs text-violet-900">
+                    {visible ? token : '•'.repeat(48)}
+                  </code>
+                  <button
+                    onClick={() => toggleVisible(key.id)}
+                    className="shrink-0 text-violet-400 hover:text-violet-700"
+                    aria-label={visible ? 'Hide token' : 'Show token'}
+                  >
+                    {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                  <button
+                    onClick={() => copyKey(key.id, token)}
+                    className="shrink-0 text-violet-400 hover:text-violet-700"
+                    aria-label="Copy token"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                  {copiedId === key.id && <span className="shrink-0 text-xs text-violet-600">Copied!</span>}
+                </div>
+              )}
             </div>
-            <button
-              onClick={() => revokeKey(key.id)}
-              className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-500"
-              title="Revoke key"
-              aria-label={`Revoke key ${key.name}`}
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
