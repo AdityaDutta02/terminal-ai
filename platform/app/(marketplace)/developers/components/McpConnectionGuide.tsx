@@ -23,7 +23,7 @@ const EDITOR_CONFIGS: Record<Editor, { label: string; config: string; path: stri
   'claude-code': {
     label: 'Claude Code',
     path: 'Run in terminal:',
-    config: `claude mcp add --transport sse --header "Authorization: Bearer YOUR_API_KEY" terminal-ai ${MCP_URL}`,
+    config: `claude mcp add --transport sse terminal-ai ${MCP_URL} --header "Authorization: Bearer YOUR_API_KEY"`,
   },
   cursor: {
     label: 'Cursor',
@@ -46,16 +46,34 @@ const EDITOR_CONFIGS: Record<Editor, { label: string; config: string; path: stri
   },
 }
 
+function copyToClipboard(text: string): Promise<void> {
+  if (navigator.clipboard && window.isSecureContext) {
+    return navigator.clipboard.writeText(text)
+  }
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.style.cssText = 'position:fixed;opacity:0;pointer-events:none'
+  document.body.appendChild(textarea)
+  textarea.focus()
+  textarea.select()
+  try {
+    document.execCommand('copy')
+  } finally {
+    document.body.removeChild(textarea)
+  }
+  return Promise.resolve()
+}
+
 function CodeBlock({ code }: { code: string }) {
   const [copied, setCopied] = useState(false)
 
   async function handleCopy() {
     try {
-      await navigator.clipboard.writeText(code)
+      await copyToClipboard(code)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      // clipboard unavailable (no focus or permission denied)
+      // clipboard unavailable
     }
   }
 
@@ -69,7 +87,7 @@ function CodeBlock({ code }: { code: string }) {
         <Copy className="h-4 w-4" />
       </button>
       {copied && <span className="absolute right-10 top-3 text-xs text-green-400">Copied!</span>}
-      <pre className="overflow-x-auto text-sm text-gray-100">{code}</pre>
+      <pre className="overflow-x-auto pb-1 pr-8 text-sm text-gray-100">{code}</pre>
     </div>
   )
 }
