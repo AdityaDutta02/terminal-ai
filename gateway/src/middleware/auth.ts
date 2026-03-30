@@ -57,7 +57,7 @@ export async function deductCredits(
   amount: number,
 ): Promise<number | null> {
   const { rows } = await db.query<{ credits: number }>(
-    `UPDATE auth."user"
+    `UPDATE public."user"
      SET credits = credits - $1
      WHERE id = $2 AND credits >= $1
      RETURNING credits`,
