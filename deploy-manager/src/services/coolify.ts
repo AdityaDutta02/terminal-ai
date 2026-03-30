@@ -26,6 +26,18 @@ export async function triggerDeploy(coolifyAppId: string): Promise<DeployResult>
   return res.json() as Promise<DeployResult>
 }
 
+export async function deleteApp(coolifyAppId: string): Promise<void> {
+  const { url, token } = coolifyConfig()
+  const res = await fetch(
+    `${url}/api/v1/applications/${coolifyAppId}?deleteConfigurations=true&deleteVolumes=true&dockerCleanup=true&deleteConnectedNetworks=true`,
+    { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
+  )
+  // 404 means already gone — treat as success
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`Coolify delete failed: ${res.status} ${await res.text()}`)
+  }
+}
+
 export async function getAppDetails(coolifyAppId: string): Promise<{ status: string; fqdn: string | null }> {
   const { url, token } = coolifyConfig()
   const res = await fetch(`${url}/api/v1/applications/${coolifyAppId}`, {

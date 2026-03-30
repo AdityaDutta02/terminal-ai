@@ -56,14 +56,21 @@ async function failDeployment(deploymentId: string, message: string): Promise<vo
 /** Poll Coolify every 30s until the app container is running or a terminal failure status is reached. */
 async function pollCoolifyUntilRunning(coolifyId: string, deploymentId: string): Promise<void> {
   const deadline = Date.now() + COOLIFY_POLL_TIMEOUT_MS
+  let unhealthyCount = 0
 
   while (Date.now() < deadline) {
     await new Promise<void>((r) => setTimeout(r, COOLIFY_POLL_INTERVAL_MS))
     const { status } = await getAppDetails(coolifyId)
     logger.info({ msg: 'coolify_poll', deploymentId, coolifyId, coolifyStatus: status })
 
-    if (status === 'running') return
-    // Coolify can return compound statuses like 'exited:unhealthy' — check prefix too
+    // running:unknown means container is up but no health check configured — treat as success
+    if (status === 'running' || status.startsWith('running:')) return
+    // exited:unhealthy can be transient during container startup — allow 3 retries
+    if (status === 'exited:unhealthy') {
+      unhealthyCount++
+      if (unhealthyCount >= 3) throw new Error(`Coolify deployment failed with status: ${status}`)
+      continue
+    }
     const isTerminalFailure = ['exited', 'failed', 'error', 'degraded'].some(
       (s) => status === s || status.startsWith(s + ':')
     )

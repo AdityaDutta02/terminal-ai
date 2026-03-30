@@ -59,6 +59,26 @@ async function callPlatform<T>(
   return { ok: true, data }
 }
 
+async function callDeployManager<T>(
+  path: string,
+  method: 'GET' | 'DELETE' = 'GET'
+): Promise<PlatformResult<T>> {
+  const deployManagerUrl = process.env.DEPLOY_MANAGER_URL ?? 'http://deploy-manager:3002'
+  let res: Response
+  try {
+    res = await fetch(`${deployManagerUrl}${path}`, { method })
+  } catch (err) {
+    logger.error({ msg: 'deploy_manager_fetch_failed', path, err })
+    return { ok: false, error: 'Failed to reach deploy-manager: network error', status: 0 }
+  }
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({ error: 'unknown' })) as { error?: string }
+    return { ok: false, error: errBody.error ?? res.statusText, status: res.status }
+  }
+  const data = await res.json() as T
+  return { ok: true, data }
+}
+
 const ScaffoldSchema = {
   framework: z.enum(['nextjs', 'python', 'streamlit', 'static']),
   app_name: z.string(),
@@ -226,6 +246,46 @@ app.all('/mcp', async (c) => {
           }),
         }],
       }
+    }
+  )
+
+  server.tool(
+    'get_deployment_logs',
+    'Get detailed deployment status and live container info for a deployment. Use this to diagnose build or startup failures.',
+    { deployment_id: z.string().uuid().describe('Deployment ID returned by deploy_app') },
+    async ({ deployment_id }) => {
+      const result = await callDeployManager<Record<string, unknown>>(`/deployments/${deployment_id}/logs`)
+      if (!result.ok) {
+        return { content: [{ type: 'text', text: `Failed to get logs: ${result.error}` }], isError: true }
+      }
+      return { content: [{ type: 'text', text: JSON.stringify(result.data, null, 2) }] }
+    }
+  )
+
+  server.tool(
+    'delete_app',
+    'Permanently delete an app and all its deployments. Removes from Coolify and the Terminal AI database. Cannot be undone.',
+    {
+      app_id: z.string().uuid().describe('App ID to delete'),
+      confirm: z.literal(true).describe('Must be true to confirm permanent deletion'),
+    },
+    async ({ app_id }) => {
+      const check = await db.query(
+        `SELECT a.id FROM marketplace.apps a
+         JOIN marketplace.channels ch ON ch.id = a.channel_id
+         WHERE a.id = $1 AND ch.creator_id = $2`,
+        [app_id, creatorId]
+      )
+      if (!check.rows[0]) return { content: [{ type: 'text', text: 'App not found or not owned by you' }], isError: true }
+      const result = await callDeployManager<{ deleted: boolean; coolifyAppsDeleted: number; warnings: string[] }>(
+        `/apps/${app_id}`,
+        'DELETE'
+      )
+      if (!result.ok) {
+        return { content: [{ type: 'text', text: `Failed to delete app: ${result.error}` }], isError: true }
+      }
+      logger.info({ msg: 'delete_app_success', appId: app_id, creatorId })
+      return { content: [{ type: 'text', text: JSON.stringify(result.data, null, 2) }] }
     }
   )
 
