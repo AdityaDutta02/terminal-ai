@@ -70,6 +70,7 @@ export function ViewerShell(props: Props) {
         if (cancelled) return
         tokenRef.current = token
         setViewState('ready')
+        deliverToken(token, iframeUrl)
       } catch (err) {
         if (cancelled) return
         setErrorMsg(err instanceof Error ? err.message : 'Something went wrong')
