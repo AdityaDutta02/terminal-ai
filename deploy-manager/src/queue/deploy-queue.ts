@@ -63,10 +63,14 @@ async function pollCoolifyUntilRunning(coolifyId: string, deploymentId: string):
     logger.info({ msg: 'coolify_poll', deploymentId, coolifyId, coolifyStatus: status })
 
     if (status === 'running') return
-    if (['exited', 'failed', 'error', 'degraded'].includes(status)) {
+    // Coolify can return compound statuses like 'exited:unhealthy' — check prefix too
+    const isTerminalFailure = ['exited', 'failed', 'error', 'degraded'].some(
+      (s) => status === s || status.startsWith(s + ':')
+    )
+    if (isTerminalFailure) {
       throw new Error(`Coolify deployment failed with status: ${status}`)
     }
-    // 'stopped' and 'starting' are transient — keep polling
+    // 'stopped', 'starting', and 'restarting' are transient — keep polling
   }
 
   throw new Error('Coolify deployment timed out after 20 minutes')
