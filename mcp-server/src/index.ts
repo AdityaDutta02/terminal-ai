@@ -140,6 +140,38 @@ app.all('/mcp', async (c) => {
   })
 
   server.tool(
+    'list_channels',
+    'List all channels you own on Terminal AI. Returns channel IDs, slugs, and URLs — use the id with deploy_app.',
+    {},
+    async () => {
+      const result = await db.query(
+        `SELECT c.id, c.name, c.slug, COUNT(a.id)::int AS app_count
+         FROM marketplace.channels c
+         LEFT JOIN marketplace.apps a ON a.channel_id = c.id
+         WHERE c.creator_id = $1
+         GROUP BY c.id, c.name, c.slug
+         ORDER BY c.created_at DESC`,
+        [creatorId]
+      )
+      const channels = (result.rows as { id: string; name: string; slug: string; app_count: number }[]).map((row) => ({
+        channelId: row.id,
+        name: row.name,
+        slug: row.slug,
+        url: `https://terminalai.app/c/${row.slug}`,
+        appCount: row.app_count,
+      }))
+      return {
+        content: [{
+          type: 'text' as const,
+          text: channels.length === 0
+            ? 'No channels found. Use create_channel to create one.'
+            : JSON.stringify(channels, null, 2),
+        }],
+      }
+    }
+  )
+
+  server.tool(
     'create_channel',
     'Create a new channel on Terminal AI for publishing apps. Returns the channel id and slug needed for deploy_app.',
     {
