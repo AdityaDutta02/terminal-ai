@@ -1,10 +1,11 @@
 import { db } from './db'
 
-// Shared CTE: looks up the most recent ledger balance for a user
+// Shared CTE: reads most recent ledger balance, falls back to user.credits for accounts with no ledger entries
 const BALANCE_CTE = `WITH current AS (
   SELECT COALESCE(
     (SELECT balance_after FROM subscriptions.credit_ledger
      WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1),
+    (SELECT credits FROM public."user" WHERE id = $1),
     0
   ) AS balance
 )`

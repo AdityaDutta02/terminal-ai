@@ -12,7 +12,7 @@ proxy.post('/v1/chat/completions', embedTokenAuth, async (c) => {
   const { userId, appId, sessionId } = c.get('embedToken')
 
   // Deduct credits before proxying
-  const remaining = await deductCredits(userId, CREDITS_PER_REQUEST)
+  const remaining = await deductCredits(userId, CREDITS_PER_REQUEST, appId)
   if (remaining === null) {
     return c.json({ error: 'Insufficient credits' }, 402)
   }

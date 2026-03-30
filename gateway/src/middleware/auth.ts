@@ -50,18 +50,34 @@ export const embedTokenAuth = createMiddleware(async (c, next) => {
 })
 
 /**
- * Atomically deduct credits. Returns remaining credits or null if insufficient.
+ * Atomically deduct credits via the ledger (single source of truth).
+ * Falls back to user.credits for users who have no ledger entries yet.
+ * Returns remaining balance or null if insufficient.
  */
 export async function deductCredits(
   userId: string,
   amount: number,
+  appId?: string,
 ): Promise<number | null> {
-  const { rows } = await db.query<{ credits: number }>(
-    `UPDATE public."user"
-     SET credits = credits - $1
-     WHERE id = $2 AND credits >= $1
-     RETURNING credits`,
-    [amount, userId],
+  const { rows } = await db.query<{ balance_after: number }>(
+    `WITH current AS (
+       SELECT COALESCE(
+         (SELECT balance_after FROM subscriptions.credit_ledger
+          WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1),
+         (SELECT credits FROM public."user" WHERE id = $1),
+         0
+       ) AS balance
+     ),
+     check_balance AS (SELECT balance FROM current WHERE balance >= $2),
+     inserted AS (
+       INSERT INTO subscriptions.credit_ledger
+         (user_id, delta, balance_after, reason, app_id)
+       SELECT $1, -$2, balance - $2, 'api_call', $3
+       FROM check_balance
+       RETURNING balance_after
+     )
+     SELECT balance_after FROM inserted`,
+    [userId, amount, appId ?? null],
   )
-  return rows[0]?.credits ?? null
+  return rows[0]?.balance_after ?? null
 }

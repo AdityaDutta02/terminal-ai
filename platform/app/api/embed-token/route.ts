@@ -21,12 +21,17 @@ export async function POST(request: NextRequest) {
   )
   if (!appResult.rows[0]) return NextResponse.json({ error: 'App not found' }, { status: 404 })
 
-  // Check user has enough credits
-  const userResult = await db.query<{ credits: number }>(
-    `SELECT credits FROM "user" WHERE id = $1`,
+  // Check user has enough credits — read from ledger (source of truth), fall back to user.credits for users with no ledger entries
+  const creditsResult = await db.query<{ credits: number }>(
+    `SELECT COALESCE(
+       (SELECT balance_after FROM subscriptions.credit_ledger
+        WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1),
+       (SELECT credits FROM "user" WHERE id = $1),
+       0
+     ) AS credits`,
     [session.user.id]
   )
-  const credits = userResult.rows[0]?.credits ?? 0
+  const credits = creditsResult.rows[0]?.credits ?? 0
   const required = appResult.rows[0].credits_per_session
   if (credits < required) {
     return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 })
