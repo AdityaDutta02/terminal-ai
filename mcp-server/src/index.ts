@@ -105,15 +105,34 @@ app.all('/mcp', async (c) => {
 
   server.tool('get_deployment_status', { app_id: z.string().uuid() }, async ({ app_id }) => {
     const result = await db.query(
-      `SELECT d.status, d.subdomain, d.created_at, d.coolify_app_id
+      `SELECT d.status, d.subdomain, d.url, d.error_message, d.created_at, d.completed_at, d.coolify_app_id
        FROM deployments.deployments d
        JOIN marketplace.apps a ON a.id = d.app_id
        JOIN marketplace.channels ch ON ch.id = a.channel_id
-       WHERE a.id = $1 AND ch.creator_id = $2`,
+       WHERE a.id = $1 AND ch.creator_id = $2
+       ORDER BY d.created_at DESC LIMIT 1`,
       [app_id, creatorId]
     )
     if (!result.rows[0]) return { content: [{ type: 'text', text: 'App not found' }] }
-    return { content: [{ type: 'text', text: JSON.stringify(result.rows[0], null, 2) }] }
+    const row = result.rows[0] as {
+      status: string
+      subdomain: string
+      url: string | null
+      error_message: string | null
+      created_at: string
+      completed_at: string | null
+      coolify_app_id: string | null
+    }
+    const response: Record<string, unknown> = {
+      status: row.status,
+      subdomain: row.subdomain,
+      created_at: row.created_at,
+    }
+    if (row.status === 'live' && row.url) response.url = row.url
+    if (row.status === 'failed') response.error = row.error_message ?? 'Unknown error'
+    if (row.status === 'building') response.message = 'Deployment is in progress — poll again in 30 seconds'
+    if (row.status === 'pending') response.message = 'Deployment is queued and will start shortly'
+    return { content: [{ type: 'text', text: JSON.stringify(response, null, 2) }] }
   })
 
   server.tool('list_supported_providers', {}, async () => {
