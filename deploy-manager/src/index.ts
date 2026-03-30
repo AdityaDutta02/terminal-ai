@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { logger as honoLogger } from 'hono/logger'
 import { deployQueue, startDeployWorker } from './queue/deploy-queue'
-import { getAppStatus } from './services/coolify'
+import { getAppDetails } from './services/coolify'
 import { db } from './lib/db'
 import { logger } from './lib/logger'
 const app = new Hono()
@@ -18,7 +18,7 @@ app.get('/deployments/:id', async (c) => {
   const deployment = rows[0]
   if (deployment.coolify_app_id && deployment.status === 'live') {
     try {
-      const liveStatus = await getAppStatus(deployment.coolify_app_id as string)
+      const { status: liveStatus } = await getAppDetails(deployment.coolify_app_id as string)
       return c.json({ ...deployment, live_status: liveStatus })
     } catch {
       return c.json(deployment)

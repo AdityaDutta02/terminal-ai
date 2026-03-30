@@ -1,6 +1,6 @@
 import { Queue, Worker } from 'bullmq'
 import { scanForSecrets } from '../services/gitleaks'
-import { createApp, triggerDeploy } from '../services/coolify'
+import { createApp, triggerDeploy, getAppDetails } from '../services/coolify'
 import { createSubdomain } from '../services/dns'
 import { db } from '../lib/db'
 import { logger } from '../lib/logger'
@@ -14,6 +14,8 @@ const redisConnection = {
 export const deployQueue = new Queue('deploys', { connection: redisConnection })
 
 const GITHUB_REPO_RE = /^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/
+const COOLIFY_POLL_INTERVAL_MS = 30_000
+const COOLIFY_POLL_TIMEOUT_MS = 20 * 60 * 1000
 
 async function cloneRepo(githubRepo: string, dest: string): Promise<void> {
   if (!GITHUB_REPO_RE.test(githubRepo)) throw new Error(`Invalid githubRepo format: ${githubRepo}`)
@@ -28,6 +30,28 @@ async function failDeployment(deploymentId: string, message: string): Promise<vo
     `UPDATE deployments.deployments SET status = 'failed', error_message = $2, updated_at = NOW() WHERE id = $1`,
     [deploymentId, message]
   ).catch((err: unknown) => logger.error({ msg: 'failed_to_update_deployment_status', deploymentId, err: String(err) }))
+}
+
+/**
+ * Poll Coolify every 30s until the app reaches 'running' status or times out.
+ * Returns the Coolify-assigned FQDN/URL, or null if Coolify didn't provide one.
+ */
+async function pollCoolifyUntilRunning(coolifyId: string, deploymentId: string): Promise<string | null> {
+  const deadline = Date.now() + COOLIFY_POLL_TIMEOUT_MS
+
+  while (Date.now() < deadline) {
+    await new Promise<void>((r) => setTimeout(r, COOLIFY_POLL_INTERVAL_MS))
+    const details = await getAppDetails(coolifyId)
+    logger.info({ msg: 'coolify_poll', deploymentId, coolifyId, coolifyStatus: details.status })
+
+    if (details.status === 'running') return details.fqdn ?? null
+
+    if (['exited', 'failed', 'error', 'degraded'].includes(details.status)) {
+      throw new Error(`Coolify deployment failed with status: ${details.status}`)
+    }
+  }
+
+  throw new Error('Coolify deployment timed out after 20 minutes')
 }
 
 export function startDeployWorker(): Worker {
@@ -77,18 +101,37 @@ export function startDeployWorker(): Worker {
           TERMINAL_AI_APP_ID: appId,
         },
       })
+
+      // Store Coolify app ID immediately so status checks can reference it
+      await db.query(
+        `UPDATE deployments.deployments SET coolify_app_id = $2, updated_at = NOW() WHERE id = $1`,
+        [deploymentId, coolifyId]
+      )
+
       await triggerDeploy(coolifyId)
 
-      // URL is only set once the app is actually live — DNS required for the subdomain URL
-      const appUrl = cloudflareConfigured
+      // Poll Coolify until the app is running; get its assigned URL
+      const coolifyUrl = await pollCoolifyUntilRunning(coolifyId, deploymentId)
+
+      // Prefer Cloudflare subdomain URL when DNS is configured; otherwise use Coolify's URL
+      const finalUrl = cloudflareConfigured
         ? `https://${subdomain}.apps.terminalai.app`
-        : null
+        : coolifyUrl
 
       await db.query(
-        `UPDATE deployments.deployments SET status = 'live', coolify_app_id = $2, url = $3, completed_at = NOW(), updated_at = NOW() WHERE id = $1`,
-        [deploymentId, coolifyId, appUrl]
+        `UPDATE deployments.deployments SET status = 'live', url = $2, completed_at = NOW(), updated_at = NOW() WHERE id = $1`,
+        [deploymentId, finalUrl]
       )
-      logger.info({ msg: 'deploy_complete', deploymentId, subdomain, url: appUrl })
+
+      // Update the app's iframe_url so the viewer can load it
+      if (finalUrl) {
+        await db.query(
+          `UPDATE marketplace.apps SET iframe_url = $2 WHERE id = $1`,
+          [appId, finalUrl]
+        )
+      }
+
+      logger.info({ msg: 'deploy_complete', deploymentId, subdomain, url: finalUrl })
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err)
       logger.error({ msg: 'deploy_failed', deploymentId, err: message })

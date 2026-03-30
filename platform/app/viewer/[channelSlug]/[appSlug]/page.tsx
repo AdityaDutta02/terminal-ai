@@ -4,14 +4,30 @@ import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { ViewerShell } from './viewer-shell'
 
-type AppRow = { id: string; name: string; iframe_url: string; credits_per_session: number }
+type AppRow = {
+  id: string
+  name: string
+  iframe_url: string
+  credits_per_session: number
+  deployment_status: string | null
+  deployment_error: string | null
+}
 
 async function getApp(channelSlug: string, appSlug: string): Promise<AppRow | null> {
   const result = await db.query<AppRow>(
-    `SELECT a.id, a.name, a.iframe_url, a.credits_per_session
+    `SELECT a.id, a.name, a.iframe_url, a.credits_per_session,
+            d.status AS deployment_status,
+            d.error_message AS deployment_error
      FROM marketplace.apps a
      JOIN marketplace.channels c ON c.id = a.channel_id
-     WHERE c.slug = $1 AND a.slug = $2 AND a.status = 'live' AND a.deleted_at IS NULL`,
+     LEFT JOIN LATERAL (
+       SELECT status, error_message
+       FROM deployments.deployments
+       WHERE app_id = a.id
+       ORDER BY created_at DESC
+       LIMIT 1
+     ) d ON true
+     WHERE c.slug = $1 AND a.slug = $2 AND a.deleted_at IS NULL`,
     [channelSlug, appSlug],
   )
   return result.rows[0] ?? null
@@ -49,6 +65,8 @@ export default async function ViewerPage({
       iframeUrl={app.iframe_url}
       initialCredits={credits}
       userName={session.user.name ?? session.user.email ?? ''}
+      deploymentStatus={app.deployment_status}
+      deploymentError={app.deployment_error}
     />
   )
 }

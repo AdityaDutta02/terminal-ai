@@ -18,14 +18,14 @@ export async function triggerDeploy(coolifyAppId: string): Promise<DeployResult>
   if (!res.ok) throw new Error(`Coolify deploy failed: ${res.status} ${await res.text()}`)
   return res.json() as Promise<DeployResult>
 }
-export async function getAppStatus(coolifyAppId: string): Promise<string> {
+export async function getAppDetails(coolifyAppId: string): Promise<{ status: string; fqdn: string | null }> {
   const { url, token } = coolifyConfig()
   const res = await fetch(`${url}/api/v1/applications/${coolifyAppId}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
-  if (!res.ok) throw new Error(`Coolify status failed: ${res.status}`)
-  const data = await res.json() as { status: string }
-  return data.status
+  if (!res.ok) throw new Error(`Coolify app details failed: ${res.status}`)
+  const data = await res.json() as { status: string; fqdn?: string | null }
+  return { status: data.status, fqdn: data.fqdn ?? null }
 }
 export async function createApp(params: {
   name: string
