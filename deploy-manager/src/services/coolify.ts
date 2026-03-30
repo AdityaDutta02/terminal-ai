@@ -17,9 +17,10 @@ interface DeployResult {
 
 export async function triggerDeploy(coolifyAppId: string): Promise<DeployResult> {
   const { url, token } = coolifyConfig()
-  const res = await fetch(`${url}/api/v1/applications/${coolifyAppId}/deploy`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+  // Coolify deploy endpoint: GET /api/v1/deploy?uuid=<uuid>&force=false
+  const res = await fetch(`${url}/api/v1/deploy?uuid=${coolifyAppId}&force=false`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${token}` },
   })
   if (!res.ok) throw new Error(`Coolify deploy failed: ${res.status} ${await res.text()}`)
   return res.json() as Promise<DeployResult>
