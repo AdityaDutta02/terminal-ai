@@ -38,11 +38,19 @@ async function readAppPort(repoPath: string): Promise<number> {
   return 3000
 }
 
-async function failDeployment(deploymentId: string, message: string): Promise<void> {
+async function updateDeployment(deploymentId: string, fields: Record<string, unknown>): Promise<void> {
+  const keys = Object.keys(fields)
+  const setClauses = keys.map((k, i) => `${k} = $${i + 2}`).join(', ')
+  const values = Object.values(fields)
   await db.query(
-    `UPDATE deployments.deployments SET status = 'failed', error_message = $2, updated_at = NOW() WHERE id = $1`,
-    [deploymentId, message]
-  ).catch((err: unknown) => logger.error({ msg: 'failed_to_update_deployment_status', deploymentId, err: String(err) }))
+    `UPDATE deployments.deployments SET ${setClauses}, updated_at = NOW() WHERE id = $1`,
+    [deploymentId, ...values]
+  )
+}
+
+async function failDeployment(deploymentId: string, message: string): Promise<void> {
+  await updateDeployment(deploymentId, { status: 'failed', error_message: message })
+    .catch((err: unknown) => logger.error({ msg: 'failed_to_update_deployment_status', deploymentId, err: String(err) }))
 }
 
 /** Poll Coolify every 30s until the app container is running or a terminal failure status is reached. */
@@ -105,17 +113,8 @@ export function startDeployWorker(): Worker {
         logger.warn({ msg: 'dns_skipped', deploymentId, reason: 'Cloudflare not configured' })
       }
 
-      // Build the final app URL upfront so Coolify's Traefik can route to it.
-      // Prefer Cloudflare subdomain when DNS is configured; otherwise use sslip.io
-      // which resolves any IP without DNS setup (e.g. colour-theory-abc12.204.168.188.172.sslip.io → VPS2).
-      const vps2Ip = process.env.VPS2_IP ?? ''
-      const finalUrl = cloudflareConfigured
-        ? `https://${subdomain}.apps.terminalai.app`
-        : `http://${subdomain}.${vps2Ip}.sslip.io`
-
-      const coolifyId = await createApp({
+      const { uuid: coolifyId, domain: coolifyDomain } = await createApp({
         name: subdomain,
-        fqdn: finalUrl,
         githubRepo,
         branch,
         port: appPort,
@@ -124,6 +123,12 @@ export function startDeployWorker(): Worker {
           TERMINAL_AI_APP_ID: appId,
         },
       })
+
+      // Prefer Cloudflare subdomain when DNS is configured; otherwise use the
+      // sslip.io domain Coolify auto-generated and returned.
+      const finalUrl = cloudflareConfigured
+        ? `https://${subdomain}.apps.terminalai.app`
+        : coolifyDomain
 
       // Store Coolify app ID immediately so status checks can reference it
       await db.query(
