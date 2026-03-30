@@ -10,12 +10,9 @@ interface ScanResult {
 
 export async function scanForSecrets(repoPath: string): Promise<ScanResult> {
   try {
-    await execFileAsync('docker', [
-      'run', '--rm',
-      '-v', `${repoPath}:/repo:ro`,
-      'zricethezav/gitleaks:latest',
+    await execFileAsync('gitleaks', [
       'detect',
-      '--source=/repo',
+      '--source', repoPath,
       '--no-git',
       '--exit-code', '1',
     ])

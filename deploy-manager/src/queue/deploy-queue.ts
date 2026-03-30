@@ -1,4 +1,5 @@
 import { Queue, Worker } from 'bullmq'
+import { readFile, rm } from 'fs/promises'
 import { scanForSecrets } from '../services/gitleaks'
 import { createApp, triggerDeploy, getAppDetails } from '../services/coolify'
 import { createSubdomain } from '../services/dns'
@@ -25,6 +26,18 @@ async function cloneRepo(githubRepo: string, dest: string): Promise<void> {
   await execFileAsync('git', ['clone', '--depth=1', `https://github.com/${githubRepo}`, dest])
 }
 
+/** Read the app port from terminal-ai.config.json if present; default to 3000. */
+async function readAppPort(repoPath: string): Promise<number> {
+  try {
+    const raw = await readFile(`${repoPath}/terminal-ai.config.json`, 'utf-8')
+    const config = JSON.parse(raw) as { port?: number }
+    if (typeof config.port === 'number' && config.port > 0) return config.port
+  } catch {
+    // file absent or malformed — use default
+  }
+  return 3000
+}
+
 async function failDeployment(deploymentId: string, message: string): Promise<void> {
   await db.query(
     `UPDATE deployments.deployments SET status = 'failed', error_message = $2, updated_at = NOW() WHERE id = $1`,
@@ -32,23 +45,20 @@ async function failDeployment(deploymentId: string, message: string): Promise<vo
   ).catch((err: unknown) => logger.error({ msg: 'failed_to_update_deployment_status', deploymentId, err: String(err) }))
 }
 
-/**
- * Poll Coolify every 30s until the app reaches 'running' status or times out.
- * Returns the Coolify-assigned FQDN/URL, or null if Coolify didn't provide one.
- */
-async function pollCoolifyUntilRunning(coolifyId: string, deploymentId: string): Promise<string | null> {
+/** Poll Coolify every 30s until the app container is running or a terminal failure status is reached. */
+async function pollCoolifyUntilRunning(coolifyId: string, deploymentId: string): Promise<void> {
   const deadline = Date.now() + COOLIFY_POLL_TIMEOUT_MS
 
   while (Date.now() < deadline) {
     await new Promise<void>((r) => setTimeout(r, COOLIFY_POLL_INTERVAL_MS))
-    const details = await getAppDetails(coolifyId)
-    logger.info({ msg: 'coolify_poll', deploymentId, coolifyId, coolifyStatus: details.status })
+    const { status } = await getAppDetails(coolifyId)
+    logger.info({ msg: 'coolify_poll', deploymentId, coolifyId, coolifyStatus: status })
 
-    if (details.status === 'running') return details.fqdn ?? null
-
-    if (['exited', 'failed', 'error', 'degraded'].includes(details.status)) {
-      throw new Error(`Coolify deployment failed with status: ${details.status}`)
+    if (status === 'running') return
+    if (['exited', 'failed', 'error', 'degraded'].includes(status)) {
+      throw new Error(`Coolify deployment failed with status: ${status}`)
     }
+    // 'stopped' and 'starting' are transient — keep polling
   }
 
   throw new Error('Coolify deployment timed out after 20 minutes')
@@ -64,13 +74,14 @@ export function startDeployWorker(): Worker {
       subdomain: string
     }
 
+    const tmpPath = `/tmp/deploy-${deploymentId}`
+
     try {
       await db.query(
         `UPDATE deployments.deployments SET status = 'building', updated_at = NOW() WHERE id = $1`,
         [deploymentId]
       )
 
-      const tmpPath = `/tmp/deploy-${deploymentId}`
       await cloneRepo(githubRepo, tmpPath)
 
       const scan = await scanForSecrets(tmpPath)
@@ -78,6 +89,9 @@ export function startDeployWorker(): Worker {
         await failDeployment(deploymentId, `Secret detected: ${scan.findings[0]}`)
         throw new Error('Secrets detected in repository')
       }
+
+      // Read port from the app's own config (3000 for Next.js, 8000 for Python/Streamlit)
+      const appPort = await readAppPort(tmpPath)
 
       // DNS is optional — skip if Cloudflare is not configured
       const cloudflareConfigured = !!(process.env.CLOUDFLARE_TOKEN && process.env.CLOUDFLARE_ZONE_ID && process.env.VPS2_IP)
@@ -91,11 +105,20 @@ export function startDeployWorker(): Worker {
         logger.warn({ msg: 'dns_skipped', deploymentId, reason: 'Cloudflare not configured' })
       }
 
+      // Build the final app URL upfront so Coolify's Traefik can route to it.
+      // Prefer Cloudflare subdomain when DNS is configured; otherwise use sslip.io
+      // which resolves any IP without DNS setup (e.g. colour-theory-abc12.204.168.188.172.sslip.io → VPS2).
+      const vps2Ip = process.env.VPS2_IP ?? ''
+      const finalUrl = cloudflareConfigured
+        ? `https://${subdomain}.apps.terminalai.app`
+        : `http://${subdomain}.${vps2Ip}.sslip.io`
+
       const coolifyId = await createApp({
         name: subdomain,
+        fqdn: finalUrl,
         githubRepo,
         branch,
-        port: 3000,
+        port: appPort,
         envVars: {
           TERMINAL_AI_GATEWAY_URL: process.env.GATEWAY_URL!,
           TERMINAL_AI_APP_ID: appId,
@@ -110,26 +133,17 @@ export function startDeployWorker(): Worker {
 
       await triggerDeploy(coolifyId)
 
-      // Poll Coolify until the app is running; get its assigned URL
-      const coolifyUrl = await pollCoolifyUntilRunning(coolifyId, deploymentId)
-
-      // Prefer Cloudflare subdomain URL when DNS is configured; otherwise use Coolify's URL
-      const finalUrl = cloudflareConfigured
-        ? `https://${subdomain}.apps.terminalai.app`
-        : coolifyUrl
+      // Wait for Coolify to finish building and start the container
+      await pollCoolifyUntilRunning(coolifyId, deploymentId)
 
       await db.query(
         `UPDATE deployments.deployments SET status = 'live', url = $2, completed_at = NOW(), updated_at = NOW() WHERE id = $1`,
         [deploymentId, finalUrl]
       )
-
-      // Update the app's iframe_url so the viewer can load it
-      if (finalUrl) {
-        await db.query(
-          `UPDATE marketplace.apps SET iframe_url = $2 WHERE id = $1`,
-          [appId, finalUrl]
-        )
-      }
+      await db.query(
+        `UPDATE marketplace.apps SET iframe_url = $2 WHERE id = $1`,
+        [appId, finalUrl]
+      )
 
       logger.info({ msg: 'deploy_complete', deploymentId, subdomain, url: finalUrl })
     } catch (err: unknown) {
@@ -137,6 +151,9 @@ export function startDeployWorker(): Worker {
       logger.error({ msg: 'deploy_failed', deploymentId, err: message })
       await failDeployment(deploymentId, message)
       throw err
+    } finally {
+      // Always clean up the cloned repo to avoid filling disk
+      await rm(tmpPath, { recursive: true, force: true }).catch(() => undefined)
     }
   }, { connection: redisConnection, concurrency: 3 })
 }

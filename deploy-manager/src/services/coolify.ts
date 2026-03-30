@@ -32,6 +32,7 @@ export async function createApp(params: {
   githubRepo: string
   branch: string
   port: number
+  fqdn: string
   envVars: Record<string, string>
 }): Promise<string> {
   const { url, token } = coolifyConfig()
@@ -40,6 +41,7 @@ export async function createApp(params: {
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       name: params.name,
+      fqdn: params.fqdn,
       git_repository: params.githubRepo,
       git_branch: params.branch,
       build_pack: 'dockerfile',
@@ -49,6 +51,6 @@ export async function createApp(params: {
   })
   if (!res.ok) throw new Error(`Coolify create failed: ${res.status} ${await res.text()}`)
   const data = await res.json() as { uuid: string }
-  logger.info({ msg: 'coolify_app_created', name: params.name, uuid: data.uuid })
+  logger.info({ msg: 'coolify_app_created', name: params.name, uuid: data.uuid, fqdn: params.fqdn })
   return data.uuid
 }
