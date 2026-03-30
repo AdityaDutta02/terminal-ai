@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { validateServiceToken, getCreatorIdFromRequest, unauthorizedResponse } from '@/lib/internal-auth'
 import { slugify } from '@/lib/slugify'
+import { logger } from '@/lib/logger'
 
 export async function POST(req: Request): Promise<Response> {
   if (!validateServiceToken(req)) return unauthorizedResponse()
@@ -40,6 +41,19 @@ export async function POST(req: Request): Promise<Response> {
 
   const trimmedName = name.trim()
   const slug = slugify(name)
+  const branch = githubBranch ?? 'main'
+
+  // Extract owner/repo from full GitHub URL or bare "owner/repo" format
+  const repoMatch = githubRepo.match(/github\.com\/([^/]+\/[^/]+?)(?:\.git)?$/) ??
+    githubRepo.match(/^([a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+)$/)
+  if (!repoMatch) {
+    return NextResponse.json({ error: 'Invalid githubRepo format' }, { status: 400 })
+  }
+  const githubRepoShort = repoMatch[1]
+
+  // Generate a unique subdomain from the app slug + random suffix
+  const suffix = Math.random().toString(36).slice(2, 7)
+  const subdomain = `${slug}-${suffix}`.slice(0, 63)
 
   let appId: string
   try {
@@ -48,61 +62,60 @@ export async function POST(req: Request): Promise<Response> {
          (channel_id, slug, name, description, github_repo, github_branch, iframe_url)
        VALUES ($1, $2, $3, $4, $5, $6, '')
        RETURNING id`,
-      [channelId, slug, trimmedName, description ?? '', githubRepo, githubBranch ?? 'main']
+      [channelId, slug, trimmedName, description ?? '', githubRepoShort, branch]
     )
     appId = appResult.rows[0].id
+    logger.info({ msg: 'app_created', appId, channelId, creatorId, slug })
   } catch (err: unknown) {
     const pg = err as { code?: string }
     if (pg.code === '23505') {
       return NextResponse.json({ error: 'An app with this name already exists in this channel' }, { status: 409 })
     }
+    logger.error({ msg: 'app_insert_failed', err: String(err), channelId, creatorId })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 
-  // Trigger deployment via deploy-manager
-  const deployManagerUrl = process.env.DEPLOY_MANAGER_URL ?? 'http://deploy-manager:4000'
-  let deployRes: Response
+  // Create deployment record — deploy-manager expects this to already exist
+  let deploymentId: string
   try {
-    deployRes = await fetch(`${deployManagerUrl}/deploy`, {
+    const depResult = await db.query<{ id: string }>(
+      `INSERT INTO deployments.deployments (app_id, subdomain, github_repo, github_branch)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id`,
+      [appId, subdomain, githubRepoShort, branch]
+    )
+    deploymentId = depResult.rows[0].id
+  } catch {
+    return NextResponse.json({ error: 'Failed to create deployment record' }, { status: 500 })
+  }
+
+  // Trigger deployment via deploy-manager
+  const deployManagerUrl = process.env.DEPLOY_MANAGER_URL ?? 'http://deploy-manager:3002'
+  try {
+    const deployRes = await fetch(`${deployManagerUrl}/deploy`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${process.env.INTERNAL_SERVICE_TOKEN ?? ''}`,
       },
       body: JSON.stringify({
+        deploymentId,
         appId,
-        githubRepo,
-        branch: githubBranch ?? 'main',
+        githubRepo: githubRepoShort,
+        branch,
+        subdomain,
       }),
     })
+
+    if (!deployRes.ok) {
+      return NextResponse.json(
+        { id: appId, deploymentId, deploymentQueued: false, error: 'Deploy queue error' },
+        { status: 202 }
+      )
+    }
   } catch {
     return NextResponse.json(
-      { id: appId, deploymentQueued: false, error: 'Deploy queue unavailable' },
-      { status: 202 }
-    )
-  }
-
-  if (!deployRes.ok) {
-    return NextResponse.json(
-      { id: appId, deploymentQueued: false, error: 'Deploy queue error' },
-      { status: 202 }
-    )
-  }
-
-  let deploymentId: string | undefined
-  try {
-    const payload = await deployRes.json() as { deploymentId?: string }
-    deploymentId = payload.deploymentId
-  } catch {
-    return NextResponse.json(
-      { id: appId, deploymentQueued: false, error: 'Invalid deploy-manager response' },
-      { status: 202 }
-    )
-  }
-
-  if (!deploymentId) {
-    return NextResponse.json(
-      { id: appId, deploymentQueued: false, error: 'No deployment ID returned' },
+      { id: appId, deploymentId, deploymentQueued: false, error: 'Deploy queue unavailable' },
       { status: 202 }
     )
   }
