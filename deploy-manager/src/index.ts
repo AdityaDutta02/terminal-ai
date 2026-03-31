@@ -5,6 +5,25 @@ import { getAppDetails, deleteApp } from './services/coolify'
 import { db } from './lib/db'
 import { logger } from './lib/logger'
 
+const REQUIRED_ENV = [
+  'GATEWAY_URL',
+  'COOLIFY_URL',
+  'COOLIFY_TOKEN',
+  'COOLIFY_PROJECT_UUID',
+  'COOLIFY_SERVER_UUID',
+  'DATABASE_URL',
+  'REDIS_URL',
+] as const
+
+for (const key of REQUIRED_ENV) {
+  if (!process.env[key] || process.env[key] === 'undefined') {
+    console.error(`FATAL: Missing required env var: ${key}`)
+    process.exit(1)
+  }
+}
+
+console.log('Env validation passed. Starting deploy-manager...')
+
 interface DeploymentLogRow {
   id: string
   status: string
