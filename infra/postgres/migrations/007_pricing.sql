@@ -7,6 +7,9 @@ BEGIN;
 -- Fix default credits (new users should start at 0, get 20 after verification)
 ALTER TABLE public."user" ALTER COLUMN credits SET DEFAULT 0;
 
+-- NOTE: min_credits_per_session column did not exist, skipping data migration
+-- UPDATE marketplace.apps SET credits_per_session = COALESCE(min_credits_per_session, 0) WHERE min_credits_per_session IS NOT NULL;
+
 -- Session-based billing + free app + model tier on apps
 ALTER TABLE marketplace.apps
   ADD COLUMN IF NOT EXISTS credits_per_session INTEGER NOT NULL DEFAULT 0,
@@ -34,6 +37,8 @@ ALTER TABLE gateway.embed_tokens
   ADD COLUMN IF NOT EXISTS credits_deducted INTEGER NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS deducted_at TIMESTAMPTZ;
 
+CREATE SCHEMA IF NOT EXISTS subscriptions;
+
 -- Subscription plans (source of truth for plan config)
 CREATE TABLE IF NOT EXISTS subscriptions.plans (
   id TEXT PRIMARY KEY,
@@ -59,7 +64,7 @@ CREATE TABLE IF NOT EXISTS subscriptions.user_subscriptions (
   user_id TEXT NOT NULL REFERENCES public."user"(id),
   plan_id TEXT NOT NULL REFERENCES subscriptions.plans(id),
   razorpay_subscription_id TEXT UNIQUE,
-  status TEXT NOT NULL DEFAULT 'pending',
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'halted', 'cancelled', 'expired', 'completed')),
   current_period_start TIMESTAMPTZ,
   current_period_end TIMESTAMPTZ,
   credits_granted_at TIMESTAMPTZ,
@@ -77,9 +82,10 @@ CREATE TABLE IF NOT EXISTS subscriptions.credit_pack_purchases (
   price_inr INTEGER NOT NULL,
   razorpay_order_id TEXT UNIQUE,
   razorpay_payment_id TEXT,
-  status TEXT NOT NULL DEFAULT 'pending',
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'failed')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+CREATE INDEX IF NOT EXISTS credit_pack_purchases_user_id ON subscriptions.credit_pack_purchases(user_id);
 
 -- Cron job run log
 CREATE SCHEMA IF NOT EXISTS platform;
@@ -92,5 +98,6 @@ CREATE TABLE IF NOT EXISTS platform.cron_runs (
   rows_affected INTEGER,
   error TEXT
 );
+CREATE INDEX IF NOT EXISTS cron_runs_job_name_started ON platform.cron_runs(job_name, started_at DESC);
 
 COMMIT;
