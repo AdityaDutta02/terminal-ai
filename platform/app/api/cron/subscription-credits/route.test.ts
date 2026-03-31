@@ -70,7 +70,7 @@ describe('GET /api/cron/subscription-credits', () => {
     expect(mockWithTransaction).toHaveBeenCalledOnce()
   })
 
-  it('continues processing and marks run failed if one grantCredits throws', async () => {
+  it('returns 500 and marks run failed if withTransaction throws', async () => {
     mockDb
       .mockResolvedValueOnce({ rows: [] } as any)  // INSERT cron_run
       .mockResolvedValueOnce({ rows: [{ pg_try_advisory_lock: true }] } as any)  // advisory lock
@@ -87,5 +87,9 @@ describe('GET /api/cron/subscription-credits', () => {
 
     const res = await GET(makeRequest())
     expect(res.status).toBe(500)
+    expect(mockDb).toHaveBeenCalledWith(
+      expect.stringContaining("status = 'failed'"),
+      expect.arrayContaining([expect.anything()]),
+    )
   })
 })

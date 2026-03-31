@@ -72,7 +72,9 @@ export async function GET(request: NextRequest) {
          SET status = 'completed', completed_at = NOW(), rows_affected = $1
          WHERE id = $2`,
         [rowsAffected, runId],
-      ).catch(() => { /* ignore */ })
+      ).catch((err: unknown) => {
+        logger.warn({ msg: 'cron_run_log_update_failed', runId, err })
+      })
 
       logger.info({ msg: 'cron_subscription_credits_complete', rowsAffected, runId })
       return NextResponse.json({ processed: rowsAffected })
@@ -86,7 +88,9 @@ export async function GET(request: NextRequest) {
     await db.query(
       `UPDATE platform.cron_runs SET status = 'failed', completed_at = NOW(), error = $1 WHERE id = $2`,
       [error, runId],
-    ).catch(() => { /* ignore */ })
+    ).catch((err: unknown) => {
+      logger.warn({ msg: 'cron_run_log_update_failed', runId, err })
+    })
     return NextResponse.json({ error }, { status: 500 })
   }
 }
