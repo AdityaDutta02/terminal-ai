@@ -136,6 +136,34 @@ describe('POST /api/webhooks/razorpay', () => {
     expect(mockGrant).not.toHaveBeenCalled()
   })
 
+  it('grants credits on subscription.activated', async () => {
+    const mockClient = { query: vi.fn() }
+
+    mockWithTransaction.mockImplementationOnce(async (fn) => {
+      return fn(mockClient as any)
+    })
+
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [{ user_id: 'user1', plan_id: 'starter', credits_per_month: 250 }] })  // SELECT FOR UPDATE
+      .mockResolvedValueOnce({ rows: [] })  // UPDATE period timestamps
+      .mockResolvedValueOnce({ rows: [] })  // UPDATE status = 'active'
+
+    mockGrant.mockResolvedValueOnce(250)
+
+    const res = await POST(makeWebhookRequest({
+      event: 'subscription.activated',
+      payload: {
+        subscription: { entity: { id: 'sub_abc', current_start: 1743379200, current_end: 1746057600 } },
+      },
+    }))
+    expect(res.status).toBe(200)
+    expect(mockGrant).toHaveBeenCalledWith('user1', 250, 'subscription_activation_starter', expect.anything())
+    expect(mockClient.query).toHaveBeenCalledWith(
+      expect.stringContaining("status = 'active'"),
+      expect.arrayContaining(['sub_abc']),
+    )
+  })
+
   it('cancels subscription on subscription.cancelled', async () => {
     mockDb.mockResolvedValueOnce({ rows: [] } as any)
 

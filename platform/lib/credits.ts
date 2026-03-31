@@ -49,6 +49,7 @@ export async function grantCredits(
     SELECT balance_after FROM inserted`
   const queryFn = client ?? db
   const result = await queryFn.query<{ balance_after: number }>(sql, [userId, delta, reason])
+  if (!result.rows[0]) throw new Error(`grantCredits: no ledger row inserted for user ${userId}`)
   return result.rows[0].balance_after
 }
 
