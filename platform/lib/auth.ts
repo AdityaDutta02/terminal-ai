@@ -1,6 +1,7 @@
 import { betterAuth } from 'better-auth'
 import { Pool } from 'pg'
 import { grantCredits } from './credits'
+import { db } from './db'
 import { logger } from './logger'
 import { WELCOME_CREDITS } from './pricing'
 
@@ -12,9 +13,19 @@ export const auth = betterAuth({
   },
   emailVerification: {
     afterEmailVerification: async (user) => {
-      await grantCredits(user.id, WELCOME_CREDITS, 'welcome_bonus').catch((err: unknown) => {
+      if (!user.id) return // guard against malformed user objects
+      try {
+        // Idempotency check: skip if welcome credits were already granted
+        const existing = await db.query(
+          `SELECT 1 FROM subscriptions.credit_ledger
+           WHERE user_id = $1 AND reason = 'welcome_bonus' LIMIT 1`,
+          [user.id],
+        )
+        if ((existing as { rows: unknown[] }).rows.length > 0) return
+        await grantCredits(user.id, WELCOME_CREDITS, 'welcome_bonus')
+      } catch (err) {
         logger.error({ msg: 'welcome_credits_grant_failed', userId: user.id, err })
-      })
+      }
     },
   },
   session: {
