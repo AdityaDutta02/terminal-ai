@@ -1,4 +1,4 @@
-import { db } from './db'
+import { db, type TxClient } from './db'
 
 // Shared CTE: reads most recent ledger balance, falls back to user.credits for accounts with no ledger entries
 const BALANCE_CTE = `WITH current AS (
@@ -38,6 +38,7 @@ export async function grantCredits(
   userId: string,
   delta: number,
   reason: string,
+  client?: TxClient,
 ): Promise<number> {
   const sql = `${BALANCE_CTE},
     inserted AS (
@@ -46,7 +47,8 @@ export async function grantCredits(
       RETURNING balance_after
     )
     SELECT balance_after FROM inserted`
-  const result = await db.query<{ balance_after: number }>(sql, [userId, delta, reason])
+  const queryFn = client ?? db
+  const result = await queryFn.query<{ balance_after: number }>(sql, [userId, delta, reason])
   return result.rows[0].balance_after
 }
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { db, withTransaction } from '@/lib/db'
 import { grantCredits } from '@/lib/credits'
 import { logger } from '@/lib/logger'
 import crypto from 'crypto'
@@ -68,34 +68,26 @@ async function handlePaymentCaptured(payload: any): Promise<void> {
   if (!payment || payment.status !== 'captured') return
 
   // Use transaction + FOR UPDATE to prevent double-crediting on concurrent delivery
-  await db.query('BEGIN')
-  try {
-    const packResult = await db.query<{ user_id: string; credits: number; pack_id: string }>(
+  await withTransaction(async (client) => {
+    const packResult = await client.query<{ user_id: string; credits: number; pack_id: string }>(
       `SELECT user_id, credits, pack_id FROM subscriptions.credit_pack_purchases
        WHERE razorpay_order_id = $1 AND status = 'pending'
        FOR UPDATE`,
       [payment.order_id],
     )
-    if (!packResult.rows[0]) {
-      await db.query('COMMIT')
-      return
-    }
+    if (!packResult.rows[0]) return
 
     const { user_id, credits, pack_id } = packResult.rows[0]
 
-    await db.query(
+    await client.query(
       `UPDATE subscriptions.credit_pack_purchases
        SET status = 'completed', razorpay_payment_id = $1
        WHERE razorpay_order_id = $2`,
       [payment.id, payment.order_id],
     )
 
-    await db.query('COMMIT')
-    await grantCredits(user_id, credits, `credit_pack_${pack_id}`)
-  } catch (err) {
-    await db.query('ROLLBACK')
-    throw err
-  }
+    await grantCredits(user_id, credits, `credit_pack_${pack_id}`, client)
+  })
 }
 
 interface SubscriptionRow {
@@ -117,9 +109,8 @@ async function grantPeriodCredits(
   setActive: boolean,
 ): Promise<void> {
   // Use transaction + FOR UPDATE to prevent double-crediting on concurrent delivery
-  await db.query('BEGIN')
-  try {
-    const result = await db.query<SubscriptionRow>(
+  await withTransaction(async (client) => {
+    const result = await client.query<SubscriptionRow>(
       `SELECT us.user_id, us.plan_id, p.credits_per_month
        FROM subscriptions.user_subscriptions us
        JOIN subscriptions.plans p ON p.id = us.plan_id
@@ -128,15 +119,12 @@ async function grantPeriodCredits(
       [sub.id],
     )
     const row = result.rows[0]
-    if (!row) {
-      await db.query('COMMIT')
-      return
-    }
+    if (!row) return
 
     const { user_id, plan_id, credits_per_month } = row
 
     // Always update period timestamps
-    await db.query(
+    await client.query(
       `UPDATE subscriptions.user_subscriptions
        SET current_period_start = TO_TIMESTAMP($2),
            current_period_end = TO_TIMESTAMP($3),
@@ -148,7 +136,7 @@ async function grantPeriodCredits(
 
     // Set status to active only on activation
     if (setActive) {
-      await db.query(
+      await client.query(
         `UPDATE subscriptions.user_subscriptions
          SET status = 'active', updated_at = NOW()
          WHERE razorpay_subscription_id = $1`,
@@ -156,12 +144,8 @@ async function grantPeriodCredits(
       )
     }
 
-    await db.query('COMMIT')
-    await grantCredits(user_id, credits_per_month, `${creditReasonPrefix}_${plan_id}`)
-  } catch (err) {
-    await db.query('ROLLBACK')
-    throw err
-  }
+    await grantCredits(user_id, credits_per_month, `${creditReasonPrefix}_${plan_id}`, client)
+  })
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
