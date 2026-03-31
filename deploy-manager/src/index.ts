@@ -152,8 +152,16 @@ app.delete('/apps/:appId', async (c) => {
     }
   }
   // Delete DB records regardless of Coolify cleanup outcome
-  await db.query(`DELETE FROM deployments.deployments WHERE app_id = $1`, [appId])
-  await db.query(`DELETE FROM marketplace.apps WHERE id = $1`, [appId])
+  // Must delete in FK order: embed_tokens → credit_ledger refs → deployments → apps
+  try {
+    await db.query(`DELETE FROM gateway.embed_tokens WHERE app_id = $1`, [appId])
+    await db.query(`DELETE FROM subscriptions.credit_ledger WHERE app_id = $1`, [appId])
+    await db.query(`DELETE FROM deployments.deployments WHERE app_id = $1`, [appId])
+    await db.query(`DELETE FROM marketplace.apps WHERE id = $1`, [appId])
+  } catch (dbErr) {
+    logger.error({ msg: 'app_db_delete_failed', appId, err: String(dbErr) })
+    return c.json({ error: `Database cleanup failed: ${dbErr instanceof Error ? dbErr.message : String(dbErr)}` }, 500)
+  }
   logger.info({ msg: 'app_deleted', appId, coolifyAppsDeleted: coolifyIds.length })
   return c.json({ deleted: true, coolifyAppsDeleted: coolifyIds.length, warnings: errors })
 })
