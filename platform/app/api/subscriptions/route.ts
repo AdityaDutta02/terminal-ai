@@ -7,11 +7,13 @@ import { logger } from '@/lib/logger'
 import { z } from 'zod'
 
 // Razorpay REST API helpers (no SDK — uses lib/razorpay native fetch wrapper)
-const KEY_ID = process.env.RAZORPAY_KEY_ID ?? ''
-const KEY_SECRET = process.env.RAZORPAY_KEY_SECRET ?? ''
+interface RazorpayKeys {
+  keyId: string
+  keySecret: string
+}
 
-function razorpayAuth(): string {
-  return `Basic ${Buffer.from(`${KEY_ID}:${KEY_SECRET}`).toString('base64')}`
+function razorpayAuth({ keyId, keySecret }: RazorpayKeys): string {
+  return `Basic ${Buffer.from(`${keyId}:${keySecret}`).toString('base64')}`
 }
 
 interface RazorpaySubscription {
@@ -19,29 +21,54 @@ interface RazorpaySubscription {
   short_url: string
 }
 
-async function createSubscription(params: {
+interface CreateSubscriptionParams {
   plan_id: string
   customer_notify: number
   quantity: number
   total_count: number
   notes: Record<string, string>
-}): Promise<RazorpaySubscription> {
+}
+
+async function createSubscription(keys: RazorpayKeys, params: CreateSubscriptionParams): Promise<RazorpaySubscription> {
   const res = await fetch('https://api.razorpay.com/v1/subscriptions', {
     method: 'POST',
-    headers: { Authorization: razorpayAuth(), 'Content-Type': 'application/json' },
+    headers: { Authorization: razorpayAuth(keys), 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
   })
   if (!res.ok) throw new Error(`Razorpay subscription create failed: ${await res.text()}`)
   return res.json() as Promise<RazorpaySubscription>
 }
 
-async function cancelSubscription(subscriptionId: string): Promise<void> {
+interface PlanSubscriptionRequest {
+  razorpayPlanId: string
+  userId: string
+  planId: string
+}
+
+async function createPlanSubscription(keys: RazorpayKeys, req: PlanSubscriptionRequest): Promise<RazorpaySubscription> {
+  return createSubscription(keys, {
+    plan_id: req.razorpayPlanId,
+    customer_notify: 1,
+    quantity: 1,
+    total_count: 120, // 10 years max
+    notes: { userId: req.userId, planId: req.planId },
+  })
+}
+
+async function cancelSubscription(keys: RazorpayKeys, subscriptionId: string): Promise<void> {
   const res = await fetch(`https://api.razorpay.com/v1/subscriptions/${subscriptionId}/cancel`, {
     method: 'POST',
-    headers: { Authorization: razorpayAuth(), 'Content-Type': 'application/json' },
+    headers: { Authorization: razorpayAuth(keys), 'Content-Type': 'application/json' },
     body: JSON.stringify({ cancel_at_cycle_end: 1 }),
   })
   if (!res.ok) throw new Error(`Razorpay subscription cancel failed: ${await res.text()}`)
+}
+
+function getRazorpayKeys(): RazorpayKeys | null {
+  const keyId = process.env.RAZORPAY_KEY_ID
+  const keySecret = process.env.RAZORPAY_KEY_SECRET
+  if (!keyId || !keySecret) return null
+  return { keyId, keySecret }
 }
 
 const createSchema = z.object({
@@ -71,6 +98,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  const keys = getRazorpayKeys()
+  if (!keys) {
+    logger.warn({ msg: 'razorpay_not_configured' })
+    return NextResponse.json({ error: 'Payment not configured' }, { status: 503 })
+  }
+
   const session = await auth.api.getSession({ headers: request.headers })
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -86,27 +119,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    const subscription = await createSubscription({
-      plan_id: plan.razorpayPlanId,
-      customer_notify: 1,
-      quantity: 1,
-      total_count: 120, // 10 years max
-      notes: { userId: session.user.id, planId },
-    })
+    const rzpSub = await createPlanSubscription(
+      keys,
+      { razorpayPlanId: plan.razorpayPlanId, userId: session.user.id, planId },
+    )
 
     await db.query(
       `INSERT INTO subscriptions.user_subscriptions
          (user_id, plan_id, razorpay_subscription_id, status)
        VALUES ($1, $2, $3, 'pending')
        ON CONFLICT (razorpay_subscription_id) DO NOTHING`,
-      [session.user.id, planId, subscription.id],
+      [session.user.id, planId, rzpSub.id],
     )
 
-    logger.info({ msg: 'subscription_created', userId: session.user.id, planId, subscriptionId: subscription.id })
+    logger.info({ msg: 'subscription_created', userId: session.user.id, planId, subscriptionId: rzpSub.id })
 
     return NextResponse.json({
-      subscriptionId: subscription.id,
-      shortUrl: subscription.short_url,
+      subscriptionId: rzpSub.id,
+      shortUrl: rzpSub.short_url,
     })
   } catch (err) {
     logger.error({ msg: 'subscription_create_failed', userId: session.user.id, planId, err: String(err) })
@@ -115,6 +145,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 }
 
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
+  const keyId = process.env.RAZORPAY_KEY_ID
+  const keySecret = process.env.RAZORPAY_KEY_SECRET
+  if (!keyId || !keySecret) {
+    logger.warn({ msg: 'razorpay_not_configured' })
+    return NextResponse.json({ error: 'Payment not configured' }, { status: 503 })
+  }
+
   const session = await auth.api.getSession({ headers: request.headers })
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -129,7 +166,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     }
 
     const razorpaySubId = result.rows[0].razorpay_subscription_id
-    await cancelSubscription(razorpaySubId)
+    await cancelSubscription({ keyId, keySecret }, razorpaySubId)
 
     try {
       await db.query(
@@ -148,7 +185,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Subscription cancelled in payment provider but local state update failed' }, { status: 500 })
     }
 
-    logger.info({ msg: 'subscription_cancelled', userId: session.user.id })
+    logger.info({ msg: 'subscription_cancelled', userId: session.user.id, razorpaySubId })
 
     return NextResponse.json({ message: 'Subscription cancelled at period end' })
   } catch (err) {

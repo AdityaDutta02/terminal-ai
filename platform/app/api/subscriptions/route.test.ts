@@ -23,7 +23,11 @@ import { NextRequest } from 'next/server'
 const mockDb = vi.mocked(db.query)
 const mockAuth = vi.mocked(auth.api.getSession)
 
-beforeEach(() => vi.clearAllMocks())
+beforeEach(() => {
+  vi.clearAllMocks()
+  process.env.RAZORPAY_KEY_ID = 'test_key_id'
+  process.env.RAZORPAY_KEY_SECRET = 'test_key_secret'
+})
 
 describe('GET /api/subscriptions', () => {
   it('returns 401 when not logged in', async () => {
@@ -85,5 +89,26 @@ describe('DELETE /api/subscriptions', () => {
     expect(res.status).toBe(401)
     const body = await res.json()
     expect(body.error).toBe('Unauthorized')
+  })
+
+  it('DELETE returns 500 when Razorpay cancel succeeds but DB update fails', async () => {
+    mockAuth.mockResolvedValueOnce({ user: { id: 'user-1' } } as any)
+    // First db.query: SELECT returns a subscription
+    mockDb.mockResolvedValueOnce({
+      rows: [{ razorpay_subscription_id: 'sub_test_123', status: 'active' }],
+    } as any)
+    // Razorpay cancel succeeds
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ id: 'sub_test_123', status: 'cancelled' }),
+    } as any)
+    // Second db.query: UPDATE throws
+    mockDb.mockRejectedValueOnce(new Error('DB connection lost'))
+
+    const req = new NextRequest('http://localhost/api/subscriptions', { method: 'DELETE' })
+    const res = await DELETE(req)
+    expect(res.status).toBe(500)
+    const body = await res.json()
+    expect(body.error).toMatch(/local state update failed/i)
   })
 })
