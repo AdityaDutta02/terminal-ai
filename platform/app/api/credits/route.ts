@@ -37,7 +37,7 @@ const purchaseSchema = z.object({
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const keyId = process.env.RAZORPAY_KEY_ID
   if (!keyId) {
-    logger.warn({ msg: 'RAZORPAY_KEY_ID not configured' })
+    logger.warn({ msg: 'razorpay_not_configured' })
     return NextResponse.json({ error: 'Payment not configured' }, { status: 503 })
   }
 

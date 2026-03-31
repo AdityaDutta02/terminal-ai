@@ -145,9 +145,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 }
 
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
-  const keyId = process.env.RAZORPAY_KEY_ID
-  const keySecret = process.env.RAZORPAY_KEY_SECRET
-  if (!keyId || !keySecret) {
+  const keys = getRazorpayKeys()
+  if (!keys) {
     logger.warn({ msg: 'razorpay_not_configured' })
     return NextResponse.json({ error: 'Payment not configured' }, { status: 503 })
   }
@@ -166,7 +165,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     }
 
     const razorpaySubId = result.rows[0].razorpay_subscription_id
-    await cancelSubscription({ keyId, keySecret }, razorpaySubId)
+    await cancelSubscription(keys, razorpaySubId)
 
     try {
       await db.query(
