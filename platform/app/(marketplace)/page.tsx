@@ -96,7 +96,7 @@ export default async function HomePage() {
 
       {/* Channels */}
       {channels.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-gray-200 py-20 text-center">
+        <div className="rounded-2xl border border-dashed border-[--border] py-20 text-center">
           <Layers className="mx-auto mb-3 h-8 w-8 text-gray-300" />
           <p className="text-sm text-gray-400">No channels yet.</p>
         </div>
@@ -106,17 +106,17 @@ export default async function HomePage() {
             <a
               key={channel.id}
               href={`/c/${channel.slug}`}
-              className="group flex flex-col rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition-all hover:border-violet-200 hover:shadow-md"
+              className="group flex flex-col rounded-xl border border-[--border] bg-[--card] p-5 shadow-sm transition-all hover:border-[--primary] hover:shadow-md"
             >
               <div className="mb-4 flex items-center gap-3">
                 <Avatar src={channel.avatar_url} fallback={channel.name} size="md" />
                 <div className="min-w-0">
-                  <p className="truncate font-semibold text-gray-900">{channel.name}</p>
+                  <p className="truncate font-semibold text-[--foreground]">{channel.name}</p>
                   <p className="text-xs text-gray-400">@{channel.slug}</p>
                 </div>
               </div>
               {channel.description && (
-                <p className="mb-4 line-clamp-2 text-sm text-gray-500">{channel.description}</p>
+                <p className="mb-4 line-clamp-2 text-sm text-[--muted-foreground]">{channel.description}</p>
               )}
               <div className="mt-auto flex items-center justify-between">
                 <span className="text-xs text-gray-400">{Number(channel.app_count).toLocaleString()} apps</span>
