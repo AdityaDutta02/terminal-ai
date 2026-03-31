@@ -17,6 +17,9 @@ dist/
 # OS
 .DS_Store
 
+# Separate git projects (tracked independently)
+colour-theory/
+
 # bun
 bun.lockb
 hertzer-key
