@@ -83,6 +83,41 @@ async function pollCoolifyUntilRunning(coolifyId: string, deploymentId: string):
   throw new Error('Coolify deployment timed out after 20 minutes')
 }
 
+export async function preflightCheck(gatewayUrl: string, appId: string): Promise<void> {
+  // Validate GATEWAY_URL
+  if (!gatewayUrl || gatewayUrl === 'undefined') {
+    throw Object.assign(new Error('TERMINAL_AI_GATEWAY_URL is not set or is "undefined"'), {
+      code: 'PREFLIGHT_FAILED',
+    })
+  }
+
+  // Validate APP_ID is UUID format
+  const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_PATTERN.test(appId)) {
+    throw Object.assign(new Error(`Invalid TERMINAL_AI_APP_ID format: ${appId}`), {
+      code: 'PREFLIGHT_FAILED',
+    })
+  }
+
+  // Gateway health check
+  let res: Response
+  try {
+    res = await fetch(`${gatewayUrl}/health`, {
+      signal: AbortSignal.timeout(5000),
+    })
+  } catch {
+    throw Object.assign(new Error(`Gateway unreachable at ${gatewayUrl}`), {
+      code: 'GATEWAY_UNREACHABLE',
+    })
+  }
+
+  if (!res.ok) {
+    throw Object.assign(new Error(`Gateway health check failed: HTTP ${res.status}`), {
+      code: 'GATEWAY_UNREACHABLE',
+    })
+  }
+}
+
 export function startDeployWorker(): Worker {
   return new Worker('deploys', async (job) => {
     const { deploymentId, appId, githubRepo, branch, subdomain } = job.data as {
@@ -96,6 +131,9 @@ export function startDeployWorker(): Worker {
     const tmpPath = `/tmp/deploy-${deploymentId}`
 
     try {
+      const gatewayUrl = process.env.GATEWAY_URL!
+      await preflightCheck(gatewayUrl, appId)
+
       await db.query(
         `UPDATE deployments.deployments SET status = 'building', updated_at = NOW() WHERE id = $1`,
         [deploymentId]
