@@ -1,23 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('@/lib/db', () => ({
-  db: { query: vi.fn() },
-  withTransaction: vi.fn(),
-}))
-vi.mock('@/lib/credits', () => ({ grantCredits: vi.fn() }))
+vi.mock('@/lib/db', () => ({ db: { query: vi.fn() } }))
 vi.mock('@/lib/logger', () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn() } }))
 
-import { db, withTransaction } from '@/lib/db'
-import { grantCredits } from '@/lib/credits'
+import { db } from '@/lib/db'
 import { GET } from './route'
 import { NextRequest } from 'next/server'
 
 const mockDb = vi.mocked(db.query)
-const mockGrant = vi.mocked(grantCredits)
-const mockWithTransaction = vi.mocked(withTransaction)
 
 function makeRequest(token = 'test_secret') {
-  return new NextRequest('http://localhost/api/cron/subscription-credits', {
+  return new NextRequest('http://localhost/api/cron/creator-revenue', {
     headers: { Authorization: `Bearer ${token}` },
   })
 }
@@ -25,15 +18,10 @@ function makeRequest(token = 'test_secret') {
 beforeEach(() => {
   vi.clearAllMocks()
   process.env.CRON_SECRET = 'test_secret'
-  // Default: withTransaction executes the callback with a mock client
-  mockWithTransaction.mockImplementation(async (fn) => {
-    const mockClient = { query: vi.fn().mockResolvedValue({ rows: [] }) }
-    return fn(mockClient)
-  })
 })
 
-describe('GET /api/cron/subscription-credits', () => {
-  it('returns 401 for missing/wrong secret', async () => {
+describe('GET /api/cron/creator-revenue', () => {
+  it('returns 401 for wrong secret', async () => {
     const res = await GET(makeRequest('wrong'))
     expect(res.status).toBe(401)
   })
@@ -49,43 +37,41 @@ describe('GET /api/cron/subscription-credits', () => {
     expect(body.skipped).toBe(true)
   })
 
-  it('processes subscriptions and returns count', async () => {
+  it('updates creator balances and returns count', async () => {
     mockDb
       .mockResolvedValueOnce({ rows: [] } as any)  // INSERT cron_run
       .mockResolvedValueOnce({ rows: [{ pg_try_advisory_lock: true }] } as any)  // advisory lock
       .mockResolvedValueOnce({
-        rows: [
-          { user_id: 'u1', plan_id: 'starter', credits_per_month: 250, razorpay_subscription_id: 'sub_1' },
-        ],
-      } as any)  // SELECT subscriptions
+        rows: [{ channel_id: 'ch_1', credits_spent: 200 }],
+      } as any)  // SELECT channel revenue
+      .mockResolvedValueOnce({ rows: [] } as any)  // UPDATE creator_balance
       .mockResolvedValueOnce({ rows: [] } as any)  // UPDATE cron_run completed
       .mockResolvedValueOnce({ rows: [] } as any)  // advisory unlock
-
-    mockGrant.mockResolvedValueOnce(250)
 
     const res = await GET(makeRequest())
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.processed).toBe(1)
-    expect(mockWithTransaction).toHaveBeenCalledOnce()
+    expect(body.channels_updated).toBe(1)
+    // Verify creator share (50% of 200 = 100)
+    expect(mockDb).toHaveBeenCalledWith(
+      expect.stringContaining('creator_balance = creator_balance + $1'),
+      [100, 'ch_1'],
+    )
   })
 
-  it('continues processing and marks run failed if one grantCredits throws', async () => {
+  it('skips channels where creator share rounds to zero', async () => {
     mockDb
       .mockResolvedValueOnce({ rows: [] } as any)  // INSERT cron_run
       .mockResolvedValueOnce({ rows: [{ pg_try_advisory_lock: true }] } as any)  // advisory lock
       .mockResolvedValueOnce({
-        rows: [
-          { user_id: 'u1', plan_id: 'starter', credits_per_month: 250, razorpay_subscription_id: 'sub_1' },
-        ],
-      } as any)  // SELECT subscriptions
-      .mockResolvedValueOnce({ rows: [] } as any)  // UPDATE cron_run failed
+        rows: [{ channel_id: 'ch_1', credits_spent: 1 }],  // floor(1 * 0.5) = 0
+      } as any)  // SELECT channel revenue
+      .mockResolvedValueOnce({ rows: [] } as any)  // UPDATE cron_run completed
       .mockResolvedValueOnce({ rows: [] } as any)  // advisory unlock
 
-    // withTransaction propagates the error thrown by grantCredits
-    mockWithTransaction.mockRejectedValueOnce(new Error('DB error'))
-
     const res = await GET(makeRequest())
-    expect(res.status).toBe(500)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.channels_updated).toBe(0)
   })
 })
