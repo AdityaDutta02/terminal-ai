@@ -114,6 +114,30 @@ export async function createApp(params: {
   return { uuid, domain }
 }
 
+/** Fetch recent deployment logs from Coolify for a given application. */
+export async function getDeploymentLogs(coolifyAppId: string): Promise<string> {
+  const { url, token } = coolifyConfig()
+  try {
+    // Coolify stores deployment history per application
+    const deploymentsRes = await fetch(`${url}/api/v1/applications/${coolifyAppId}/deployments?limit=1`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!deploymentsRes.ok) return `Failed to fetch deployments list: HTTP ${deploymentsRes.status}`
+    const deployments = await deploymentsRes.json() as { data?: Array<{ deployment_uuid?: string }> }
+    const latestUuid = deployments.data?.[0]?.deployment_uuid
+    if (!latestUuid) return 'No deployment history found in Coolify'
+
+    const logsRes = await fetch(`${url}/api/v1/deployments/${latestUuid}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!logsRes.ok) return `Failed to fetch deployment logs: HTTP ${logsRes.status}`
+    const logsData = await logsRes.json() as { logs?: string; status?: string }
+    return logsData.logs ?? `Deployment status: ${logsData.status ?? 'unknown'}, no logs available`
+  } catch (err) {
+    return `Error fetching Coolify logs: ${err instanceof Error ? err.message : String(err)}`
+  }
+}
+
 export async function waitForHealthy(
   appUrl: string,
   options = { maxWaitMs: 180_000, intervalMs: 10_000 }

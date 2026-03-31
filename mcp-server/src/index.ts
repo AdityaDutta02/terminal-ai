@@ -61,7 +61,7 @@ async function callPlatform<T>(
 
 async function callDeployManager<T>(
   path: string,
-  method: 'GET' | 'DELETE' = 'GET'
+  method: 'GET' | 'POST' | 'DELETE' = 'GET'
 ): Promise<PlatformResult<T>> {
   const deployManagerUrl = process.env.DEPLOY_MANAGER_URL ?? 'http://deploy-manager:3002'
   let res: Response
@@ -149,7 +149,25 @@ app.all('/mcp', async (c) => {
       created_at: row.created_at,
     }
     if (row.status === 'live' && row.url) response.url = row.url
-    if (row.status === 'failed') response.error = row.error_message ?? 'Unknown error'
+    if (row.status === 'failed') {
+      response.error = row.error_message ?? 'Unknown error'
+      // Auto-correct: check if logs endpoint detects recovery
+      if (row.coolify_app_id) {
+        const depRow = await db.query<{ id: string }>(
+          `SELECT id FROM deployments.deployments WHERE app_id = $1 ORDER BY created_at DESC LIMIT 1`,
+          [app_id]
+        )
+        if (depRow.rows[0]) {
+          const logsResult = await callDeployManager<Record<string, unknown>>(`/deployments/${depRow.rows[0].id}/logs`)
+          if (logsResult.ok && logsResult.data.status === 'live') {
+            response.status = 'live'
+            response.url = logsResult.data.url ?? logsResult.data.coolifyUrl
+            delete response.error
+            response.message = 'Status auto-corrected — app is actually running'
+          }
+        }
+      }
+    }
     if (row.status === 'building') response.message = 'Deployment is in progress — poll again in 30 seconds'
     if (row.status === 'pending') response.message = 'Deployment is queued and will start shortly'
     return { content: [{ type: 'text', text: JSON.stringify(response, null, 2) }] }
@@ -251,14 +269,48 @@ app.all('/mcp', async (c) => {
 
   server.tool(
     'get_deployment_logs',
-    'Get detailed deployment status and live container info for a deployment. Use this to diagnose build or startup failures.',
-    { deployment_id: z.string().uuid().describe('Deployment ID returned by deploy_app') },
+    'Get detailed deployment status, live Coolify container info, and build logs for a deployment. Use this to diagnose build or startup failures.',
+    { deployment_id: z.string().uuid().describe('Deployment ID returned by deploy_app or redeploy_app') },
     async ({ deployment_id }) => {
       const result = await callDeployManager<Record<string, unknown>>(`/deployments/${deployment_id}/logs`)
       if (!result.ok) {
         return { content: [{ type: 'text', text: `Failed to get logs: ${result.error}` }], isError: true }
       }
       return { content: [{ type: 'text', text: JSON.stringify(result.data, null, 2) }] }
+    }
+  )
+
+  server.tool(
+    'redeploy_app',
+    'Trigger a redeploy of an existing app from the latest git commit. Does NOT delete the app — reuses the existing Coolify container and subdomain.',
+    { app_id: z.string().uuid().describe('App ID to redeploy') },
+    async ({ app_id }) => {
+      const check = await db.query(
+        `SELECT a.id FROM marketplace.apps a
+         JOIN marketplace.channels ch ON ch.id = a.channel_id
+         WHERE a.id = $1 AND ch.creator_id = $2`,
+        [app_id, creatorId]
+      )
+      if (!check.rows[0]) return { content: [{ type: 'text', text: 'App not found or not owned by you' }], isError: true }
+      const result = await callDeployManager<{ deploymentId: string; redeployed: boolean }>(
+        `/apps/${app_id}/redeploy`,
+        'POST'
+      )
+      if (!result.ok) {
+        return { content: [{ type: 'text', text: `Failed to redeploy: ${result.error}` }], isError: true }
+      }
+      logger.info({ msg: 'redeploy_app_success', appId: app_id, deploymentId: result.data.deploymentId, creatorId })
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            appId: app_id,
+            deploymentId: result.data.deploymentId,
+            redeployed: result.data.redeployed,
+            statusTool: 'Use get_deployment_status with appId to poll for completion',
+          }),
+        }],
+      }
     }
   )
 

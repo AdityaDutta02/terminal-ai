@@ -54,6 +54,37 @@ async function failDeployment(deploymentId: string, message: string): Promise<vo
     .catch((err: unknown) => logger.error({ msg: 'failed_to_update_deployment_status', deploymentId, err: String(err) }))
 }
 
+function resolveUrl(subdomain: string | undefined, fqdn: string | null): string {
+  const cloudflareConfigured = !!(process.env.CLOUDFLARE_TOKEN && process.env.CLOUDFLARE_ZONE_ID && process.env.VPS2_IP)
+  if (cloudflareConfigured && subdomain) {
+    return `https://${subdomain}.apps.terminalai.app`
+  }
+  const rawFqdn = (fqdn ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '')
+  return rawFqdn ? `http://${rawFqdn}` : ''
+}
+
+/** Check if Coolify reports the app as running, and if so mark it live in the DB. Returns true if recovered. */
+async function tryRecoverDeployment(
+  deploymentId: string, appId: string, coolifyId: string, subdomain: string | undefined
+): Promise<boolean> {
+  try {
+    const { status, fqdn } = await getAppDetails(coolifyId)
+    if (status !== 'running' && !status.startsWith('running:')) return false
+    const url = resolveUrl(subdomain, fqdn)
+    if (!url) return false
+    await db.query(
+      `UPDATE deployments.deployments SET status = 'live', url = $2, error_message = NULL, completed_at = NOW(), updated_at = NOW() WHERE id = $1`,
+      [deploymentId, url]
+    )
+    await db.query(`UPDATE marketplace.apps SET iframe_url = $2 WHERE id = $1`, [appId, url])
+    logger.info({ msg: 'deploy_recovered', deploymentId, url })
+    return true
+  } catch (err) {
+    logger.warn({ msg: 'deploy_recovery_check_failed', deploymentId, err: String(err) })
+    return false
+  }
+}
+
 /** Poll Coolify every 30s until the app container is running or a terminal failure status is reached. */
 async function pollCoolifyUntilRunning(coolifyId: string, deploymentId: string): Promise<void> {
   const deadline = Date.now() + COOLIFY_POLL_TIMEOUT_MS
@@ -223,11 +254,58 @@ export function startDeployWorker(): Worker {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err)
       logger.error({ msg: 'deploy_failed', deploymentId, err: message })
+
+      // Before marking as failed, verify Coolify's actual state — the container may be healthy
+      const coolifyAppRow = await db.query<{ coolify_app_id: string | null; subdomain: string }>(
+        `SELECT coolify_app_id, subdomain FROM deployments.deployments WHERE id = $1`,
+        [deploymentId]
+      )
+      const savedCoolifyId = coolifyAppRow.rows[0]?.coolify_app_id
+      if (savedCoolifyId) {
+        const recovered = await tryRecoverDeployment(deploymentId, appId, savedCoolifyId, coolifyAppRow.rows[0]?.subdomain)
+        if (recovered) return
+      }
+
       await failDeployment(deploymentId, message)
       throw err
     } finally {
       // Always clean up the cloned repo to avoid filling disk
       await rm(tmpPath, { recursive: true, force: true }).catch(() => undefined)
+    }
+  }, { connection: redisConnection, concurrency: 3 })
+}
+
+/** Worker that polls an existing Coolify app after a redeploy trigger. */
+export function startPollWorker(): Worker {
+  return new Worker('poll-existing', async (job) => {
+    const { deploymentId, appId, coolifyId, subdomain } = job.data as {
+      deploymentId: string; appId: string; coolifyId: string; subdomain: string
+    }
+
+    try {
+      await pollCoolifyUntilRunning(coolifyId, deploymentId)
+
+      const details = await getAppDetails(coolifyId)
+      const finalUrl = resolveUrl(subdomain, details.fqdn)
+      if (!finalUrl) throw new Error('No domain found for redeployed app')
+
+      await waitForHealthy(finalUrl)
+
+      await db.query(
+        `UPDATE deployments.deployments SET status = 'live', url = $2, completed_at = NOW(), updated_at = NOW() WHERE id = $1`,
+        [deploymentId, finalUrl]
+      )
+      await db.query(`UPDATE marketplace.apps SET iframe_url = $2 WHERE id = $1`, [appId, finalUrl])
+      logger.info({ msg: 'redeploy_complete', deploymentId, url: finalUrl })
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err)
+      logger.error({ msg: 'redeploy_failed', deploymentId, err: message })
+
+      const recovered = await tryRecoverDeployment(deploymentId, appId, coolifyId, subdomain)
+      if (recovered) return
+
+      await failDeployment(deploymentId, message)
+      throw err
     }
   }, { connection: redisConnection, concurrency: 3 })
 }
