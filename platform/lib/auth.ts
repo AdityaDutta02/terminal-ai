@@ -16,12 +16,12 @@ export const auth = betterAuth({
       if (!user.id) return // guard against malformed user objects
       try {
         // Idempotency check: skip if welcome credits were already granted
-        const existing = await db.query(
+        const existing = await db.query<Record<string, never>>(
           `SELECT 1 FROM subscriptions.credit_ledger
            WHERE user_id = $1 AND reason = 'welcome_bonus' LIMIT 1`,
           [user.id],
         )
-        if ((existing as { rows: unknown[] }).rows.length > 0) return
+        if (existing.rows.length > 0) return
         await grantCredits(user.id, WELCOME_CREDITS, 'welcome_bonus')
       } catch (err) {
         logger.error({ msg: 'welcome_credits_grant_failed', userId: user.id, err })

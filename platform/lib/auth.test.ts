@@ -121,6 +121,36 @@ describe('afterEmailVerification hook', () => {
     expect(mockGrant).not.toHaveBeenCalled()
   })
 
+  it('logs error and does not throw if grantCredits rejects', async () => {
+    const { db } = await import('./db')
+    const { grantCredits } = await import('./credits')
+    const { logger } = await import('./logger')
+    const mockQuery = vi.mocked(db.query)
+    const mockGrant = vi.mocked(grantCredits)
+    const mockLogger = vi.mocked(logger.error)
+
+    // No existing welcome_bonus entry — grant path is taken
+    mockQuery.mockResolvedValueOnce({ rows: [] } as never)
+    mockGrant.mockRejectedValueOnce(new Error('credits service unavailable') as never)
+
+    const { betterAuth } = await import('better-auth')
+    const mockBetterAuth = vi.mocked(betterAuth)
+
+    await import('./auth')
+
+    const config = mockBetterAuth.mock.calls[0][0] as {
+      emailVerification: { afterEmailVerification: (user: { id: string }) => Promise<void> }
+    }
+    const hook = config.emailVerification.afterEmailVerification
+
+    // Hook must swallow the error, not rethrow
+    await expect(hook({ id: 'user-grant-fail' })).resolves.toBeUndefined()
+
+    expect(mockLogger).toHaveBeenCalledWith(
+      expect.objectContaining({ msg: 'welcome_credits_grant_failed', userId: 'user-grant-fail' }),
+    )
+  })
+
   it('logs error and does not throw if db.query fails', async () => {
     const { db } = await import('./db')
     const { logger } = await import('./logger')
