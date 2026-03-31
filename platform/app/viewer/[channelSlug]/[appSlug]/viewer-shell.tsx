@@ -23,6 +23,19 @@ function getInitialViewState(iframeUrl: string, deploymentStatus: string | null)
   return 'deploying'
 }
 
+function ViewerSkeleton() {
+  return (
+    <div className="flex h-screen w-full flex-col bg-zinc-950 animate-pulse">
+      <div className="h-12 border-b border-zinc-800 bg-zinc-900" />
+      <div className="flex-1 p-6 space-y-4">
+        <div className="h-4 w-3/4 rounded bg-zinc-800" />
+        <div className="h-4 w-1/2 rounded bg-zinc-800" />
+        <div className="h-32 rounded bg-zinc-800" />
+      </div>
+    </div>
+  )
+}
+
 export function ViewerShell(props: Props) {
   const { appId, appName, channelSlug, iframeUrl: initialIframeUrl, initialCredits, userName, deploymentStatus, deploymentError } = props
   const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -31,6 +44,7 @@ export function ViewerShell(props: Props) {
   const [viewState, setViewState] = useState<ViewState>(() => getInitialViewState(initialIframeUrl, deploymentStatus))
   const [errorMsg, setErrorMsg] = useState(deploymentError ?? '')
   const [credits, setCredits] = useState(initialCredits)
+  const [tokenIssuedAt, setTokenIssuedAt] = useState<number | null>(null)
 
   const fetchToken = useCallback(async () => {
     const res = await fetch('/api/embed-token', {
@@ -69,6 +83,7 @@ export function ViewerShell(props: Props) {
         const token = await fetchToken()
         if (cancelled) return
         tokenRef.current = token
+        setTokenIssuedAt(Date.now())
         setViewState('ready')
         deliverToken(token, iframeUrl)
       } catch (err) {
@@ -123,6 +138,18 @@ export function ViewerShell(props: Props) {
     return () => clearInterval(interval)
   }, [viewState, iframeUrl, fetchToken])
 
+  // Show expiry warning at 13 min (2 min before 15 min session expires)
+  useEffect(() => {
+    if (!tokenIssuedAt || viewState !== 'ready') return
+    const warningDelay = 13 * 60 * 1000 - (Date.now() - tokenIssuedAt)
+    if (warningDelay <= 0) return
+    const timer = setTimeout(() => {
+      // Simple browser alert is acceptable for beta — no toast library needed
+      console.warn('Terminal AI: session expires in 2 minutes')
+    }, warningDelay)
+    return () => clearTimeout(timer)
+  }, [tokenIssuedAt, viewState])
+
   // Re-deliver token when iframe reloads
   function handleIframeLoad() {
     if (tokenRef.current && iframeUrl) {
@@ -150,23 +177,23 @@ export function ViewerShell(props: Props) {
   const initials = userName.charAt(0).toUpperCase()
 
   return (
-    <div className="flex h-screen flex-col bg-gray-50">
-      <div className="flex h-12 flex-shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4">
+    <div className="dark flex h-screen flex-col bg-zinc-950">
+      <div className="flex h-12 flex-shrink-0 items-center justify-between border-b border-zinc-800 bg-zinc-900 px-4">
         <div className="flex items-center gap-3">
-          <a href={`/c/${channelSlug}`} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors">
+          <a href={`/c/${channelSlug}`} className="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-200 transition-colors">
             <X className="h-4 w-4" />
           </a>
-          <span className="text-sm font-medium text-gray-900">{appName}</span>
+          <span className="text-sm font-medium text-zinc-100">{appName}</span>
         </div>
         <div className="flex items-center gap-3">
           {viewState === 'deploying' && (
-            <div className="flex items-center gap-1.5 text-xs text-gray-400">
+            <div className="flex items-center gap-1.5 text-xs text-zinc-500">
               <Loader2 className="h-3 w-3 animate-spin" />
               Deploying…
             </div>
           )}
           {viewState === 'loading' && (
-            <div className="flex items-center gap-1.5 text-xs text-gray-400">
+            <div className="flex items-center gap-1.5 text-xs text-zinc-500">
               <RefreshCw className="h-3 w-3 animate-spin" />
               Connecting…
             </div>
@@ -193,8 +220,8 @@ export function ViewerShell(props: Props) {
           <div className="flex h-full items-center justify-center">
             <div className="max-w-sm text-center">
               <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-violet-500" />
-              <p className="font-medium text-gray-900">Your app is deploying</p>
-              <p className="mt-1 text-sm text-gray-500">This usually takes 2–5 minutes. This page will update automatically.</p>
+              <p className="font-medium text-zinc-100">Your app is deploying</p>
+              <p className="mt-1 text-sm text-zinc-400">This usually takes 2–5 minutes. This page will update automatically.</p>
             </div>
           </div>
         )}
@@ -203,8 +230,8 @@ export function ViewerShell(props: Props) {
           <div className="flex h-full items-center justify-center">
             <div className="max-w-sm text-center">
               <AlertCircle className="mx-auto mb-3 h-8 w-8 text-red-400" />
-              <p className="font-medium text-gray-900">Deployment failed</p>
-              <p className="mt-1 text-sm text-gray-500">{errorMsg || 'The app failed to deploy. Check the deployment logs for details.'}</p>
+              <p className="font-medium text-zinc-100">Deployment failed</p>
+              <p className="mt-1 text-sm text-zinc-400">{errorMsg || 'The app failed to deploy. Check the deployment logs for details.'}</p>
             </div>
           </div>
         )}
@@ -213,12 +240,14 @@ export function ViewerShell(props: Props) {
           <div className="flex h-full items-center justify-center">
             <div className="max-w-sm text-center">
               <AlertCircle className="mx-auto mb-3 h-8 w-8 text-red-400" />
-              <p className="font-medium text-gray-900">Unable to load app</p>
-              <p className="mt-1 text-sm text-gray-500">{errorMsg}</p>
+              <p className="font-medium text-zinc-100">Unable to load app</p>
+              <p className="mt-1 text-sm text-zinc-400">{errorMsg}</p>
               <Button className="mt-4" onClick={() => setViewState('loading')}>Try again</Button>
             </div>
           </div>
         )}
+
+        {viewState === 'loading' && <ViewerSkeleton />}
 
         {(viewState === 'loading' || viewState === 'ready') && iframeUrl && (
           <iframe
