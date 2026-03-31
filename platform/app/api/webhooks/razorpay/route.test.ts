@@ -32,10 +32,11 @@ beforeEach(() => {
 
 describe('POST /api/webhooks/razorpay', () => {
   it('grants credits on payment.captured for credit pack', async () => {
-    mockDb.mockResolvedValueOnce({
-      rows: [{ user_id: 'user1', credits: 100, pack_id: 'pack_100' }],
-    } as any)
-    mockDb.mockResolvedValueOnce({ rows: [] } as any)  // update status
+    mockDb
+      .mockResolvedValueOnce({ rows: [] } as any)  // BEGIN
+      .mockResolvedValueOnce({ rows: [{ user_id: 'user1', credits: 100, pack_id: 'pack_100' }] } as any)  // SELECT FOR UPDATE
+      .mockResolvedValueOnce({ rows: [] } as any)  // UPDATE status
+      .mockResolvedValueOnce({ rows: [] } as any)  // COMMIT
     mockGrant.mockResolvedValueOnce(120)
 
     const res = await POST(makeWebhookRequest({
@@ -46,13 +47,18 @@ describe('POST /api/webhooks/razorpay', () => {
     }))
     expect(res.status).toBe(200)
     expect(mockGrant).toHaveBeenCalledWith('user1', 100, 'credit_pack_pack_100')
+    expect(mockDb).toHaveBeenCalledWith(
+      expect.stringContaining("SET status = 'completed'"),
+      expect.arrayContaining(['pay_123', 'order_abc']),
+    )
   })
 
   it('grants credits on subscription.charged', async () => {
-    mockDb.mockResolvedValueOnce({
-      rows: [{ user_id: 'user1', plan_id: 'starter', credits_per_month: 250 }],
-    } as any)
-    mockDb.mockResolvedValueOnce({ rows: [] } as any)  // update subscription
+    mockDb
+      .mockResolvedValueOnce({ rows: [] } as any)  // BEGIN
+      .mockResolvedValueOnce({ rows: [{ user_id: 'user1', plan_id: 'starter', credits_per_month: 250 }] } as any)  // SELECT FOR UPDATE
+      .mockResolvedValueOnce({ rows: [] } as any)  // UPDATE period
+      .mockResolvedValueOnce({ rows: [] } as any)  // COMMIT
     mockGrant.mockResolvedValueOnce(370)
 
     const res = await POST(makeWebhookRequest({
@@ -64,5 +70,22 @@ describe('POST /api/webhooks/razorpay', () => {
     }))
     expect(res.status).toBe(200)
     expect(mockGrant).toHaveBeenCalledWith('user1', 250, 'subscription_renewal_starter')
+    expect(mockDb).toHaveBeenCalledWith(
+      expect.stringContaining('current_period_start'),
+      expect.arrayContaining(['sub_123']),
+    )
+  })
+
+  it('returns 400 for invalid signature', async () => {
+    const body = JSON.stringify({ event: 'payment.captured', payload: {} })
+    const req = new NextRequest('http://localhost/api/webhooks/razorpay', {
+      method: 'POST',
+      headers: { 'x-razorpay-signature': 'bad_signature' },
+      body,
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toBe('Invalid signature')
   })
 })

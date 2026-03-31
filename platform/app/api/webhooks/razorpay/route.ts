@@ -6,7 +6,10 @@ import crypto from 'crypto'
 
 function verifySignature(body: string, signature: string, secret: string): boolean {
   const expected = crypto.createHmac('sha256', secret).update(body).digest('hex')
-  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature))
+  const expectedBuf = Buffer.from(expected)
+  const signatureBuf = Buffer.from(signature)
+  if (expectedBuf.length !== signatureBuf.length) return false
+  return crypto.timingSafeEqual(expectedBuf, signatureBuf)
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -64,23 +67,35 @@ async function handlePaymentCaptured(payload: any): Promise<void> {
   const payment = payload.payment?.entity
   if (!payment || payment.status !== 'captured') return
 
-  const packResult = await db.query<{ user_id: string; credits: number; pack_id: string }>(
-    `SELECT user_id, credits, pack_id FROM subscriptions.credit_pack_purchases
-     WHERE razorpay_order_id = $1 AND status = 'pending'`,
-    [payment.order_id],
-  )
-  if (!packResult.rows[0]) return
+  // Use transaction + FOR UPDATE to prevent double-crediting on concurrent delivery
+  await db.query('BEGIN')
+  try {
+    const packResult = await db.query<{ user_id: string; credits: number; pack_id: string }>(
+      `SELECT user_id, credits, pack_id FROM subscriptions.credit_pack_purchases
+       WHERE razorpay_order_id = $1 AND status = 'pending'
+       FOR UPDATE`,
+      [payment.order_id],
+    )
+    if (!packResult.rows[0]) {
+      await db.query('COMMIT')
+      return
+    }
 
-  const { user_id, credits, pack_id } = packResult.rows[0]
+    const { user_id, credits, pack_id } = packResult.rows[0]
 
-  await grantCredits(user_id, credits, `credit_pack_${pack_id}`)
+    await db.query(
+      `UPDATE subscriptions.credit_pack_purchases
+       SET status = 'completed', razorpay_payment_id = $1
+       WHERE razorpay_order_id = $2`,
+      [payment.id, payment.order_id],
+    )
 
-  await db.query(
-    `UPDATE subscriptions.credit_pack_purchases
-     SET status = 'completed', razorpay_payment_id = $1
-     WHERE razorpay_order_id = $2`,
-    [payment.id, payment.order_id],
-  )
+    await db.query('COMMIT')
+    await grantCredits(user_id, credits, `credit_pack_${pack_id}`)
+  } catch (err) {
+    await db.query('ROLLBACK')
+    throw err
+  }
 }
 
 interface SubscriptionRow {
@@ -89,16 +104,6 @@ interface SubscriptionRow {
   credits_per_month: number
 }
 
-async function fetchSubscriptionRow(razorpaySubscriptionId: string): Promise<SubscriptionRow | null> {
-  const result = await db.query<SubscriptionRow>(
-    `SELECT us.user_id, us.plan_id, p.credits_per_month
-     FROM subscriptions.user_subscriptions us
-     JOIN subscriptions.plans p ON p.id = us.plan_id
-     WHERE us.razorpay_subscription_id = $1`,
-    [razorpaySubscriptionId],
-  )
-  return result.rows[0] ?? null
-}
 
 interface SubscriptionEntity {
   id: string
@@ -111,24 +116,52 @@ async function grantPeriodCredits(
   creditReasonPrefix: 'subscription_activation' | 'subscription_renewal',
   setActive: boolean,
 ): Promise<void> {
-  const row = await fetchSubscriptionRow(sub.id)
-  if (!row) return
+  // Use transaction + FOR UPDATE to prevent double-crediting on concurrent delivery
+  await db.query('BEGIN')
+  try {
+    const result = await db.query<SubscriptionRow>(
+      `SELECT us.user_id, us.plan_id, p.credits_per_month
+       FROM subscriptions.user_subscriptions us
+       JOIN subscriptions.plans p ON p.id = us.plan_id
+       WHERE us.razorpay_subscription_id = $1
+       FOR UPDATE`,
+      [sub.id],
+    )
+    const row = result.rows[0]
+    if (!row) {
+      await db.query('COMMIT')
+      return
+    }
 
-  const { user_id, plan_id, credits_per_month } = row
+    const { user_id, plan_id, credits_per_month } = row
 
-  await grantCredits(user_id, credits_per_month, `${creditReasonPrefix}_${plan_id}`)
+    // Always update period timestamps
+    await db.query(
+      `UPDATE subscriptions.user_subscriptions
+       SET current_period_start = TO_TIMESTAMP($2),
+           current_period_end = TO_TIMESTAMP($3),
+           credits_granted_at = NOW(),
+           updated_at = NOW()
+       WHERE razorpay_subscription_id = $1`,
+      [sub.id, sub.current_start, sub.current_end],
+    )
 
-  const statusClause = setActive ? `status = 'active',` : ''
-  await db.query(
-    `UPDATE subscriptions.user_subscriptions
-     SET ${statusClause}
-         current_period_start = TO_TIMESTAMP($2),
-         current_period_end = TO_TIMESTAMP($3),
-         credits_granted_at = NOW(),
-         updated_at = NOW()
-     WHERE razorpay_subscription_id = $1`,
-    [sub.id, sub.current_start, sub.current_end],
-  )
+    // Set status to active only on activation
+    if (setActive) {
+      await db.query(
+        `UPDATE subscriptions.user_subscriptions
+         SET status = 'active', updated_at = NOW()
+         WHERE razorpay_subscription_id = $1`,
+        [sub.id],
+      )
+    }
+
+    await db.query('COMMIT')
+    await grantCredits(user_id, credits_per_month, `${creditReasonPrefix}_${plan_id}`)
+  } catch (err) {
+    await db.query('ROLLBACK')
+    throw err
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
