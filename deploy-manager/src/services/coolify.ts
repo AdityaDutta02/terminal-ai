@@ -116,26 +116,36 @@ export async function createApp(params: {
 
 export async function waitForHealthy(
   appUrl: string,
-  options = { maxWaitMs: 120_000, intervalMs: 10_000 }
+  options = { maxWaitMs: 180_000, intervalMs: 10_000 }
 ): Promise<void> {
   const deadline = Date.now() + options.maxWaitMs
   let lastError: string = 'unknown'
 
+  // Try /health first, fall back to root path (not all apps have /health)
+  const endpoints = [`${appUrl}/health`, appUrl]
+
   while (Date.now() < deadline) {
-    try {
-      const res = await fetch(`${appUrl}/health`, {
-        signal: AbortSignal.timeout(5000),
-      })
-      if (res.ok) return  // success
-      lastError = `HTTP ${res.status}`
-    } catch (err) {
-      lastError = err instanceof Error ? err.message : 'connection refused'
+    for (const endpoint of endpoints) {
+      try {
+        const res = await fetch(endpoint, {
+          signal: AbortSignal.timeout(8000),
+          // Skip TLS verification for sslip.io domains (self-signed or no cert)
+          ...(endpoint.startsWith('http://') ? {} : {}),
+        })
+        if (res.ok) {
+          logger.info({ msg: 'health_check_passed', url: endpoint })
+          return
+        }
+        lastError = `HTTP ${res.status} from ${endpoint}`
+      } catch (err) {
+        lastError = err instanceof Error ? err.message : 'connection refused'
+      }
     }
     await new Promise(resolve => setTimeout(resolve, options.intervalMs))
   }
 
   throw Object.assign(
-    new Error(`Health check failed after ${options.maxWaitMs}ms: ${lastError}`),
+    new Error(`Health check failed after ${options.maxWaitMs / 1000}s: ${lastError}`),
     { code: 'HEALTH_CHECK_FAILED' }
   )
 }

@@ -17,6 +17,7 @@ export const deployQueue = new Queue('deploys', { connection: redisConnection })
 const GITHUB_REPO_RE = /^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/
 const COOLIFY_POLL_INTERVAL_MS = 30_000
 const COOLIFY_POLL_TIMEOUT_MS = 20 * 60 * 1000
+const MAX_UNHEALTHY_RETRIES = 10
 
 async function cloneRepo(githubRepo: string, dest: string): Promise<void> {
   if (!GITHUB_REPO_RE.test(githubRepo)) throw new Error(`Invalid githubRepo format: ${githubRepo}`)
@@ -65,10 +66,12 @@ async function pollCoolifyUntilRunning(coolifyId: string, deploymentId: string):
 
     // running:unknown means container is up but no health check configured — treat as success
     if (status === 'running' || status.startsWith('running:')) return
-    // exited:unhealthy can be transient during container startup — allow 3 retries
+    // exited:unhealthy is common during container startup (health check runs before app is ready)
+    // Allow up to 10 retries (5 minutes at 30s intervals) before giving up
     if (status === 'exited:unhealthy') {
       unhealthyCount++
-      if (unhealthyCount >= 3) throw new Error(`Coolify deployment failed with status: ${status}`)
+      logger.info({ msg: 'coolify_unhealthy_retry', deploymentId, coolifyId, attempt: unhealthyCount, maxRetries: MAX_UNHEALTHY_RETRIES })
+      if (unhealthyCount >= MAX_UNHEALTHY_RETRIES) throw new Error(`Coolify deployment failed with status: ${status}`)
       continue
     }
     const isTerminalFailure = ['exited', 'failed', 'error', 'degraded'].some(
@@ -175,9 +178,24 @@ export function startDeployWorker(): Worker {
 
       // Prefer Cloudflare subdomain when DNS is configured; otherwise use the
       // sslip.io domain Coolify auto-generated and returned.
-      const finalUrl = cloudflareConfigured
-        ? `https://${subdomain}.apps.terminalai.app`
-        : coolifyDomain
+      let finalUrl: string
+      if (cloudflareConfigured) {
+        finalUrl = `https://${subdomain}.apps.terminalai.app`
+      } else {
+        // Coolify returns fqdn as "http://..." — normalize to ensure it has a protocol
+        const rawDomain = coolifyDomain.replace(/^https?:\/\//, '').replace(/\/$/, '')
+        // sslip.io domains use HTTP by default (Coolify doesn't provision SSL for them)
+        finalUrl = rawDomain ? `http://${rawDomain}` : ''
+        if (!finalUrl) {
+          // Fetch the domain from Coolify API as a fallback
+          const details = await getAppDetails(coolifyId)
+          const fqdn = details.fqdn?.replace(/^https?:\/\//, '').replace(/\/$/, '')
+          finalUrl = fqdn ? `http://${fqdn}` : ''
+        }
+        if (!finalUrl) {
+          throw new Error('No domain returned by Coolify — cannot determine app URL')
+        }
+      }
 
       // Store Coolify app ID immediately so status checks can reference it
       await db.query(
