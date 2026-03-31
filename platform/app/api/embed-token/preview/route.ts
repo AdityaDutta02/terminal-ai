@@ -1,9 +1,6 @@
-// platform/app/api/embed-token/route.ts
+// platform/app/api/embed-token/preview/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { headers } from 'next/headers'
-import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { deductCredits } from '@/lib/credits'
 import { SignJWT } from 'jose'
 import { createHash, randomUUID } from 'crypto'
 import { z } from 'zod'
@@ -17,29 +14,28 @@ function getSecret(): Uint8Array {
 }
 
 const bodySchema = z.object({
-  appId: z.string().uuid('appId must be a valid UUID'),
+  appId: z.string().uuid(),
+  cookieId: z.string().min(1).max(64),
 })
 
 export async function POST(request: NextRequest) {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
   const parsed = bodySchema.safeParse(await request.json())
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
   }
-  const { appId } = parsed.data
+  const { appId, cookieId } = parsed.data
 
-  // Fetch app + channel info
+  // Get IP from Traefik header
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '0.0.0.0'
+
+  // Fetch app
   const appResult = await db.query<{
     id: string
     credits_per_session: number
     is_free: boolean
-    is_superadmin_channel: boolean
     creator_balance: number
   }>(
-    `SELECT a.id, a.credits_per_session, a.is_free,
-            c.is_superadmin_channel, c.creator_balance
+    `SELECT a.id, a.credits_per_session, a.is_free, c.creator_balance
      FROM marketplace.apps a
      JOIN marketplace.channels c ON c.id = a.channel_id
      WHERE a.id = $1 AND a.status = 'live' AND a.deleted_at IS NULL`,
@@ -50,10 +46,22 @@ export async function POST(request: NextRequest) {
   }
 
   const app = appResult.rows[0]
-  let creditsDeducted = 0
 
-  if (app.is_free) {
-    // Deduct from creator_balance (not user wallet)
+  // Check: has this IP+cookie already used this app for free?
+  const existingUsage = await db.query(
+    `SELECT id FROM gateway.anonymous_usage
+     WHERE app_id = $1 AND ip_address = $2 AND cookie_id = $3`,
+    [appId, ip, cookieId],
+  )
+  if (existingUsage.rows[0]) {
+    return NextResponse.json({
+      error: 'Free usage already used. Sign up for more credits.',
+      code: 'ANON_LIMIT_REACHED',
+    }, { status: 402 })
+  }
+
+  // For free apps: deduct from creator_balance
+  if (app.is_free && app.credits_per_session > 0) {
     if (app.creator_balance < app.credits_per_session) {
       return NextResponse.json({ error: 'This app is temporarily unavailable' }, { status: 402 })
     }
@@ -64,26 +72,25 @@ export async function POST(request: NextRequest) {
          AND creator_balance >= $1`,
       [app.credits_per_session, appId],
     )
-    creditsDeducted = app.credits_per_session
-  } else if (app.credits_per_session > 0) {
-    // Deduct from user's credit ledger
-    try {
-      await deductCredits(session.user.id, app.credits_per_session, 'session_start', appId)
-      creditsDeducted = app.credits_per_session
-    } catch {
-      return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 })
-    }
   }
+
+  // Record anonymous usage
+  await db.query(
+    `INSERT INTO gateway.anonymous_usage (app_id, ip_address, cookie_id)
+     VALUES ($1, $2, $3)
+     ON CONFLICT DO NOTHING`,
+    [appId, ip, cookieId],
+  )
 
   const sessionId = randomUUID()
   const expiresAt = new Date(Date.now() + FIFTEEN_MINUTES)
 
   const token = await new SignJWT({
-    userId: session.user.id,
+    userId: null,
     appId,
     sessionId,
-    creditsDeducted,
-    isAnon: false,
+    creditsDeducted: app.is_free ? app.credits_per_session : 0,
+    isAnon: true,
   })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -96,7 +103,7 @@ export async function POST(request: NextRequest) {
     `INSERT INTO gateway.embed_tokens
        (user_id, app_id, session_id, token_hash, expires_at, credits_deducted, deducted_at)
      VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
-    [session.user.id, appId, sessionId, tokenHash, expiresAt, creditsDeducted],
+    [null, appId, sessionId, tokenHash, expiresAt, app.is_free ? app.credits_per_session : 0],
   )
 
   return NextResponse.json({ token, sessionId })
