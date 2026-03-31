@@ -1,21 +1,14 @@
 import { Hono } from 'hono'
 import { streamSSE } from 'hono/streaming'
-import { embedTokenAuth, deductCredits } from '../middleware/auth.js'
+import { embedTokenAuth } from '../middleware/auth.js'
 import { db } from '../db.js'
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
-const CREDITS_PER_REQUEST = 1
 
 const proxy = new Hono()
 
 proxy.post('/v1/chat/completions', embedTokenAuth, async (c) => {
-  const { userId, appId, sessionId } = c.get('embedToken')
-
-  // Deduct credits before proxying
-  const remaining = await deductCredits(userId, CREDITS_PER_REQUEST, appId)
-  if (remaining === null) {
-    return c.json({ error: 'Insufficient credits' }, 402)
-  }
+  const { userId, appId, sessionId, creditsDeducted } = c.get('embedToken')
 
   const body = await c.req.json<Record<string, unknown>>()
   const startedAt = Date.now()
@@ -33,7 +26,7 @@ proxy.post('/v1/chat/completions', embedTokenAuth, async (c) => {
 
   if (!upstream.ok) {
     const err = await upstream.text()
-    await logCall({ userId, appId, sessionId, body, latency: Date.now() - startedAt, status: 'error' })
+    await logCall({ userId, appId, sessionId, body, latency: Date.now() - startedAt, status: 'error', creditsCharged: 0 })
     return c.json({ error: 'Upstream error', detail: err }, upstream.status as 400 | 500)
   }
 
@@ -43,7 +36,6 @@ proxy.post('/v1/chat/completions', embedTokenAuth, async (c) => {
     return streamSSE(c, async (stream) => {
       const reader = upstream.body!.getReader()
       const decoder = new TextDecoder()
-
       try {
         while (true) {
           const { done, value } = await reader.read()
@@ -52,32 +44,34 @@ proxy.post('/v1/chat/completions', embedTokenAuth, async (c) => {
         }
       } finally {
         reader.releaseLock()
-        await logCall({ userId, appId, sessionId, body, latency: Date.now() - startedAt, status: 'ok' })
+        await logCall({ userId, appId, sessionId, body, latency: Date.now() - startedAt, status: 'ok', creditsCharged: creditsDeducted })
       }
     })
   }
 
   const json = await upstream.json<Record<string, unknown>>()
-  await logCall({ userId, appId, sessionId, body, latency: Date.now() - startedAt, status: 'ok' })
+  await logCall({ userId, appId, sessionId, body, latency: Date.now() - startedAt, status: 'ok', creditsCharged: creditsDeducted })
   return c.json(json)
 })
 
 interface LogCallParams {
-  userId: string
+  userId: string | null
   appId: string
   sessionId: string
   body: Record<string, unknown>
   latency: number
   status: 'ok' | 'error'
+  creditsCharged: number
 }
 
-async function logCall({ userId, appId, sessionId, body, latency, status }: LogCallParams) {
+async function logCall(params: LogCallParams): Promise<void> {
+  const { userId, appId, sessionId, body, latency, status, creditsCharged } = params
   const model = typeof body.model === 'string' ? body.model : 'unknown'
   await db.query(
     `INSERT INTO gateway.api_calls
        (user_id, app_id, session_id, provider, model, credits_charged, latency_ms, status)
      VALUES ($1, $2, $3, 'openrouter', $4, $5, $6, $7)`,
-    [userId, appId, sessionId, model, CREDITS_PER_REQUEST, latency, status],
+    [userId, appId, sessionId, model, creditsCharged, latency, status],
   )
 }
 

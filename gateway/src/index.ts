@@ -28,7 +28,7 @@ app.use(
   }),
 )
 
-app.get('/health', (c) => c.json({ status: 'ok' }))
+app.get('/health', (c) => c.json({ status: 'ok', version: '1.0.0', ts: Date.now() }))
 
 app.route('/upload', uploadRouter)
 app.route('/', proxy)
