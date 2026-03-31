@@ -97,15 +97,23 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 }
 
-export async function POST(request: NextRequest): Promise<NextResponse> {
+async function requireKeysAndSession(request: NextRequest): Promise<
+  { keys: RazorpayKeys; session: Awaited<ReturnType<typeof auth.api.getSession>> & object } | NextResponse
+> {
   const keys = getRazorpayKeys()
   if (!keys) {
     logger.warn({ msg: 'razorpay_not_configured' })
     return NextResponse.json({ error: 'Payment not configured' }, { status: 503 })
   }
-
   const session = await auth.api.getSession({ headers: request.headers })
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  return { keys, session }
+}
+
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  const guard = await requireKeysAndSession(request)
+  if (guard instanceof NextResponse) return guard
+  const { keys, session } = guard
 
   const parsed = createSchema.safeParse(await request.json())
   if (!parsed.success) {
@@ -145,17 +153,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 }
 
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
-  const keys = getRazorpayKeys()
-  if (!keys) {
-    logger.warn({ msg: 'razorpay_not_configured' })
-    return NextResponse.json({ error: 'Payment not configured' }, { status: 503 })
-  }
-
-  const session = await auth.api.getSession({ headers: request.headers })
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const guard = await requireKeysAndSession(request)
+  if (guard instanceof NextResponse) return guard
+  const { keys, session } = guard
 
   try {
-    const result = await db.query(
+    const result = await db.query<{ razorpay_subscription_id: string }>(
       `SELECT razorpay_subscription_id FROM subscriptions.user_subscriptions
        WHERE user_id = $1 AND status = 'active' LIMIT 1`,
       [session.user.id],
