@@ -1,6 +1,7 @@
 // platform/app/api/embed-token/preview/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { logger } from '@/lib/logger'
 import { SignJWT } from 'jose'
 import { createHash, randomUUID } from 'crypto'
 import { z } from 'zod'
@@ -47,6 +48,11 @@ export async function POST(request: NextRequest) {
 
   const app = appResult.rows[0]
 
+  // Block anonymous users from non-free apps
+  if (!app.is_free) {
+    return NextResponse.json({ error: 'Sign in to use this app' }, { status: 401 })
+  }
+
   // Check: has this IP+cookie already used this app for free?
   const existingUsage = await db.query(
     `SELECT id FROM gateway.anonymous_usage
@@ -54,24 +60,26 @@ export async function POST(request: NextRequest) {
     [appId, ip, cookieId],
   )
   if (existingUsage.rows[0]) {
+    logger.info({ msg: 'Anonymous usage limit reached', appId, ip })
     return NextResponse.json({
       error: 'Free usage already used. Sign up for more credits.',
       code: 'ANON_LIMIT_REACHED',
     }, { status: 402 })
   }
 
-  // For free apps: deduct from creator_balance
-  if (app.is_free && app.credits_per_session > 0) {
-    if (app.creator_balance < app.credits_per_session) {
-      return NextResponse.json({ error: 'This app is temporarily unavailable' }, { status: 402 })
-    }
-    await db.query(
+  // For free apps: atomically deduct from creator_balance using RETURNING to detect race condition
+  if (app.credits_per_session > 0) {
+    const updateResult = await db.query<{ creator_balance: number }>(
       `UPDATE marketplace.channels
        SET creator_balance = creator_balance - $1
        WHERE id = (SELECT channel_id FROM marketplace.apps WHERE id = $2)
-         AND creator_balance >= $1`,
+         AND creator_balance >= $1
+       RETURNING creator_balance`,
       [app.credits_per_session, appId],
     )
+    if (!updateResult.rows[0]) {
+      return NextResponse.json({ error: 'This app is temporarily unavailable' }, { status: 402 })
+    }
   }
 
   // Record anonymous usage
@@ -89,7 +97,7 @@ export async function POST(request: NextRequest) {
     userId: null,
     appId,
     sessionId,
-    creditsDeducted: app.is_free ? app.credits_per_session : 0,
+    creditsDeducted: app.credits_per_session,
     isAnon: true,
   })
     .setProtectedHeader({ alg: 'HS256' })
@@ -103,7 +111,7 @@ export async function POST(request: NextRequest) {
     `INSERT INTO gateway.embed_tokens
        (user_id, app_id, session_id, token_hash, expires_at, credits_deducted, deducted_at)
      VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
-    [null, appId, sessionId, tokenHash, expiresAt, app.is_free ? app.credits_per_session : 0],
+    [null, appId, sessionId, tokenHash, expiresAt, app.credits_per_session],
   )
 
   return NextResponse.json({ token, sessionId })
