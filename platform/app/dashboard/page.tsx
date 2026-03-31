@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation'
-import { headers, cookies } from 'next/headers'
+import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { getBalance } from '@/lib/credits'
 import Link from 'next/link'
 
 function deployBadge(status: string): string {
@@ -11,37 +12,10 @@ function deployBadge(status: string): string {
   return 'bg-red-900/40 text-red-400'
 }
 
-type CreditsResponse = { balance: number }
-type SubscriptionResponse = {
-  active: boolean
-  plan?: string
-  current_period_end?: string
-}
-
-async function fetchCredits(cookieHeader: string): Promise<CreditsResponse | null> {
-  try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/api/credits`,
-      { headers: { cookie: cookieHeader }, cache: 'no-store' },
-    )
-    if (!res.ok) return null
-    return res.json() as Promise<CreditsResponse>
-  } catch {
-    return null
-  }
-}
-
-async function fetchSubscription(cookieHeader: string): Promise<SubscriptionResponse | null> {
-  try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/api/subscriptions`,
-      { headers: { cookie: cookieHeader }, cache: 'no-store' },
-    )
-    if (!res.ok) return null
-    return res.json() as Promise<SubscriptionResponse>
-  } catch {
-    return null
-  }
+type SubscriptionRow = {
+  status: string
+  name: string
+  current_period_end: string | null
 }
 
 export const metadata = { title: 'Dashboard' }
@@ -49,9 +23,6 @@ export const metadata = { title: 'Dashboard' }
 export default async function DashboardPage() {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) redirect('/login')
-
-  const cookieStore = await cookies()
-  const cookieHeader = cookieStore.toString()
 
   const [apps, credits, subscription] = await Promise.all([
     db.query(
@@ -64,11 +35,18 @@ export default async function DashboardPage() {
        ORDER BY a.created_at DESC`,
       [session.user.id],
     ),
-    fetchCredits(cookieHeader),
-    fetchSubscription(cookieHeader),
+    getBalance(session.user.id).catch(() => null),
+    db.query<SubscriptionRow>(
+      `SELECT us.status, p.name, us.current_period_end
+       FROM subscriptions.user_subscriptions us
+       JOIN subscriptions.plans p ON p.id = us.plan_id
+       WHERE us.user_id = $1
+       ORDER BY us.created_at DESC LIMIT 1`,
+      [session.user.id],
+    ).then(r => r.rows[0] ?? null).catch(() => null),
   ])
 
-  const hasActiveSubscription = subscription?.active === true
+  const hasActiveSubscription = subscription?.status === 'active'
 
   return (
     <div className="max-w-4xl mx-auto py-10 px-4">
@@ -88,7 +66,7 @@ export default async function DashboardPage() {
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
           <p className="text-xs uppercase tracking-wide text-zinc-500 mb-1">Credit Balance</p>
           {credits !== null ? (
-            <p className="text-3xl font-bold text-white">{credits.balance.toLocaleString()}</p>
+            <p className="text-3xl font-bold text-white">{credits.toLocaleString()}</p>
           ) : (
             <p className="text-sm text-zinc-500">Unable to load balance</p>
           )}
@@ -106,7 +84,7 @@ export default async function DashboardPage() {
           <p className="text-xs uppercase tracking-wide text-zinc-500 mb-1">Subscription</p>
           {hasActiveSubscription ? (
             <>
-              <p className="text-lg font-semibold text-white capitalize">{subscription?.plan ?? 'Active'}</p>
+              <p className="text-lg font-semibold text-white capitalize">{subscription?.name ?? 'Active'}</p>
               {subscription?.current_period_end && (
                 <p className="mt-1 text-sm text-zinc-400">
                   Renews {new Date(subscription.current_period_end).toLocaleDateString()}
@@ -145,7 +123,7 @@ export default async function DashboardPage() {
                   {app.subdomain ? `${app.subdomain as string}.apps.terminalai.app` : 'No subdomain yet'}
                 </p>
               </div>
-              <span className={`text-xs px-2 py-1 rounded-full ${deployBadge(app.deploy_status as string ?? 'pending')}`}>
+              <span className={`text-xs px-2 py-1 rounded-full ${deployBadge((app.deploy_status ?? 'pending') as string)}`}>
                 {(app.deploy_status as string) ?? 'pending'}
               </span>
             </div>

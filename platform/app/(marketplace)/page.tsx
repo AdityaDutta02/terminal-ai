@@ -119,7 +119,7 @@ export default async function HomePage() {
                 <p className="mb-4 line-clamp-2 text-sm text-gray-500">{channel.description}</p>
               )}
               <div className="mt-auto flex items-center justify-between">
-                <span className="text-xs text-gray-400">{channel.app_count} apps</span>
+                <span className="text-xs text-gray-400">{Number(channel.app_count).toLocaleString()} apps</span>
                 <ArrowRight className="h-4 w-4 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-violet-500" />
               </div>
             </a>
