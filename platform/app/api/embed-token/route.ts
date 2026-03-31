@@ -53,7 +53,12 @@ export async function POST(request: NextRequest) {
   const app = appResult.rows[0]
   let creditsDeducted = 0
 
-  if (app.is_free && app.credits_per_session > 0) {
+  // Admins skip credit deduction entirely
+  const isAdmin = session.user.role === 'admin'
+
+  if (isAdmin) {
+    // no-op: admins are never charged
+  } else if (app.is_free && app.credits_per_session > 0) {
     // Atomically deduct from creator_balance using RETURNING to detect race condition
     const updateResult = await db.query<{ creator_balance: number }>(
       `UPDATE marketplace.channels
