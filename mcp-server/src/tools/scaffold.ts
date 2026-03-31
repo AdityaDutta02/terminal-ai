@@ -17,17 +17,35 @@ function isPython(framework: string): boolean {
   return framework === 'python' || framework === 'streamlit'
 }
 const GATEWAY_SDK = `// Terminal AI Gateway SDK
+import config from '../terminal-ai.config.json' assert { type: 'json' }
+
 const GATEWAY_URL = process.env.TERMINAL_AI_GATEWAY_URL!
+
+async function callGateway(
+  messages: { role: string; content: string }[],
+  token: string,
+  retries = 1
+): Promise<Response> {
+  const res = await fetch(\`\${GATEWAY_URL}/v1/chat/completions\`, {
+    method: 'POST',
+    headers: {
+      Authorization: \`Bearer \${token}\`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ model: config.model_tier, messages, stream: true }),
+  })
+  if (res.status === 401 && retries > 0) {
+    // Token may have expired — the caller should refresh and retry
+    throw Object.assign(new Error('Gateway 401: token expired or invalid'), { code: 'TOKEN_EXPIRED', retryable: true })
+  }
+  return res
+}
+
 export async function* streamChat(
   messages: { role: string; content: string }[],
   embedToken: string,
-  model = 'anthropic/claude-3-5-haiku'
 ) {
-  const res = await fetch(\`\${GATEWAY_URL}/v1/chat/completions\`, {
-    method: 'POST',
-    headers: { Authorization: \`Bearer \${embedToken}\`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, messages, stream: true }),
-  })
+  const res = await callGateway(messages, embedToken)
   if (!res.ok) throw new Error(\`Gateway error: \${res.status}\`)
   const reader = res.body!.getReader()
   const decoder = new TextDecoder()
@@ -91,7 +109,7 @@ export function scaffoldApp(input: ScaffoldInput): ScaffoldOutput {
     port: isPython(input.framework) ? 8000 : 3000,
     requires_file_upload: input.uses_file_upload,
     generates_artifacts: input.generates_artifacts,
-    min_credits_per_session: 10,
+    model_tier: 'standard',
   }
   const frameworkFiles = input.framework === 'nextjs' ? buildNextjsFiles(input) : buildPythonFiles(input)
   const files: Record<string, string> = {
