@@ -1,6 +1,7 @@
 // platform/lib/pricing.ts
 
-export const MODEL_TIER_CREDITS: Record<string, number> = {
+export type ModelTier = 'standard' | 'advanced' | 'premium' | 'image-fast' | 'image-pro'
+export const MODEL_TIER_CREDITS: Record<ModelTier, number> = {
   standard: 1,
   advanced: 4,
   premium: 6,
@@ -8,6 +9,7 @@ export const MODEL_TIER_CREDITS: Record<string, number> = {
   'image-pro': 93,
 }
 
+// Price in rupees (display/checkout use). Note: DB subscriptions.plans.price_inr stores paise.
 export const PLANS = {
   starter: { priceInr: 149, credits: 250, name: 'Starter', razorpayPlanId: process.env.RAZORPAY_PLAN_ID_STARTER ?? '' },
   creator: { priceInr: 299, credits: 650, name: 'Creator', razorpayPlanId: process.env.RAZORPAY_PLAN_ID_CREATOR ?? '' },
