@@ -113,3 +113,29 @@ export async function createApp(params: {
 
   return { uuid, domain }
 }
+
+export async function waitForHealthy(
+  appUrl: string,
+  options = { maxWaitMs: 120_000, intervalMs: 10_000 }
+): Promise<void> {
+  const deadline = Date.now() + options.maxWaitMs
+  let lastError: string = 'unknown'
+
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(`${appUrl}/health`, {
+        signal: AbortSignal.timeout(5000),
+      })
+      if (res.ok) return  // success
+      lastError = `HTTP ${res.status}`
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : 'connection refused'
+    }
+    await new Promise(resolve => setTimeout(resolve, options.intervalMs))
+  }
+
+  throw Object.assign(
+    new Error(`Health check failed after ${options.maxWaitMs}ms: ${lastError}`),
+    { code: 'HEALTH_CHECK_FAILED' }
+  )
+}

@@ -1,7 +1,7 @@
 import { Queue, Worker } from 'bullmq'
 import { readFile, rm } from 'fs/promises'
 import { scanForSecrets } from '../services/gitleaks'
-import { createApp, triggerDeploy, getAppDetails } from '../services/coolify'
+import { createApp, triggerDeploy, getAppDetails, waitForHealthy } from '../services/coolify'
 import { createSubdomain } from '../services/dns'
 import { db } from '../lib/db'
 import { logger } from '../lib/logger'
@@ -189,6 +189,8 @@ export function startDeployWorker(): Worker {
 
       // Wait for Coolify to finish building and start the container
       await pollCoolifyUntilRunning(coolifyId, deploymentId)
+
+      await waitForHealthy(finalUrl)
 
       await db.query(
         `UPDATE deployments.deployments SET status = 'live', url = $2, completed_at = NOW(), updated_at = NOW() WHERE id = $1`,
