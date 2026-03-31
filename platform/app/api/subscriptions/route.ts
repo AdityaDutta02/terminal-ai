@@ -128,13 +128,25 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'No active subscription' }, { status: 404 })
     }
 
-    await cancelSubscription(result.rows[0].razorpay_subscription_id)
+    const razorpaySubId = result.rows[0].razorpay_subscription_id
+    await cancelSubscription(razorpaySubId)
 
-    await db.query(
-      `UPDATE subscriptions.user_subscriptions SET status = 'cancelled'
-       WHERE razorpay_subscription_id = $1`,
-      [result.rows[0].razorpay_subscription_id],
-    )
+    try {
+      await db.query(
+        `UPDATE subscriptions.user_subscriptions SET status = 'cancelled'
+         WHERE razorpay_subscription_id = $1`,
+        [razorpaySubId],
+      )
+    } catch (dbErr) {
+      logger.error({
+        msg: 'subscription_cancel_db_inconsistency',
+        razorpaySubId,
+        userId: session.user.id,
+        err: String(dbErr),
+        note: 'Razorpay cancel succeeded but local DB update failed — manual reconciliation required',
+      })
+      return NextResponse.json({ error: 'Subscription cancelled in payment provider but local state update failed' }, { status: 500 })
+    }
 
     logger.info({ msg: 'subscription_cancelled', userId: session.user.id })
 

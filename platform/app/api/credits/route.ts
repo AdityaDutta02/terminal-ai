@@ -35,6 +35,12 @@ const purchaseSchema = z.object({
 })
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  const keyId = process.env.RAZORPAY_KEY_ID
+  if (!keyId) {
+    logger.error({ msg: 'RAZORPAY_KEY_ID not configured' })
+    return NextResponse.json({ error: 'Payment not configured' }, { status: 503 })
+  }
+
   const session = await auth.api.getSession({ headers: request.headers })
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -65,7 +71,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       orderId: order.id,
       amount: pack.priceInr * 100,
       currency: 'INR',
-      keyId: process.env.RAZORPAY_KEY_ID,
+      keyId,
     })
   } catch (err) {
     logger.error({ msg: 'credit_pack_order_failed', userId: session.user.id, packId, err: String(err) })

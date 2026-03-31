@@ -3,10 +3,21 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('@/lib/db', () => ({ db: { query: vi.fn() } }))
 vi.mock('@/lib/auth', () => ({ auth: { api: { getSession: vi.fn() } } }))
 vi.mock('@/lib/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }))
+vi.mock('@/lib/pricing', () => ({
+  PLANS: {
+    starter: { priceInr: 149, credits: 250, name: 'Starter', razorpayPlanId: 'plan_starter_test' },
+    creator: { priceInr: 299, credits: 650, name: 'Creator', razorpayPlanId: 'plan_creator_test' },
+    pro:     { priceInr: 599, credits: 1400, name: 'Pro',     razorpayPlanId: 'plan_pro_test' },
+  },
+}))
+
+// Mock global fetch used by createSubscription / cancelSubscription helpers
+const mockFetch = vi.fn()
+vi.stubGlobal('fetch', mockFetch)
 
 import { db } from '@/lib/db'
 import { auth } from '@/lib/auth'
-import { GET, POST } from './route'
+import { GET, POST, DELETE } from './route'
 import { NextRequest } from 'next/server'
 
 const mockDb = vi.mocked(db.query)
@@ -44,5 +55,35 @@ describe('POST /api/subscriptions', () => {
     })
     const res = await POST(req)
     expect(res.status).toBe(400)
+  })
+
+  it('creates subscription successfully', async () => {
+    mockAuth.mockResolvedValue({ user: { id: 'user1' } } as any)
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ id: 'sub_abc123', short_url: 'https://rzp.io/l/abc' }),
+    } as any)
+    mockDb.mockResolvedValueOnce({ rows: [] } as any)
+
+    const req = new NextRequest('http://localhost/api/subscriptions', {
+      method: 'POST',
+      body: JSON.stringify({ planId: 'starter' }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.subscriptionId).toBe('sub_abc123')
+    expect(body.shortUrl).toBe('https://rzp.io/l/abc')
+  })
+})
+
+describe('DELETE /api/subscriptions', () => {
+  it('returns 401 when not authenticated', async () => {
+    mockAuth.mockResolvedValue(null)
+    const req = new NextRequest('http://localhost/api/subscriptions', { method: 'DELETE' })
+    const res = await DELETE(req)
+    expect(res.status).toBe(401)
+    const body = await res.json()
+    expect(body.error).toBe('Unauthorized')
   })
 })
