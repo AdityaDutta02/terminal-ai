@@ -25,8 +25,7 @@ export default function SignupPage() {
       setError(error.message ?? 'Sign up failed. Please try again.')
       return
     }
-    router.push('/')
-    router.refresh()
+    router.push(`/verify-email?email=${encodeURIComponent(email)}`)
   }
 
   return (
@@ -38,12 +37,12 @@ export default function SignupPage() {
             <Zap className="h-6 w-6 text-white" strokeWidth={2.5} />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Create your account</h1>
-          <p className="mt-1 text-sm text-gray-500">Start with 200 free credits</p>
+          <p className="mt-1 text-sm text-gray-500">Get 20 free credits after verification</p>
         </div>
 
         {/* Perks */}
         <div className="mb-6 flex flex-col gap-2">
-          {['200 free credits on signup', 'Access to all AI apps', 'No credit card required'].map((perk) => (
+          {['20 free credits after email verification', 'Access to all AI apps', 'No credit card required'].map((perk) => (
             <div key={perk} className="flex items-center gap-2 text-sm text-gray-600">
               <CheckCircle2 className="h-4 w-4 text-emerald-500 flex-shrink-0" />
               {perk}
