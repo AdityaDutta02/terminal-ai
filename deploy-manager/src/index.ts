@@ -12,7 +12,7 @@ const REQUIRED_ENV = [
   'COOLIFY_PROJECT_UUID',
   'COOLIFY_SERVER_UUID',
   'DATABASE_URL',
-  'REDIS_URL',
+  'REDIS_PASSWORD',
 ] as const
 
 for (const key of REQUIRED_ENV) {
