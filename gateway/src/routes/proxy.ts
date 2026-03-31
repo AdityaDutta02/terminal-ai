@@ -67,12 +67,17 @@ interface LogCallParams {
 async function logCall(params: LogCallParams): Promise<void> {
   const { userId, appId, sessionId, body, latency, status, creditsCharged } = params
   const model = typeof body.model === 'string' ? body.model : 'unknown'
-  await db.query(
-    `INSERT INTO gateway.api_calls
-       (user_id, app_id, session_id, provider, model, credits_charged, latency_ms, status)
-     VALUES ($1, $2, $3, 'openrouter', $4, $5, $6, $7)`,
-    [userId, appId, sessionId, model, creditsCharged, latency, status],
-  )
+  try {
+    await db.query(
+      `INSERT INTO gateway.api_calls
+         (user_id, app_id, session_id, provider, model, credits_charged, latency_ms, status)
+       VALUES ($1, $2, $3, 'openrouter', $4, $5, $6, $7)`,
+      [userId, appId, sessionId, model, creditsCharged, latency, status],
+    )
+  } catch (err) {
+    // Audit log failure must not crash the proxy response path
+    console.error('[logCall] failed to insert audit record', { sessionId, err: err instanceof Error ? err.message : String(err) })
+  }
 }
 
 export { proxy }

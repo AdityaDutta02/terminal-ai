@@ -37,6 +37,7 @@ export const embedTokenAuth = createMiddleware(async (c, next) => {
 
   const tokenHash = createHash('sha256').update(token).digest('hex')
 
+  // Verify token exists in DB and has not expired (guards against revoked tokens)
   const { rows } = await db.query<{ id: string }>(
     `SELECT id FROM gateway.embed_tokens
      WHERE token_hash = $1 AND expires_at > NOW()`,
