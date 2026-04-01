@@ -48,5 +48,17 @@ export const embedTokenAuth = createMiddleware(async (c, next) => {
   }
 
   c.set('embedToken', payload)
+
+  // Check if app's channel is suspended
+  const suspension = await db.query<{ id: string }>(
+    `SELECT cs.id FROM platform.channel_suspensions cs
+     JOIN marketplace.apps a ON a.channel_id = cs.channel_id
+     WHERE a.id = $1 AND cs.is_active = true`,
+    [payload.appId],
+  )
+  if (suspension.rows[0]) {
+    return c.json({ error: 'This channel has been suspended' }, 403)
+  }
+
   await next()
 })

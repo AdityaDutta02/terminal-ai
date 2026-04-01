@@ -49,6 +49,27 @@ export const auth = betterAuth({
       },
     },
   },
+  hooks: {
+    after: [
+      {
+        matcher: (ctx: { path: string }) => ctx.path.startsWith('/get-session'),
+        handler: async (ctx: { context?: { session?: { user?: { id?: string } } } }) => {
+          const userId = ctx.context?.session?.user?.id
+          if (!userId) return
+
+          const ban = await db.query(
+            `SELECT id FROM platform.user_bans
+             WHERE user_id = $1 AND is_active = true
+               AND (expires_at IS NULL OR expires_at > NOW())`,
+            [userId],
+          )
+          if (ban.rows[0]) {
+            throw new Error('Account suspended')
+          }
+        },
+      },
+    ],
+  },
 })
 
 export type Session = typeof auth.$Infer.Session
