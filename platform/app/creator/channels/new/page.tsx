@@ -1,11 +1,31 @@
 'use client'
+
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { ChevronLeft, ImageIcon } from 'lucide-react'
 import { logger } from '@/lib/logger'
+
+const CATEGORIES = [
+  'AI Tools',
+  'Productivity',
+  'Developer Tools',
+  'Education',
+  'Entertainment',
+  'Business',
+  'Design',
+  'Other',
+]
+
 export default function NewChannelPage() {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [slug, setSlug] = useState('')
+
+  function handleSlugChange(value: string): void {
+    setSlug(value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-'))
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setSaving(true)
@@ -13,8 +33,9 @@ export default function NewChannelPage() {
     const fd = new FormData(e.currentTarget)
     const body = {
       name: fd.get('name') as string,
-      slug: fd.get('slug') as string,
+      slug: slug,
       description: fd.get('description') as string,
+      category: fd.get('category') as string,
     }
     try {
       const res = await fetch('/api/creator/channels', {
@@ -36,32 +57,59 @@ export default function NewChannelPage() {
       setSaving(false)
     }
   }
+
   return (
-    <div className="max-w-xl">
-      <div className="mb-8">
-        <a href="/creator" className="text-sm text-gray-400 hover:text-gray-600 transition-colors">← Dashboard</a>
-        <h1 className="mt-4 text-2xl font-bold text-gray-900">Create a channel</h1>
-        <p className="mt-1 text-sm text-gray-500">A channel groups your AI apps under one brand</p>
-      </div>
-      <form onSubmit={handleSubmit} className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm space-y-5">
+    <div className="max-w-[600px] mx-auto px-6 py-8">
+      {/* Back breadcrumb */}
+      <a
+        href="/creator"
+        className="inline-flex items-center gap-1.5 text-[13px] text-slate-400 hover:text-slate-600 transition-colors mb-6"
+      >
+        <ChevronLeft className="w-4 h-4" />
+        Back to Dashboard
+      </a>
+
+      <h1 className="text-[28px] font-extrabold text-slate-900 tracking-tight">Create a channel</h1>
+      <p className="text-[14px] text-slate-400 mt-1 mb-6">A channel groups your AI apps under one brand</p>
+
+      <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8">
         {error && (
-          <div className="rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+          <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-[14px] text-red-700 mb-6">
+            {error}
+          </div>
         )}
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-gray-700" htmlFor="name">Channel name</label>
+
+        {/* Avatar upload area */}
+        <div className="mb-6">
+          <label className="block text-[13px] font-medium text-slate-700 mb-2">Channel avatar</label>
+          <div className="w-20 h-20 bg-slate-100 rounded-2xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center cursor-pointer hover:border-orange-300 hover:bg-orange-50/30 transition-colors">
+            <ImageIcon className="w-6 h-6 text-slate-300" />
+            <span className="text-[11px] text-slate-400 mt-1">Avatar</span>
+          </div>
+        </div>
+
+        {/* Channel name */}
+        <div className="mb-5">
+          <label className="block text-[13px] font-medium text-slate-700 mb-1.5" htmlFor="name">
+            Channel name
+          </label>
           <input
             id="name"
             name="name"
             required
             maxLength={80}
             placeholder="My AI Studio"
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+            className="w-full h-[44px] px-4 rounded-xl border border-slate-200 text-[14px] outline-none focus:border-orange-300 focus:ring-2 focus:ring-orange-100 transition-colors"
           />
         </div>
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-gray-700" htmlFor="slug">URL slug</label>
-          <div className="flex items-center rounded-lg border border-gray-200 focus-within:border-violet-300 focus-within:ring-2 focus-within:ring-violet-100">
-            <span className="pl-3 text-sm text-gray-400">terminalai.app/c/</span>
+
+        {/* URL slug */}
+        <div className="mb-5">
+          <label className="block text-[13px] font-medium text-slate-700 mb-1.5" htmlFor="slug">
+            URL slug
+          </label>
+          <div className="flex items-center h-[44px] rounded-xl border border-slate-200 focus-within:border-orange-300 focus-within:ring-2 focus-within:ring-orange-100 transition-colors">
+            <span className="pl-4 text-[14px] text-slate-400 select-none whitespace-nowrap">terminal.app/c/</span>
             <input
               id="slug"
               name="slug"
@@ -69,32 +117,61 @@ export default function NewChannelPage() {
               pattern="[a-z0-9-]+"
               maxLength={60}
               placeholder="my-ai-studio"
-              className="flex-1 rounded-lg px-2 py-2 text-sm outline-none"
+              value={slug}
+              onChange={(e) => handleSlugChange(e.target.value)}
+              className="flex-1 h-full px-1 text-[14px] outline-none bg-transparent"
             />
           </div>
-          <p className="mt-1 text-xs text-gray-400">Lowercase letters, numbers, and hyphens only</p>
+          <p className="mt-1 text-[12px] text-slate-400">Lowercase letters, numbers, and hyphens only</p>
         </div>
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-gray-700" htmlFor="description">Description</label>
+
+        {/* Description */}
+        <div className="mb-5">
+          <label className="block text-[13px] font-medium text-slate-700 mb-1.5" htmlFor="description">
+            Description
+          </label>
           <textarea
             id="description"
             name="description"
-            rows={3}
             maxLength={500}
             placeholder="What kind of apps do you build?"
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none resize-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+            className="w-full h-[100px] px-4 py-3 rounded-xl border border-slate-200 text-[14px] outline-none resize-none focus:border-orange-300 focus:ring-2 focus:ring-orange-100 transition-colors"
           />
         </div>
-        <div className="flex items-center justify-end gap-3 pt-2">
-          <a href="/creator" className="rounded-lg px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">
+
+        {/* Category */}
+        <div className="mb-5">
+          <label className="block text-[13px] font-medium text-slate-700 mb-1.5" htmlFor="category">
+            Category
+          </label>
+          <select
+            id="category"
+            name="category"
+            className="w-full h-[44px] px-4 rounded-xl border border-slate-200 text-[14px] outline-none bg-white focus:border-orange-300 focus:ring-2 focus:ring-orange-100 transition-colors appearance-none"
+          >
+            <option value="">Select a category</option>
+            {CATEGORIES.map((cat) => (
+              <option key={cat} value={cat.toLowerCase().replace(/\s+/g, '-')}>
+                {cat}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Actions */}
+        <div className="border-t border-slate-100 mt-8 pt-6 flex items-center justify-end gap-3">
+          <a
+            href="/creator"
+            className="h-[40px] px-5 rounded-xl text-[14px] font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-colors inline-flex items-center"
+          >
             Cancel
           </a>
           <button
             type="submit"
             disabled={saving}
-            className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60 hover:bg-violet-700 transition-colors"
+            className="h-[40px] px-5 rounded-xl bg-[#FF6B00] text-[14px] font-semibold text-white disabled:opacity-60 hover:bg-[#E55F00] transition-colors"
           >
-            {saving ? 'Creating…' : 'Create channel'}
+            {saving ? 'Creating...' : 'Create Channel'}
           </button>
         </div>
       </form>
