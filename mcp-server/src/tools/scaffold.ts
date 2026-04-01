@@ -82,6 +82,13 @@ export function useEmbedToken(): string | null {
       }
     }
     window.addEventListener('message', handleMessage)
+
+    // Signal to the viewer shell that this app is ready to receive the token.
+    // Handles the race condition where the app loads after the initial delivery.
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: 'TERMINAL_AI_READY' }, '*')
+    }
+
     return () => window.removeEventListener('message', handleMessage)
   }, [])
 

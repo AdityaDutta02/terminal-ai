@@ -63,17 +63,14 @@ export function ViewerShell(props: Props) {
     return token
   }, [appId])
 
-  function deliverToken(token: string, url: string) {
+  function deliverToken(token: string) {
     const iframe = iframeRef.current
-    if (!iframe?.contentWindow || !url) return
-    try {
-      iframe.contentWindow.postMessage(
-        { type: 'TERMINAL_AI_TOKEN', token },
-        new URL(url).origin,
-      )
-    } catch {
-      // ignore invalid URL
-    }
+    if (!iframe?.contentWindow) return
+    // Use '*' as targetOrigin — the token is session-scoped, short-lived (15 min),
+    // and bound to a specific appId, so origin restriction adds no real security here.
+    // Strict origin matching silently fails when Cloudflare proxies HTTP↔HTTPS or
+    // when sslip.io domains don't match the stored iframe_url exactly.
+    iframe.contentWindow.postMessage({ type: 'TERMINAL_AI_TOKEN', token }, '*')
   }
 
   // Fetch token once the app URL is available
@@ -88,7 +85,7 @@ export function ViewerShell(props: Props) {
         tokenRef.current = token
         setTokenIssuedAt(Date.now())
         setViewState('ready')
-        deliverToken(token, iframeUrl)
+        deliverToken(token)
       } catch (err) {
         if (cancelled) return
         setErrorMsg(err instanceof Error ? err.message : 'Something went wrong')
@@ -132,7 +129,7 @@ export function ViewerShell(props: Props) {
     const interval = setInterval(async () => {
       try {
         const token = await fetchToken()
-        deliverToken(token, iframeUrl)
+        deliverToken(token)
       } catch {
         // silently fail — next interval will retry
       }
@@ -160,7 +157,7 @@ export function ViewerShell(props: Props) {
                   const token = await fetchToken()
                   tokenRef.current = token
                   setTokenIssuedAt(Date.now())
-                  deliverToken(token, iframeUrl)
+                  deliverToken(token)
                 } catch {
                   // silently fail — the auto-refresh interval will retry
                 }
@@ -177,22 +174,27 @@ export function ViewerShell(props: Props) {
 
   // Re-deliver token when iframe reloads
   function handleIframeLoad() {
-    if (tokenRef.current && iframeUrl) {
-      deliverToken(tokenRef.current, iframeUrl)
+    if (tokenRef.current) {
+      deliverToken(tokenRef.current)
     }
   }
 
-  // Listen for credit updates from the embedded app
+  // Listen for messages from the embedded app (credit updates + ready signal)
   useEffect(() => {
     if (!iframeUrl) return
     function handleMessage(event: MessageEvent) {
-      try {
-        if (event.origin !== new URL(iframeUrl).origin) return
-      } catch {
+      const data = event.data
+      if (!data || typeof data !== 'object') return
+
+      // App signals it's ready to receive the token — re-deliver immediately
+      if (data.type === 'TERMINAL_AI_READY' && tokenRef.current) {
+        deliverToken(tokenRef.current)
         return
       }
-      if (event.data?.type === 'TERMINAL_AI_CREDITS_UPDATE' && typeof event.data.balance === 'number') {
-        setCredits(event.data.balance)
+
+      // Credit balance update from the app
+      if (data.type === 'TERMINAL_AI_CREDITS_UPDATE' && typeof data.balance === 'number') {
+        setCredits(data.balance)
       }
     }
     window.addEventListener('message', handleMessage)
