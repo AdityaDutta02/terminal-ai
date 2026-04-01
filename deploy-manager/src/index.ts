@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { logger as honoLogger } from 'hono/logger'
-import { deployQueue, startDeployWorker, startPollWorker } from './queue/deploy-queue'
+import { deployQueue, startDeployWorker, startPollWorker, JOB_OPTIONS } from './queue/deploy-queue'
 import { getAppDetails, deleteApp, getDeploymentLogs, triggerDeploy } from './services/coolify'
 import { db } from './lib/db'
 import { logger } from './lib/logger'
@@ -82,7 +82,7 @@ app.get('/deployments/:id', async (c) => {
 })
 app.post('/deploy', async (c) => {
   const body = await c.req.json() as { deploymentId: string; appId: string; githubRepo: string; branch: string; subdomain: string }
-  await deployQueue.add('deploy', body)
+  await deployQueue.add('deploy', body, JOB_OPTIONS)
   logger.info({ msg: 'deploy_queued', deploymentId: body.deploymentId })
   return c.json({ queued: true })
 })
@@ -181,7 +181,7 @@ app.post('/deployments/:id/retry', async (c) => {
     githubRepo: row.github_repo,
     branch: row.github_branch,
     subdomain: row.subdomain,
-  })
+  }, JOB_OPTIONS)
   logger.info({ msg: 'deploy_retry_queued', deploymentId: id })
   return c.json({ queued: true })
 })
@@ -242,7 +242,7 @@ app.post('/apps/:appId/redeploy', async (c) => {
     githubRepo: prev.github_repo,
     branch: prev.github_branch,
     subdomain: prev.subdomain,
-  })
+  }, JOB_OPTIONS)
   logger.info({ msg: 'redeploy_full_queued', appId, deploymentId: newDeploymentId })
   return c.json({ deploymentId: newDeploymentId, redeployed: true })
 })
