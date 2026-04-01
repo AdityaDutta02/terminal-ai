@@ -3,6 +3,7 @@ import { requireCreator } from '@/lib/middleware/require-creator'
 import { db } from '@/lib/db'
 
 interface DeploymentRow {
+  [key: string]: unknown
   id: string
   status: string
   error_code: string | null

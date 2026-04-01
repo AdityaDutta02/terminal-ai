@@ -5,6 +5,7 @@ import { db } from '@/lib/db'
 const DEPLOY_MANAGER_URL = process.env.DEPLOY_MANAGER_URL ?? 'http://deploy-manager:3002'
 
 interface DeploymentIdRow {
+  [key: string]: unknown
   id: string
 }
 
