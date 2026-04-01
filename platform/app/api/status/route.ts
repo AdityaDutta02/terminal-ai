@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
-const GATEWAY_URL = process.env.GATEWAY_URL ?? 'http://gateway:4000'
+const GATEWAY_URL = process.env.GATEWAY_INTERNAL_URL ?? process.env.GATEWAY_URL ?? 'http://gateway:3001'
 const DEPLOY_MANAGER_URL = process.env.DEPLOY_MANAGER_URL ?? 'http://deploy-manager:3002'
 
 type ServiceStatus = 'operational' | 'degraded' | 'outage'
