@@ -7,6 +7,7 @@ import { createOrder } from '@/lib/razorpay'
 import { CREDIT_PACKS, type CreditPackId } from '@/lib/pricing'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
+import { checkRateLimit, rateLimitResponse } from '@/lib/middleware/rate-limit'
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const session = await auth.api.getSession({ headers: request.headers })
@@ -43,6 +44,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const session = await auth.api.getSession({ headers: request.headers })
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const allowed = await checkRateLimit(`credits:${session.user.id}`, 3, 60_000)
+  if (!allowed) return rateLimitResponse()
 
   const parsed = purchaseSchema.safeParse(await request.json())
   if (!parsed.success) {

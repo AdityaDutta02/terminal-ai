@@ -8,6 +8,7 @@ import { logger } from '@/lib/logger'
 import { SignJWT } from 'jose'
 import { createHash, randomUUID } from 'crypto'
 import { z } from 'zod'
+import { checkRateLimit, rateLimitResponse } from '@/lib/middleware/rate-limit'
 
 const FIFTEEN_MINUTES = 15 * 60 * 1000
 
@@ -24,6 +25,9 @@ const bodySchema = z.object({
 export async function POST(request: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const allowed = await checkRateLimit(`embed:${session.user.id}`, 10, 60_000)
+  if (!allowed) return rateLimitResponse()
 
   const parsed = bodySchema.safeParse(await request.json())
   if (!parsed.success) {

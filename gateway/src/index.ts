@@ -3,6 +3,7 @@ import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import { proxy } from './routes/proxy.js'
 import { uploadRouter } from './routes/upload.js'
+import { gatewayRateLimit } from './middleware/rate-limit.js'
 
 const app = new Hono()
 
@@ -29,6 +30,8 @@ app.use(
 )
 
 app.get('/health', (c) => c.json({ status: 'ok', version: '1.0.0', ts: Date.now() }))
+
+app.use('/v1/*', gatewayRateLimit())
 
 app.route('/upload', uploadRouter)
 app.route('/', proxy)
