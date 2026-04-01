@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import { SidebarNav } from '@/components/sidebar-nav'
+import { getCreatorTabs } from '@/lib/creator-tabs'
 import { Box, Layers, Play, Sparkles, Users, Plus } from 'lucide-react'
 
 type ChannelRow = {
@@ -30,18 +31,12 @@ async function getCreatorChannels(userId: string): Promise<ChannelRow[]> {
   return result.rows
 }
 
-const creatorTabs = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'BarChart3', href: '/creator' },
-  { id: 'apps', label: 'My Apps', icon: 'Box', href: '/creator/apps' },
-  { id: 'revenue', label: 'Revenue', icon: 'Sparkles', href: '/creator/revenue' },
-  { id: 'settings', label: 'Settings', icon: 'Shield', href: '/creator/settings' },
-  { id: 'developer', label: 'Developer API', icon: 'Cpu', href: '/developers' },
-]
 
-const CHANNEL_COLORS = [
-  'bg-orange-100', 'bg-blue-100', 'bg-emerald-100', 'bg-purple-100',
-  'bg-pink-100', 'bg-amber-100', 'bg-cyan-100', 'bg-rose-100',
-]
+function getChannelColor(index: number): string {
+  const colors = 'bg-orange-100,bg-blue-100,bg-emerald-100,bg-purple-100,bg-pink-100,bg-amber-100,bg-cyan-100,bg-rose-100'
+  const list = colors.split(',')
+  return list[index % list.length]
+}
 
 export default async function CreatorDashboard() {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -89,7 +84,7 @@ export default async function CreatorDashboard() {
   return (
     <div className="max-w-[1200px] mx-auto px-6 py-8">
       <div className="flex gap-8">
-        <SidebarNav title="Creator Studio" tabs={creatorTabs} />
+        <SidebarNav title="Creator Studio" tabs={getCreatorTabs()} />
 
         <div className="flex-1 min-w-0">
           {/* Header */}
@@ -152,7 +147,7 @@ export default async function CreatorDashboard() {
                     className="group bg-white rounded-2xl border border-slate-100 shadow-sm p-5 transition-all hover:border-orange-200 hover:shadow-md"
                   >
                     <div className="flex items-start gap-4">
-                      <div className={`w-12 h-12 ${CHANNEL_COLORS[index % CHANNEL_COLORS.length]} rounded-xl flex items-center justify-center flex-shrink-0`}>
+                      <div className={`w-12 h-12 ${getChannelColor(index)} rounded-xl flex items-center justify-center flex-shrink-0`}>
                         <span className="text-[18px] font-bold text-slate-600">
                           {ch.name.charAt(0).toUpperCase()}
                         </span>

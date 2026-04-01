@@ -1,13 +1,6 @@
 import { headers } from 'next/headers'
 import { SidebarNav } from '@/components/sidebar-nav'
-
-const creatorTabs = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'BarChart3', href: '/creator' },
-  { id: 'apps', label: 'My Apps', icon: 'Box', href: '/creator/apps' },
-  { id: 'revenue', label: 'Revenue', icon: 'Sparkles', href: '/creator/revenue' },
-  { id: 'settings', label: 'Settings', icon: 'Shield', href: '/creator/settings' },
-  { id: 'developer', label: 'Developer API', icon: 'Cpu', href: '/developers' },
-]
+import { getCreatorTabs } from '@/lib/creator-tabs'
 
 export default async function CreatorSettingsPage(): Promise<React.ReactElement> {
   const hdrs = await headers()
@@ -22,7 +15,7 @@ export default async function CreatorSettingsPage(): Promise<React.ReactElement>
   return (
     <div className="max-w-[1200px] mx-auto px-6 py-8">
       <div className="flex gap-8">
-        <SidebarNav title="Creator Studio" tabs={creatorTabs} />
+        <SidebarNav title="Creator Studio" tabs={getCreatorTabs()} />
         <div className="flex-1 min-w-0">
           <h1 className="text-[28px] font-extrabold text-slate-900 tracking-tight mb-6">Channel Settings</h1>
 
