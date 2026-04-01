@@ -2,22 +2,21 @@ import { db } from '@/lib/db'
 import { notFound } from 'next/navigation'
 import { AppCard, type AppCardData } from '@/components/app-card'
 import { ChevronLeft, Share2, Box, Users } from 'lucide-react'
-import { TrendingUp, Shield, Cpu, BarChart3, Globe, Layers } from 'lucide-react'
 import type { Metadata } from 'next'
 
 function channelOgUrl(base: string, slug: string): string {
   return base + '/api/og/channel?slug=' + slug
 }
 
-/* ── Icon + gradient maps (same as homepage) ── */
+/* ── Icon name + gradient maps (same as homepage) ── */
 
-const categoryIcons: Record<string, typeof TrendingUp> = {
-  Finance: TrendingUp,
-  Security: Shield,
-  Developer: Cpu,
-  Analytics: BarChart3,
-  Productivity: Globe,
-  default: Layers,
+const categoryIcons: Record<string, string> = {
+  Finance: 'TrendingUp',
+  Security: 'Shield',
+  Developer: 'Cpu',
+  Analytics: 'BarChart3',
+  Productivity: 'Globe',
+  default: 'Layers',
 }
 
 const categoryGradients: Record<string, string> = {

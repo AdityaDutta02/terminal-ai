@@ -2,17 +2,15 @@ import { db } from '@/lib/db'
 import { HomepageClient } from './homepage-client'
 import type { AppCardData } from '@/components/app-card'
 import type { ChannelCardData } from '@/components/channel-card'
-import { TrendingUp, Shield, Cpu, BarChart3, Globe, Layers } from 'lucide-react'
+/* ── Icon name + gradient maps ── */
 
-/* ── Icon + gradient maps ── */
-
-const categoryIcons: Record<string, typeof TrendingUp> = {
-  Finance: TrendingUp,
-  Security: Shield,
-  Developer: Cpu,
-  Analytics: BarChart3,
-  Productivity: Globe,
-  default: Layers,
+const categoryIcons: Record<string, string> = {
+  Finance: 'TrendingUp',
+  Security: 'Shield',
+  Developer: 'Cpu',
+  Analytics: 'BarChart3',
+  Productivity: 'Globe',
+  default: 'Layers',
 }
 
 const categoryGradients: Record<string, string> = {

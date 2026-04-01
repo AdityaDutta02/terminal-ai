@@ -1,8 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { Star, Sparkles } from 'lucide-react'
+import {
+  Star, Sparkles, TrendingUp, Shield, Cpu, BarChart3, Globe, Layers, Zap, Box,
+} from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+
+const ICON_MAP: Record<string, LucideIcon> = {
+  TrendingUp, Shield, Cpu, BarChart3, Globe, Layers, Zap, Box, Sparkles, Star,
+}
 
 export type AppCardData = {
   id: string
@@ -16,12 +22,12 @@ export type AppCardData = {
   reviewCount: number
   category: string
   gradient: string
-  icon: LucideIcon
+  icon: string
 }
 
 export function AppCard({ app, href }: { app: AppCardData; href: string }) {
   const [hovered, setHovered] = useState(false)
-  const Icon = app.icon
+  const Icon = ICON_MAP[app.icon] ?? Layers
 
   return (
     <a
