@@ -2,8 +2,6 @@
 
 import { useState } from 'react'
 import { authClient } from '@/lib/auth-client'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 export function AccountPasswordForm() {
@@ -42,13 +40,19 @@ export function AccountPasswordForm() {
       setConfirmPassword('')
     }
   }
+  const inputClassName =
+    'w-full h-[44px] px-4 rounded-xl border border-slate-200 text-[14px] text-slate-700 outline-none focus:border-orange-300 focus:ring-2 focus:ring-orange-100 transition-all'
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-sm">
       <div className="space-y-1.5">
-        <Label htmlFor="current-password">Current password</Label>
-        <Input
+        <Label htmlFor="current-password" className="text-[13px] font-medium text-slate-600">
+          Current password
+        </Label>
+        <input
           id="current-password"
           type="password"
+          className={inputClassName}
           value={currentPassword}
           onChange={(e) => setCurrentPassword(e.target.value)}
           autoComplete="current-password"
@@ -56,10 +60,13 @@ export function AccountPasswordForm() {
         />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="new-password">New password</Label>
-        <Input
+        <Label htmlFor="new-password" className="text-[13px] font-medium text-slate-600">
+          New password
+        </Label>
+        <input
           id="new-password"
           type="password"
+          className={inputClassName}
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
           autoComplete="new-password"
@@ -67,10 +74,13 @@ export function AccountPasswordForm() {
         />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="confirm-password">Confirm new password</Label>
-        <Input
+        <Label htmlFor="confirm-password" className="text-[13px] font-medium text-slate-600">
+          Confirm new password
+        </Label>
+        <input
           id="confirm-password"
           type="password"
+          className={inputClassName}
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
           autoComplete="new-password"
@@ -78,13 +88,17 @@ export function AccountPasswordForm() {
         />
       </div>
       {message && (
-        <p className={`text-sm ${status === 'error' ? 'text-red-600' : 'text-emerald-600'}`}>
+        <p className={`text-[13px] ${status === 'error' ? 'text-red-600' : 'text-emerald-600'}`}>
           {message}
         </p>
       )}
-      <Button type="submit" disabled={status === 'loading'} size="sm">
-        {status === 'loading' ? 'Updating…' : 'Update password'}
-      </Button>
+      <button
+        type="submit"
+        disabled={status === 'loading'}
+        className="h-[40px] px-5 rounded-xl bg-slate-900 text-white text-[14px] font-medium hover:bg-slate-800 disabled:opacity-50 transition-colors"
+      >
+        {status === 'loading' ? 'Updating\u2026' : 'Update password'}
+      </button>
     </form>
   )
 }
