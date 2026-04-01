@@ -4,6 +4,7 @@ import { deployQueue, startDeployWorker, startPollWorker, JOB_OPTIONS } from './
 import { getAppDetails, deleteApp, getDeploymentLogs, triggerDeploy } from './services/coolify'
 import { db } from './lib/db'
 import { logger } from './lib/logger'
+import { ERROR_MESSAGES } from './lib/deployment-events'
 
 const REQUIRED_ENV = [
   'GATEWAY_URL',
@@ -88,49 +89,107 @@ app.post('/deploy', async (c) => {
 })
 app.get('/deployments/:id/logs', async (c) => {
   const id = c.req.param('id')
-  const { rows } = await db.query(
-    `SELECT d.id, d.app_id, d.status, d.error_message, d.coolify_app_id, d.created_at, d.completed_at, d.subdomain, a.name as app_name
+  const { rows: depRows } = await db.query(
+    `SELECT d.id, d.status, d.error_code, d.error_message, d.started_at, d.completed_at, d.retry_count,
+            a.name as app_name
      FROM deployments.deployments d
      JOIN marketplace.apps a ON a.id = d.app_id
      WHERE d.id = $1`,
     [id]
   )
+  if (depRows.length === 0) return c.json({ error: 'Not found' }, 404)
+  const dep = depRows[0] as Record<string, unknown>
+
+  const { rows: eventRows } = await db.query(
+    `SELECT id, event_type, message, metadata, created_at
+     FROM deployments.deployment_events
+     WHERE deployment_id = $1
+     ORDER BY created_at ASC`,
+    [id]
+  )
+
+  const errorMessage = dep['error_code']
+    ? (ERROR_MESSAGES[dep['error_code'] as string] ?? dep['error_message'])
+    : null
+
+  return c.json({
+    deployment: {
+      id: dep['id'],
+      status: dep['status'],
+      error_code: dep['error_code'] ?? null,
+      error_message: errorMessage,
+      started_at: dep['started_at'],
+      completed_at: dep['completed_at'],
+      retry_count: dep['retry_count'],
+      app_name: dep['app_name'],
+    },
+    events: eventRows,
+  })
+})
+
+app.get('/deployments/:id/logs/stream', async (c) => {
+  const id = c.req.param('id')
+  const { rows } = await db.query(
+    `SELECT id, status FROM deployments.deployments WHERE id = $1`, [id]
+  )
   if (rows.length === 0) return c.json({ error: 'Not found' }, 404)
-  const row = rows[0] as DeploymentLogRow & { app_id: string; subdomain: string }
 
-  // Issue #4 fix: auto-correct stuck "failed" status if Coolify reports healthy
-  if (row.status === 'failed' && row.coolify_app_id) {
-    try {
-      const { status: liveStatus, fqdn } = await getAppDetails(row.coolify_app_id)
-      if (liveStatus === 'running' || liveStatus.startsWith('running:')) {
-        const cloudflareConfigured = !!(process.env.CLOUDFLARE_TOKEN && process.env.CLOUDFLARE_ZONE_ID && process.env.VPS2_IP)
-        let recoveredUrl: string
-        if (cloudflareConfigured && row.subdomain) {
-          recoveredUrl = `https://${row.subdomain}.apps.terminalai.app`
-        } else {
-          const rawFqdn = (fqdn ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '')
-          recoveredUrl = rawFqdn ? `http://${rawFqdn}` : ''
-        }
-        if (recoveredUrl) {
-          await db.query(
-            `UPDATE deployments.deployments SET status = 'live', url = $2, error_message = NULL, completed_at = NOW(), updated_at = NOW() WHERE id = $1`,
-            [id, recoveredUrl]
-          )
-          await db.query(
-            `UPDATE marketplace.apps SET iframe_url = $2 WHERE id = $1`,
-            [row.app_id, recoveredUrl]
-          )
-          row.status = 'live'
-          row.error_message = null
-          logger.info({ msg: 'status_auto_corrected', deploymentId: id, url: recoveredUrl })
-        }
+  const stream = new ReadableStream({
+    async start(controller) {
+      let lastEventId: string | null = null
+      const encoder = new TextEncoder()
+      let finished = false
+
+      const send = (data: string) => {
+        controller.enqueue(encoder.encode(`data: ${data}\n\n`))
       }
-    } catch {
-      // non-fatal — just return current status
-    }
-  }
 
-  return c.json(await buildLogResponse(row, true))
+      while (!finished) {
+        const query = lastEventId
+          ? `SELECT id, event_type, message, metadata, created_at
+             FROM deployments.deployment_events
+             WHERE deployment_id = $1 AND created_at > (SELECT created_at FROM deployments.deployment_events WHERE id = $2)
+             ORDER BY created_at ASC`
+          : `SELECT id, event_type, message, metadata, created_at
+             FROM deployments.deployment_events
+             WHERE deployment_id = $1
+             ORDER BY created_at ASC`
+
+        const params = lastEventId ? [id, lastEventId] : [id]
+        const { rows: newEvents } = await db.query(query, params)
+
+        for (const event of newEvents as Array<Record<string, unknown>>) {
+          send(JSON.stringify(event))
+          lastEventId = event['id'] as string
+          if (event['event_type'] === 'deployed' || event['event_type'] === 'failed') {
+            finished = true
+          }
+        }
+
+        if (!finished) {
+          const { rows: depRows } = await db.query(
+            `SELECT status FROM deployments.deployments WHERE id = $1`, [id]
+          )
+          if (depRows.length > 0) {
+            const status = (depRows[0] as Record<string, unknown>)['status'] as string
+            if (status === 'live' || status === 'failed') finished = true
+          }
+        }
+
+        if (!finished) await new Promise<void>((r) => setTimeout(r, 2_000))
+      }
+
+      controller.close()
+    }
+  })
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
+  })
 })
 
 app.delete('/apps/:appId', async (c) => {
