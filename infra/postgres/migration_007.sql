@@ -11,7 +11,7 @@ ALTER TABLE gateway.embed_tokens ADD COLUMN IF NOT EXISTS deducted_at TIMESTAMPT
 ALTER TABLE gateway.embed_tokens ALTER COLUMN user_id DROP NOT NULL;
 
 ALTER TABLE subscriptions.credit_ledger DROP CONSTRAINT IF EXISTS credit_ledger_reason_check;
-ALTER TABLE subscriptions.credit_ledger ADD CONSTRAINT credit_ledger_reason_check CHECK (reason IN ('subscription_grant','api_call','topup','demo','welcome','refund','welcome_bonus','session_start','session_start_rollback','credit_pack_pack_100','credit_pack_pack_500','credit_pack_pack_2000','subscription_activation_starter','subscription_activation_creator','subscription_activation_pro','subscription_renewal_starter','subscription_renewal_creator','subscription_renewal_pro'));
+ALTER TABLE subscriptions.credit_ledger ADD CONSTRAINT credit_ledger_reason_check CHECK (reason IN ('subscription_grant','api_call','topup','demo','welcome','refund','welcome_bonus','session_start','session_start_rollback','admin_grant','credit_pack_pack_100','credit_pack_pack_500','credit_pack_pack_2000','subscription_activation_starter','subscription_activation_creator','subscription_activation_pro','subscription_renewal_starter','subscription_renewal_creator','subscription_renewal_pro'));
 
 CREATE TABLE IF NOT EXISTS gateway.anonymous_usage (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), app_id UUID NOT NULL REFERENCES marketplace.apps(id), ip_address INET NOT NULL, cookie_id TEXT NOT NULL, used_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
 CREATE UNIQUE INDEX IF NOT EXISTS anon_usage_app_ip_cookie ON gateway.anonymous_usage(app_id, ip_address, cookie_id);

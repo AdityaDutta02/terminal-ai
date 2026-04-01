@@ -281,7 +281,7 @@ ALTER TABLE subscriptions.credit_ledger DROP CONSTRAINT IF EXISTS credit_ledger_
 ALTER TABLE subscriptions.credit_ledger ADD CONSTRAINT credit_ledger_reason_check
   CHECK (reason IN (
     'subscription_grant', 'api_call', 'topup', 'demo', 'welcome', 'refund',
-    'welcome_bonus', 'session_start', 'session_start_rollback',
+    'welcome_bonus', 'session_start', 'session_start_rollback', 'admin_grant',
     'credit_pack_pack_100', 'credit_pack_pack_500', 'credit_pack_pack_2000',
     'subscription_activation_starter', 'subscription_activation_creator', 'subscription_activation_pro',
     'subscription_renewal_starter', 'subscription_renewal_creator', 'subscription_renewal_pro'
