@@ -5,6 +5,7 @@ import { db } from '@/lib/db'
 import { deployQueue } from '@/lib/deploy-queue-client'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
+import { requireCreator } from '@/lib/middleware/require-creator'
 const CreateAppSchema = z.object({
   name: z.string().min(3).max(60),
   description: z.string().max(500).default(''),
@@ -12,6 +13,28 @@ const CreateAppSchema = z.object({
   branch: z.string().default('main'),
   channelId: z.string().uuid(),
 })
+export async function GET() {
+  const result = await requireCreator()
+  if (result instanceof NextResponse) return result
+  const { channel } = result
+
+  const apps = await db.query(
+    `SELECT a.id, a.name, a.slug, a.status, a.is_free, a.model_tier,
+            a.credits_per_session, a.created_at,
+            COALESCE(SUM(au.sessions), 0)::INTEGER AS sessions_30d,
+            COALESCE(SUM(au.credits_spent), 0)::INTEGER AS credits_earned_30d
+     FROM marketplace.apps a
+     LEFT JOIN analytics.app_usage au ON au.app_id = a.id
+       AND au.day >= NOW() - INTERVAL '30 days'
+     WHERE a.channel_id = $1 AND a.deleted_at IS NULL
+     GROUP BY a.id
+     ORDER BY a.created_at DESC`,
+    [channel.id],
+  )
+
+  return NextResponse.json({ apps: apps.rows })
+}
+
 export async function POST(req: Request): Promise<NextResponse> {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

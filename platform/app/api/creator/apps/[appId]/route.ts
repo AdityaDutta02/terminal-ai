@@ -1,39 +1,67 @@
-import { NextResponse } from 'next/server'
-import { headers } from 'next/headers'
-import { auth } from '@/lib/auth'
+import { NextRequest, NextResponse } from 'next/server'
+import { requireCreator } from '@/lib/middleware/require-creator'
 import { db } from '@/lib/db'
-import { redis } from '@/lib/redis'
-import { logger } from '@/lib/logger'
-type RouteCtx = { params: Promise<{ appId: string }> }
-export async function PATCH(req: Request, { params }: RouteCtx): Promise<NextResponse> {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+import { MODEL_TIER_CREDITS } from '@/lib/pricing'
+import { z } from 'zod'
+
+const MODEL_TIERS = ['standard', 'advanced', 'premium', 'image-fast', 'image-pro'] as const
+
+const patchSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  description: z.string().max(500).optional(),
+  status: z.enum(['live', 'draft']).optional(),
+  is_free: z.boolean().optional(),
+  model_tier: z.enum(MODEL_TIERS).optional(),
+})
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ appId: string }> }
+) {
+  const result = await requireCreator()
+  if (result instanceof NextResponse) return result
+  const { channel } = result
   const { appId } = await params
-  const owned = await db.query(
-    `SELECT a.id FROM marketplace.apps a
-     JOIN marketplace.channels c ON c.id = a.channel_id
-     WHERE a.id = $1 AND c.creator_id = $2 AND a.deleted_at IS NULL`,
-    [appId, session.user.id],
+
+  // Verify ownership
+  const appCheck = await db.query(
+    `SELECT id FROM marketplace.apps WHERE id = $1 AND channel_id = $2 AND deleted_at IS NULL`,
+    [appId, channel.id],
   )
-  if (!owned.rows[0]) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  const body = await req.json() as { name?: string; description?: string }
+  if (!appCheck.rows[0]) {
+    return NextResponse.json({ error: 'App not found' }, { status: 404 })
+  }
+
+  const parsed = patchSchema.safeParse(await request.json())
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid', details: parsed.error.flatten() }, { status: 400 })
+  }
+
+  const { name, description, status, is_free, model_tier } = parsed.data
+
+  // Build dynamic update
   const updates: string[] = []
   const values: unknown[] = []
-  if (body.name !== undefined) {
-    updates.push(`name = $${values.length + 1}`)
-    values.push(body.name)
+  let idx = 1
+
+  if (name !== undefined) { updates.push(`name = $${idx++}`); values.push(name) }
+  if (description !== undefined) { updates.push(`description = $${idx++}`); values.push(description) }
+  if (status !== undefined) { updates.push(`status = $${idx++}`); values.push(status) }
+  if (is_free !== undefined) { updates.push(`is_free = $${idx++}`); values.push(is_free) }
+  if (model_tier !== undefined) {
+    updates.push(`model_tier = $${idx++}`)
+    values.push(model_tier)
+    updates.push(`credits_per_session = $${idx++}`)
+    values.push(MODEL_TIER_CREDITS[model_tier])
   }
-  if (body.description !== undefined) {
-    updates.push(`description = $${values.length + 1}`)
-    values.push(body.description)
+
+  if (updates.length > 0) {
+    values.push(appId)
+    await db.query(
+      `UPDATE marketplace.apps SET ${updates.join(', ')} WHERE id = $${idx}`,
+      values,
+    )
   }
-  if (updates.length === 0) return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
-  values.push(appId)
-  await db.query(
-    `UPDATE marketplace.apps SET ${updates.join(', ')}, updated_at = now() WHERE id = $${values.length}`,
-    values,
-  )
-  await redis.del('og:app:' + appId)
-  logger.info({ msg: 'app_updated', appId, userId: session.user.id })
-  return NextResponse.json({ ok: true })
+
+  return NextResponse.json({ success: true })
 }
