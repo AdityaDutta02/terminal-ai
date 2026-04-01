@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils'
 
-type BadgeVariant = 'default' | 'secondary' | 'outline' | 'violet' | 'green' | 'amber'
+type BadgeVariant = 'default' | 'secondary' | 'outline' | 'violet' | 'orange' | 'green' | 'amber'
 
 interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   variant?: BadgeVariant
@@ -10,7 +10,8 @@ const variants: Record<BadgeVariant, string> = {
   default: 'bg-gray-100 text-gray-700',
   secondary: 'bg-gray-200 text-gray-600',
   outline: 'border border-gray-200 text-gray-600 bg-white',
-  violet: 'bg-violet-100 text-violet-700',
+  violet: 'bg-orange-100 text-orange-700',
+  orange: 'bg-orange-100 text-orange-700',
   green: 'bg-emerald-100 text-emerald-700',
   amber: 'bg-amber-100 text-amber-700',
 }

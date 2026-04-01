@@ -5,14 +5,12 @@ import { SidebarNav } from '@/components/sidebar-nav'
 import { ApiKeyManager } from './components/ApiKeyManager'
 import { McpConnectionGuide } from './components/McpConnectionGuide'
 import { ApiReferenceSection } from './components/ApiReferenceSection'
-import {
-  BarChart3, Layers, Cpu, Copy, ChevronDown,
-} from 'lucide-react'
+import { Copy, ChevronDown } from 'lucide-react'
 
 const creatorTabs = [
-  { id: 'dashboard', label: 'Dashboard', icon: BarChart3, href: '/creator' },
-  { id: 'channels', label: 'Channels', icon: Layers, href: '/creator' },
-  { id: 'developer', label: 'Developer API', icon: Cpu, href: '/developers' },
+  { id: 'dashboard', label: 'Dashboard', icon: 'BarChart3', href: '/creator' },
+  { id: 'channels', label: 'Channels', icon: 'Layers', href: '/creator' },
+  { id: 'developer', label: 'Developer API', icon: 'Cpu', href: '/developers' },
 ]
 
 const TAB_IDS = ['getting-started', 'api-keys', 'mcp-setup', 'api-reference'] as const

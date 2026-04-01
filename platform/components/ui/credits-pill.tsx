@@ -24,7 +24,7 @@ export function CreditsPill({ credits, className, variant = 'light' }: CreditsPi
       containerClass,
       className,
     )}>
-      <Coins className={cn('h-3.5 w-3.5', isLow ? 'text-amber-500' : 'text-violet-500')} />
+      <Coins className={cn('h-3.5 w-3.5', isLow ? 'text-amber-500' : 'text-[#FF6B00]')} />
       <span className="font-mono">{credits.toLocaleString()}</span>
     </div>
   )

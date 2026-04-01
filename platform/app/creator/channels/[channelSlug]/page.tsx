@@ -63,7 +63,7 @@ export default async function CreatorChannelPage({ params }: PageProps) {
         </div>
         <a
           href={`/creator/channels/${channel.slug}/apps/new`}
-          className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-violet-700 transition-colors"
+          className="inline-flex items-center gap-2 rounded-xl bg-[#FF6B00] px-4 py-2.5 text-sm font-medium text-[#0A0A0A] shadow-sm hover:bg-[#E55D00] transition-colors"
         >
           <Plus className="h-4 w-4" />
           New app
@@ -76,7 +76,7 @@ export default async function CreatorChannelPage({ params }: PageProps) {
           <p className="mb-6 text-sm text-gray-400">Add your first AI app to this channel</p>
           <a
             href={`/creator/channels/${channel.slug}/apps/new`}
-            className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 transition-colors"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#FF6B00] px-4 py-2 text-sm font-medium text-[#0A0A0A] hover:bg-[#E55D00] transition-colors"
           >
             <Plus className="h-4 w-4" />
             Add app
@@ -110,7 +110,7 @@ export default async function CreatorChannelPage({ params }: PageProps) {
                   </td>
                   <td className="px-4 py-3">
                     <span className="flex items-center gap-1 text-gray-600">
-                      <Coins className="h-3 w-3 text-violet-400" />
+                      <Coins className="h-3 w-3 text-[#FF6B00]" />
                       {app.credits_per_session}
                     </span>
                   </td>
@@ -123,7 +123,7 @@ export default async function CreatorChannelPage({ params }: PageProps) {
                   <td className="px-4 py-3 text-right">
                     <a
                       href={`/creator/channels/${channel.slug}/apps/${app.slug}`}
-                      className="text-xs text-violet-600 hover:underline"
+                      className="text-xs text-[#FF6B00] hover:underline"
                     >
                       Edit
                     </a>

@@ -54,7 +54,7 @@ export default function DeployNewAppPage() {
             maxLength={60}
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+            className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
           />
         </div>
         <div>
@@ -64,7 +64,7 @@ export default function DeployNewAppPage() {
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             rows={3}
-            className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+            className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
           />
         </div>
         <div>
@@ -75,7 +75,7 @@ export default function DeployNewAppPage() {
             placeholder="owner/repo"
             value={form.githubRepo}
             onChange={(e) => setForm({ ...form, githubRepo: e.target.value })}
-            className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+            className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
           />
         </div>
         <div>
@@ -84,7 +84,7 @@ export default function DeployNewAppPage() {
             type="text"
             value={form.branch}
             onChange={(e) => setForm({ ...form, branch: e.target.value })}
-            className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+            className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
           />
         </div>
         <div>
@@ -93,7 +93,7 @@ export default function DeployNewAppPage() {
             required
             value={form.channelId}
             onChange={(e) => setForm({ ...form, channelId: e.target.value })}
-            className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+            className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B00]">
             <option value="">Select a channel…</option>
             {channels.map((ch) => (
               <option key={ch.id} value={ch.id}>{ch.name}</option>
@@ -104,7 +104,7 @@ export default function DeployNewAppPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 rounded-lg text-sm font-medium text-white transition-colors">
+          className="w-full py-2 bg-[#FF6B00] hover:bg-[#E55D00] disabled:opacity-50 rounded-lg text-sm font-medium text-[#0A0A0A] transition-colors">
           {loading ? 'Queuing deploy…' : 'Deploy App'}
         </button>
       </form>

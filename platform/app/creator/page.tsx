@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import { SidebarNav } from '@/components/sidebar-nav'
-import { BarChart3, Layers, Cpu, Box, Play, Sparkles, Users, Plus } from 'lucide-react'
+import { Box, Layers, Play, Sparkles, Users, Plus } from 'lucide-react'
 
 type ChannelRow = {
   id: string
@@ -31,9 +31,9 @@ async function getCreatorChannels(userId: string): Promise<ChannelRow[]> {
 }
 
 const creatorTabs = [
-  { id: 'dashboard', label: 'Dashboard', icon: BarChart3, href: '/creator' },
-  { id: 'channels', label: 'Channels', icon: Layers, href: '/creator' },
-  { id: 'developer', label: 'Developer API', icon: Cpu, href: '/developers' },
+  { id: 'dashboard', label: 'Dashboard', icon: 'BarChart3', href: '/creator' },
+  { id: 'channels', label: 'Channels', icon: 'Layers', href: '/creator' },
+  { id: 'developer', label: 'Developer API', icon: 'Cpu', href: '/developers' },
 ]
 
 const CHANNEL_COLORS = [

@@ -1,10 +1,9 @@
 import { SidebarNav } from '@/components/sidebar-nav'
-import { Sparkles, Shield, Clock } from 'lucide-react'
 
 const accountTabs = [
-  { id: 'credits', label: 'Credits', icon: Sparkles, href: '/account' },
-  { id: 'security', label: 'Security', icon: Shield, href: '/account/security' },
-  { id: 'usage', label: 'Usage History', icon: Clock, href: '/account/usage' },
+  { id: 'credits', label: 'Credits', icon: 'Sparkles', href: '/account' },
+  { id: 'security', label: 'Security', icon: 'Shield', href: '/account/security' },
+  { id: 'usage', label: 'Usage History', icon: 'Clock', href: '/account/usage' },
 ]
 
 export default function AccountLayout({ children }: { children: React.ReactNode }) {

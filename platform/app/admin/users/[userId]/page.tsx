@@ -1,13 +1,13 @@
 import { db } from '@/lib/db'
 import { notFound } from 'next/navigation'
 import { SidebarNav } from '@/components/sidebar-nav'
-import { BarChart3, Users, Box, Clock, ChevronLeft } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 
 const adminTabs = [
-  { id: 'overview', label: 'Overview', icon: BarChart3, href: '/admin' },
-  { id: 'users', label: 'Users', icon: Users, href: '/admin/users' },
-  { id: 'apps', label: 'Apps', icon: Box, href: '/admin/apps' },
-  { id: 'activity', label: 'Activity Log', icon: Clock, href: '/admin' },
+  { id: 'overview', label: 'Overview', icon: 'BarChart3', href: '/admin' },
+  { id: 'users', label: 'Users', icon: 'Users', href: '/admin/users' },
+  { id: 'apps', label: 'Apps', icon: 'Box', href: '/admin/apps' },
+  { id: 'activity', label: 'Activity Log', icon: 'Clock', href: '/admin' },
 ]
 
 type UserDetail = {

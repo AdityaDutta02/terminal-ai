@@ -90,7 +90,7 @@ export function MarketplaceFilter({ channels }: MarketplaceFilterProps) {
               aria-pressed={activeFilter === key}
               className={cn(
                 'shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition-colors',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B00]',
                 activeFilter === key
                   ? 'border-zinc-900 bg-zinc-900 text-white'
                   : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50',
@@ -149,7 +149,7 @@ export function MarketplaceFilter({ channels }: MarketplaceFilterProps) {
                 <span className="text-xs text-gray-400">
                   {Number(channel.app_count).toLocaleString()} apps
                 </span>
-                <ArrowRight className="h-4 w-4 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-violet-500" />
+                <ArrowRight className="h-4 w-4 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-[#FF6B00]" />
               </div>
             </a>
           ))}

@@ -112,7 +112,7 @@ function StepCard({
         className="flex w-full items-center gap-4 px-5 py-4 text-left hover:bg-gray-50"
         aria-expanded={open}
       >
-        <span className="text-xs font-bold text-violet-500">{number}</span>
+        <span className="text-xs font-bold text-[#FF6B00]">{number}</span>
         <span className="flex-1 text-sm font-semibold text-gray-900">{title}</span>
         {open
           ? <ChevronUp className="h-4 w-4 text-gray-400" />
@@ -151,8 +151,8 @@ export function McpConnectionGuide() {
                   onClick={() => setEditor(e)}
                   className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                     editor === e
-                      ? 'bg-violet-600 text-white'
-                      : 'border border-gray-200 bg-white text-gray-600 hover:border-violet-300'
+                      ? 'bg-[#FF6B00] text-[#0A0A0A]'
+                      : 'border border-gray-200 bg-white text-gray-600 hover:border-[#FF6B00]/30'
                   }`}
                 >
                   {EDITOR_CONFIGS[e].label}

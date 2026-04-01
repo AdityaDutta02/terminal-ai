@@ -1,12 +1,34 @@
 'use client'
 
+import {
+  BarChart3,
+  Users,
+  Box,
+  Clock,
+  Layers,
+  Cpu,
+  Sparkles,
+  Shield,
+} from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 
-type SidebarTab = {
+/** Map of icon names accepted by SidebarNav. Add entries as needed. */
+const ICON_MAP: Record<string, LucideIcon> = {
+  BarChart3,
+  Users,
+  Box,
+  Clock,
+  Layers,
+  Cpu,
+  Sparkles,
+  Shield,
+}
+
+export type SidebarTab = {
   id: string
   label: string
-  icon: LucideIcon
+  icon: string
   href: string
 }
 
@@ -20,7 +42,7 @@ export function SidebarNav({ title, tabs }: { title: string; tabs: SidebarTab[] 
       </h2>
       <div className="space-y-0.5">
         {tabs.map((t) => {
-          const TabIcon = t.icon
+          const TabIcon = ICON_MAP[t.icon]
           const isActive = pathname === t.href
           return (
             <a
@@ -32,9 +54,11 @@ export function SidebarNav({ title, tabs }: { title: string; tabs: SidebarTab[] 
                   : 'text-slate-600 hover:bg-slate-50'
               }`}
             >
-              <TabIcon
-                className={`w-4 h-4 ${isActive ? 'text-orange-600' : 'text-slate-400'}`}
-              />
+              {TabIcon && (
+                <TabIcon
+                  className={`w-4 h-4 ${isActive ? 'text-orange-600' : 'text-slate-400'}`}
+                />
+              )}
               {t.label}
             </a>
           )

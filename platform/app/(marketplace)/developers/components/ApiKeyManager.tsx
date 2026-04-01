@@ -116,13 +116,13 @@ export function ApiKeyManager() {
           onKeyDown={e => e.key === 'Enter' && createKey()}
           placeholder="Key name (e.g. cursor-local)"
           data-testid="key-name-input"
-          className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300"
+          className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/30"
         />
         <button
           onClick={createKey}
           disabled={creating || !newKeyName.trim()}
           data-testid="generate-key-button"
-          className="flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+          className="flex items-center gap-2 rounded-lg bg-[#FF6B00] px-4 py-2 text-sm font-medium text-[#0A0A0A] hover:bg-[#E55D00] disabled:opacity-50"
         >
           <Plus className="h-4 w-4" />
           {creating ? 'Creating…' : 'Generate Key'}
@@ -160,25 +160,25 @@ export function ApiKeyManager() {
                 </button>
               </div>
               {token && (
-                <div className="flex items-center gap-2 rounded-lg border border-violet-100 bg-violet-50 px-3 py-2">
-                  <code className="flex-1 truncate text-xs text-violet-900">
+                <div className="flex items-center gap-2 rounded-lg border border-orange-100 bg-orange-50 px-3 py-2">
+                  <code className="flex-1 truncate text-xs text-orange-900">
                     {visible ? token : '•'.repeat(48)}
                   </code>
                   <button
                     onClick={() => toggleVisible(key.id)}
-                    className="shrink-0 text-violet-400 hover:text-violet-700"
+                    className="shrink-0 text-orange-400 hover:text-orange-700"
                     aria-label={visible ? 'Hide token' : 'Show token'}
                   >
                     {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                   <button
                     onClick={() => copyKey(key.id, token)}
-                    className="shrink-0 text-violet-400 hover:text-violet-700"
+                    className="shrink-0 text-orange-400 hover:text-orange-700"
                     aria-label="Copy token"
                   >
                     <Copy className="h-4 w-4" />
                   </button>
-                  {copiedId === key.id && <span className="shrink-0 text-xs text-violet-600">Copied!</span>}
+                  {copiedId === key.id && <span className="shrink-0 text-xs text-[#FF6B00]">Copied!</span>}
                 </div>
               )}
             </div>

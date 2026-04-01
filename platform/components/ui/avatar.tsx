@@ -21,7 +21,7 @@ export function Avatar({ src, alt, fallback, size = 'md', className }: AvatarPro
       {src ? (
         <img src={src} alt={alt ?? fallback} className="h-full w-full object-cover" />
       ) : (
-        <div className="h-full w-full bg-violet-100 flex items-center justify-center font-semibold text-violet-700">
+        <div className="h-full w-full bg-orange-100 flex items-center justify-center font-semibold text-orange-700">
           {fallback[0]?.toUpperCase() ?? '?'}
         </div>
       )}

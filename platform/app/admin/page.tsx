@@ -1,12 +1,12 @@
 import { db } from '@/lib/db'
 import { SidebarNav } from '@/components/sidebar-nav'
-import { BarChart3, Users, Box, Clock, Layers, TrendingUp, Play, Sparkles } from 'lucide-react'
+import { Users, Box, Layers, TrendingUp, Play, Sparkles } from 'lucide-react'
 
 const adminTabs = [
-  { id: 'overview', label: 'Overview', icon: BarChart3, href: '/admin' },
-  { id: 'users', label: 'Users', icon: Users, href: '/admin/users' },
-  { id: 'apps', label: 'Apps', icon: Box, href: '/admin/apps' },
-  { id: 'activity', label: 'Activity Log', icon: Clock, href: '/admin' },
+  { id: 'overview', label: 'Overview', icon: 'BarChart3', href: '/admin' },
+  { id: 'users', label: 'Users', icon: 'Users', href: '/admin/users' },
+  { id: 'apps', label: 'Apps', icon: 'Box', href: '/admin/apps' },
+  { id: 'activity', label: 'Activity Log', icon: 'Clock', href: '/admin' },
 ]
 
 type Stats = {

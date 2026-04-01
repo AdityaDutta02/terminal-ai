@@ -58,7 +58,7 @@ export default async function AdminChannels() {
                 </td>
                 <td className="px-4 py-3 text-gray-300">{ch.app_count}</td>
                 <td className="px-4 py-3 text-right">
-                  <a href={`/c/${ch.slug}`} className="text-xs text-violet-400 hover:underline" target="_blank">
+                  <a href={`/c/${ch.slug}`} className="text-xs text-[#FF6B00] hover:underline" target="_blank">
                     View
                   </a>
                 </td>

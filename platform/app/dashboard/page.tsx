@@ -89,7 +89,7 @@ export default async function DashboardPage() {
         <h1 className="text-2xl font-bold text-white">Dashboard</h1>
         <Link
           href="/dashboard/apps/new"
-          className="px-4 py-2 bg-violet-600 hover:bg-violet-700 rounded-lg text-sm font-medium text-white transition-colors">
+          className="px-4 py-2 bg-[#FF6B00] hover:bg-[#E55D00] rounded-lg text-sm font-medium text-[#0A0A0A] transition-colors">
           Deploy New App
         </Link>
       </div>
@@ -107,7 +107,7 @@ export default async function DashboardPage() {
           {!hasActiveSubscription && (
             <Link
               href="/pricing"
-              className="mt-4 inline-block rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 transition-colors">
+              className="mt-4 inline-block rounded-lg bg-[#FF6B00] px-4 py-2 text-sm font-medium text-[#0A0A0A] hover:bg-[#E55D00] transition-colors">
               Buy Credits
             </Link>
           )}
@@ -130,7 +130,7 @@ export default async function DashboardPage() {
               <p className="text-sm text-zinc-500 mb-3">No active subscription</p>
               <Link
                 href="/pricing"
-                className="inline-block rounded-lg border border-violet-500 px-4 py-2 text-sm font-medium text-violet-400 hover:bg-violet-600 hover:text-white transition-colors">
+                className="inline-block rounded-lg border border-[#FF6B00] px-4 py-2 text-sm font-medium text-[#FF6B00] hover:bg-[#FF6B00] hover:text-[#0A0A0A] transition-colors">
                 Subscribe
               </Link>
             </>
@@ -154,7 +154,7 @@ export default async function DashboardPage() {
               <div>
                 <Link
                   href={`/viewer/${session.channel_slug}/${session.app_slug}`}
-                  className="font-medium text-white hover:text-violet-400 transition-colors">
+                  className="font-medium text-white hover:text-[#FF6B00] transition-colors">
                   {session.app_name}
                 </Link>
                 <p className="text-sm text-zinc-400 mt-0.5">{timeAgo(session.created_at)}</p>

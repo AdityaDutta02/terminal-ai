@@ -24,8 +24,8 @@ const REASON_ICON_MAP: Record<string, { icon: typeof Sparkles; bg: string; color
   welcome: { icon: Zap, bg: 'bg-emerald-50', color: 'text-emerald-600' },
   purchase: { icon: Sparkles, bg: 'bg-orange-50', color: 'text-orange-600' },
   topup: { icon: Sparkles, bg: 'bg-orange-50', color: 'text-orange-600' },
-  subscription_credit: { icon: Zap, bg: 'bg-violet-50', color: 'text-violet-600' },
-  subscription_grant: { icon: Zap, bg: 'bg-violet-50', color: 'text-violet-600' },
+  subscription_credit: { icon: Zap, bg: 'bg-orange-50', color: 'text-orange-600' },
+  subscription_grant: { icon: Zap, bg: 'bg-orange-50', color: 'text-orange-600' },
   refund: { icon: Sparkles, bg: 'bg-green-50', color: 'text-green-600' },
   demo: { icon: Zap, bg: 'bg-teal-50', color: 'text-teal-600' },
 }

@@ -54,7 +54,7 @@ export function SearchBar({ placeholder = 'Search apps…' }: SearchBarProps) {
           onChange={handleChange}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
           placeholder={placeholder}
-          className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-9 text-sm shadow-sm outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+          className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-9 text-sm shadow-sm outline-none focus:border-[#FF6B00]/30 focus:ring-2 focus:ring-[#FF6B00]/10"
         />
         {loading && <Loader2 className="absolute right-3 h-4 w-4 animate-spin text-gray-400" />}
         {!loading && query && (
@@ -69,7 +69,7 @@ export function SearchBar({ placeholder = 'Search apps…' }: SearchBarProps) {
             <a
               key={hit.id}
               href={`/c/${hit.channelSlug}/${hit.appSlug}`}
-              className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-violet-50"
+              className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-orange-50"
             >
               <div className="min-w-0">
                 <p className="truncate font-medium text-gray-900">{hit.name}</p>

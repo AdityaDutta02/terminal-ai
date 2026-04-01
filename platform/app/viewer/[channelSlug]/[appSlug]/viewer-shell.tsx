@@ -229,12 +229,12 @@ export function ViewerShell(props: Props) {
 
   return (
     <div className="dark flex h-screen flex-col bg-zinc-950">
-      <div className="flex h-12 flex-shrink-0 items-center justify-between border-b border-zinc-800 bg-zinc-900 px-4">
+      <div className="flex h-12 flex-shrink-0 items-center justify-between border-b border-white/10 bg-[#0A0A0A] px-4">
         <div className="flex items-center gap-3">
-          <a href={`/c/${channelSlug}`} className="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-200 transition-colors">
+          <a href={`/c/${channelSlug}`} className="flex items-center gap-1.5 text-sm text-white/50 hover:text-white transition-colors">
             <X className="h-4 w-4" />
           </a>
-          <span className="text-sm font-medium text-zinc-100">{appName}</span>
+          <span className="text-sm font-medium text-white">{appName}</span>
         </div>
         <div className="flex items-center gap-3">
           {viewState === 'deploying' && (
@@ -258,7 +258,7 @@ export function ViewerShell(props: Props) {
           <CreditsPill credits={credits} variant="dark" />
           <a
             href="/account"
-            className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-600 text-xs font-bold text-white hover:bg-violet-700 transition-colors"
+            className="flex h-6 w-6 items-center justify-center rounded-full bg-[#FF6B00] text-xs font-bold text-[#0A0A0A] hover:bg-[#E55D00] transition-colors"
             title={userName}
           >
             {initials}
@@ -270,7 +270,7 @@ export function ViewerShell(props: Props) {
         {viewState === 'deploying' && (
           <div className="flex h-full items-center justify-center">
             <div className="max-w-sm text-center">
-              <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-violet-500" />
+              <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-[#FF6B00]" />
               <p className="font-medium text-zinc-100">Your app is deploying</p>
               <p className="mt-1 text-sm text-zinc-400">This usually takes 2–5 minutes. This page will update automatically.</p>
             </div>
