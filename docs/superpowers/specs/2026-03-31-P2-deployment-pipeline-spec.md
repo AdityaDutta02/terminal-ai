@@ -330,12 +330,88 @@ When app deployment has failed:
 
 ---
 
+---
+
+## P2.6 — App Versioning and Rollback
+
+### Goals
+- Creators can push updates to live apps without downtime
+- Rollback to previous version if update breaks the app
+- Version history visible in deployment log
+
+### Design
+
+Each deployment is inherently a version. The key additions:
+
+1. **Version label**: Auto-increment `v1`, `v2`, etc. per app (derived from deployment count)
+2. **Rollback action**: `POST /api/creator/apps/[appId]/rollback` — finds the previous successful deployment, triggers Coolify redeploy from that commit
+3. **UI**: On deployment detail page, if the current live deployment is not the latest, show "This is a rollback deployment" badge
+
+### Schema
+
+```sql
+-- No new tables. Use existing deployments.deployments.
+-- Add version number column:
+ALTER TABLE deployments.deployments
+  ADD COLUMN IF NOT EXISTS version_number INTEGER;
+```
+
+Version number auto-assigned by the platform on deploy:
+```sql
+UPDATE deployments.deployments SET version_number = (
+  SELECT COALESCE(MAX(version_number), 0) + 1
+  FROM deployments.deployments WHERE app_id = NEW.app_id
+) WHERE id = NEW.id;
+```
+
+### API
+
+#### `POST /api/creator/apps/[appId]/rollback`
+1. Find the current live deployment
+2. Find the previous deployment with `status = 'live'`
+3. Trigger redeploy using previous deployment's git commit/branch
+4. Return new deployment ID
+
+---
+
+## P2.7 — App Archive and Unpublish
+
+### Goals
+- Creators can archive apps (hidden from marketplace, restorable)
+- Creators can permanently delete apps (Coolify cleanup + soft delete)
+
+### API
+
+#### `POST /api/creator/apps/[appId]/archive`
+Sets `status = 'archived'` on the app. Archived apps are hidden from marketplace queries but remain in creator dashboard.
+
+#### `POST /api/creator/apps/[appId]/restore`
+Sets `status = 'draft'` — creator must explicitly re-publish.
+
+### Frontend
+- Archive button on app detail page with confirmation dialog
+- Archived apps shown in creator dashboard with "Archived" badge and "Restore" action
+
+---
+
+## P2.8 — Gap Analysis Items (Deferred)
+
+| Gap | Description | Deferred Reason |
+|-----|-------------|-----------------|
+| Creator #3: Staging/preview before live | Preview environment before publishing | Significant infra; use draft status + creator testing for beta |
+| Creator #9: Deploy notifications | Email/push on build success/fail | Defer to P1.5 notification system |
+| Creator #10: MCP/API error handling | Better error messages for MCP tool failures | Low priority; improve iteratively |
+
+---
+
 ## Dependencies
 
 ```
 P2 requires P0.2 (preflight changes already in P0.2 are extended here)
 P2.5 requires P2 (deployment events table must exist)
 P2.5 requires P1.1 (creator dashboard context)
+P2.6 requires P2.5 (deployment detail page)
+P2.7 is independent, can run after P1.1
 ```
 
 ## Acceptance Criteria
@@ -355,3 +431,13 @@ P2.5 requires P1.1 (creator dashboard context)
 - [ ] Redeploy button creates new deployment and redirects to its log page
 - [ ] Delete app: requires typing confirmation, removes from Coolify
 - [ ] Viewer shows "Deploying..." state for apps in-flight
+
+### P2.6
+- [ ] Rollback triggers redeploy from previous successful deployment
+- [ ] Version numbers auto-increment per app
+- [ ] Rollback visible in deployment history
+
+### P2.7
+- [ ] Archive hides app from marketplace
+- [ ] Restore sets app to draft
+- [ ] Delete removes from Coolify and soft-deletes in DB

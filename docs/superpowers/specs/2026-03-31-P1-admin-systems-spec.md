@@ -457,6 +457,77 @@ Step 3 shows:
 
 ---
 
+---
+
+## P1.5 — Audit Log UI + Admin Sidebar Navigation
+
+### Goals
+- All admin actions logged to `audit.events` (already exists from migration 004)
+- Audit log page in admin panel: searchable, filterable by action/actor
+- Persistent sidebar navigation for admin (not just Quick Actions)
+
+### 1. Audit Log Writer (`platform/lib/audit.ts`)
+
+```typescript
+export async function logAuditEvent(params: {
+  actorId: string
+  action: string
+  resource: string
+  resourceId: string
+  ip?: string
+  metadata?: Record<string, unknown>
+}): Promise<void> {
+  await db.query(
+    `INSERT INTO audit.events (actor_id, action, resource, resource_id, ip, metadata)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [params.actorId, params.action, params.resource, params.resourceId, params.ip ?? null, params.metadata ? JSON.stringify(params.metadata) : null]
+  )
+}
+```
+
+Instrument all admin routes: ban user, adjust credits, suspend channel, change role, override app status.
+
+### 2. API Routes
+
+#### `GET /api/admin/audit-log`
+Query params: `action`, `actorId`, `resource`, `page`, `limit`
+Returns paginated audit events with actor name joined from user table.
+
+### 3. Frontend
+
+#### `platform/app/admin/audit-log/page.tsx`
+Table columns: Timestamp | Admin | Action | Resource | Details
+Filters: action type dropdown, date range, search by resource ID.
+
+#### Admin Sidebar (`platform/app/admin/layout.tsx`)
+Replace Quick Actions with persistent sidebar:
+- Overview
+- Users
+- Channels
+- Apps
+- Audit Log
+
+---
+
+## P1.6 — Gap Analysis Items (Deferred to Post-Beta)
+
+These items from the flow-fix gap analysis are acknowledged but deferred past beta launch:
+
+| Gap | Description | Deferred Reason |
+|-----|-------------|-----------------|
+| Admin #4: Creator approval flow | User applies → admin reviews → approved/rejected | Single creator during beta; implement before wider creator access |
+| Admin #7: Bulk actions | Multi-select on admin tables | Low volume during beta |
+| Admin #9: Communication tools | Email templates, announcements | Use manual email during beta |
+| Cross-cutting #1: Notification system | In-app + email notifications | Significant infrastructure; manual email + polling sufficient for beta |
+| Cross-cutting #2: Help/support | FAQ, support tickets, feedback | Link to email support; build proper support post-beta |
+| Cross-cutting #8: Content moderation pipeline | App review before going live | Single creator during beta; implement with P1.4 creator onboarding |
+| Consumer #4: Search/filtering | Full-text search, category tags | MarketplaceFilter exists; enhance post-beta when catalog grows |
+| Consumer #8: First-use onboarding | Welcome tour, first-app recommendation | Defer to P3 UI redesign |
+| Consumer #9: App ratings/reviews | Star ratings, text reviews | Defer to P3 |
+| Consumer #10: Recently used apps | Quick re-access for repeat users | Defer to P3 |
+
+---
+
 ## Dependencies
 
 ```
@@ -464,6 +535,7 @@ P1.1 requires P0.1 (creator_balance column)
 P1.2 requires P0.1 (subscription tables)
 P1.3 requires P1.2 (admin UI to trigger bans)
 P1.4 is independent, can run after P1.1
+P1.5 requires P1.2 (admin panel exists)
 ```
 
 ## Acceptance Criteria

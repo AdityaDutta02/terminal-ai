@@ -17,7 +17,7 @@ interface Props {
   deploymentError: string | null
 }
 
-type ViewState = 'deploying' | 'deploy_failed' | 'loading' | 'ready' | 'error'
+type ViewState = 'deploying' | 'deploy_failed' | 'loading' | 'ready' | 'error' | 'session_ended'
 
 function getInitialViewState(iframeUrl: string, deploymentStatus: string | null): ViewState {
   if (iframeUrl) return 'loading'
@@ -35,6 +35,17 @@ function ViewerSkeleton() {
         <div className="h-32 rounded bg-zinc-800" />
       </div>
     </div>
+  )
+}
+
+function ChannelLink({ channelSlug }: { channelSlug: string }) {
+  return (
+    <a
+      href={`/c/${channelSlug}`}
+      className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm font-medium text-zinc-300 hover:bg-zinc-700 transition-colors"
+    >
+      Back to channel
+    </a>
   )
 }
 
@@ -138,38 +149,51 @@ export function ViewerShell(props: Props) {
     return () => clearInterval(interval)
   }, [viewState, iframeUrl, fetchToken])
 
-  // Show expiry warning toast at 13 min (2 min before 15 min session expires)
+  // Show expiry warning toast at 13 min, end session at 15 min if not extended
   useEffect(() => {
     if (!tokenIssuedAt || viewState !== 'ready') return
-    const warningDelay = 13 * 60 * 1000 - (Date.now() - tokenIssuedAt)
-    if (warningDelay <= 0) return
-    const timer = setTimeout(() => {
-      toast({
-        title: 'Session expiring soon',
-        description: 'Your session will expire in 2 minutes.',
-        duration: 120000,
-        action: (
-          <ToastAction
-            altText="Extend session"
-            onClick={() => {
-              void (async () => {
-                try {
-                  const token = await fetchToken()
-                  tokenRef.current = token
-                  setTokenIssuedAt(Date.now())
-                  deliverToken(token)
-                } catch {
-                  // silently fail — the auto-refresh interval will retry
-                }
-              })()
-            }}
-          >
-            Extend
-          </ToastAction>
-        ),
-      })
-    }, warningDelay)
-    return () => clearTimeout(timer)
+    const elapsed = Date.now() - tokenIssuedAt
+    const warningDelay = 13 * 60 * 1000 - elapsed
+    const expiryDelay = 15 * 60 * 1000 - elapsed
+
+    const timers: ReturnType<typeof setTimeout>[] = []
+
+    if (warningDelay > 0) {
+      timers.push(setTimeout(() => {
+        toast({
+          title: 'Session expiring soon',
+          description: 'Your session will expire in 2 minutes.',
+          duration: 120000,
+          action: (
+            <ToastAction
+              altText="Extend session"
+              onClick={() => {
+                void (async () => {
+                  try {
+                    const token = await fetchToken()
+                    tokenRef.current = token
+                    setTokenIssuedAt(Date.now())
+                    deliverToken(token)
+                  } catch {
+                    // silently fail — the auto-refresh interval will retry
+                  }
+                })()
+              }}
+            >
+              Extend
+            </ToastAction>
+          ),
+        })
+      }, warningDelay))
+    }
+
+    if (expiryDelay > 0) {
+      timers.push(setTimeout(() => {
+        setViewState('session_ended')
+      }, expiryDelay))
+    }
+
+    return () => timers.forEach(clearTimeout)
   }, [tokenIssuedAt, viewState, toast, fetchToken, iframeUrl])
 
   // Re-deliver token when iframe reloads
@@ -258,7 +282,14 @@ export function ViewerShell(props: Props) {
             <div className="max-w-sm text-center">
               <AlertCircle className="mx-auto mb-3 h-8 w-8 text-red-400" />
               <p className="font-medium text-zinc-100">Deployment failed</p>
-              <p className="mt-1 text-sm text-zinc-400">{errorMsg || 'The app failed to deploy. Check the deployment logs for details.'}</p>
+              <p className="mt-1 text-sm text-zinc-400">{errorMsg || 'The app failed to deploy. The creator has been notified.'}</p>
+              <div className="mt-5 flex items-center justify-center gap-3">
+                <Button variant="outline" size="sm" onClick={() => { setErrorMsg(''); setViewState('deploying') }}>
+                  <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                  Retry
+                </Button>
+                <ChannelLink channelSlug={channelSlug} />
+              </div>
             </div>
           </div>
         )}
@@ -275,6 +306,22 @@ export function ViewerShell(props: Props) {
         )}
 
         {viewState === 'loading' && <ViewerSkeleton />}
+
+        {viewState === 'session_ended' && (
+          <div className="flex h-full items-center justify-center">
+            <div className="max-w-sm text-center">
+              <AlertCircle className="mx-auto mb-3 h-8 w-8 text-zinc-400" />
+              <p className="font-medium text-zinc-100">Session ended</p>
+              <p className="mt-1 text-sm text-zinc-400">Your session has expired. Any unsaved work in the app may have been lost.</p>
+              <div className="mt-5 flex items-center justify-center gap-3">
+                <Button size="sm" onClick={() => setViewState('loading')}>
+                  Start new session
+                </Button>
+                <ChannelLink channelSlug={channelSlug} />
+              </div>
+            </div>
+          </div>
+        )}
 
         {(viewState === 'loading' || viewState === 'ready') && iframeUrl && (
           <iframe
