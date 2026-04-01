@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server'
 import { headers } from 'next/headers'
+import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { logger } from '@/lib/logger'
-type PatchBody = { status?: string }
-function isValidStatus(s: string): boolean {
-  return s === 'pending' || s === 'live' || s === 'suspended' || s === 'draft' || s === 'archived'
-}
+
+const patchAppSchema = z.object({
+  status: z.enum(['live', 'draft', 'suspended']),
+})
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ appId: string }> },
@@ -16,16 +17,17 @@ export async function PATCH(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   const { appId } = await params
-  const body = await req.json() as PatchBody
-  if (body.status && !isValidStatus(body.status)) {
-    return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+  const parsed = patchAppSchema.safeParse(await req.json())
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
   }
+  const { status } = parsed.data
   try {
     await db.query(
       `UPDATE marketplace.apps SET status = $1 WHERE id = $2 AND deleted_at IS NULL`,
-      [body.status, appId],
+      [status, appId],
     )
-    logger.info({ msg: 'admin_app_status_updated', appId, status: body.status })
+    logger.info({ msg: 'admin_app_status_updated', appId, status })
     return NextResponse.json({ ok: true })
   } catch (err) {
     logger.error({ msg: 'admin_app_patch_failed', err: String(err) })

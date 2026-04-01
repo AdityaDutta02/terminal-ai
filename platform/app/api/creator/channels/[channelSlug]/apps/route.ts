@@ -1,16 +1,19 @@
 import { NextResponse } from 'next/server'
 import { headers } from 'next/headers'
+import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { logger } from '@/lib/logger'
+
 type ChannelRow = { id: string; creator_id: string | null }
-type ReqBody = {
-  name?: string
-  slug?: string
-  description?: string
-  iframeUrl?: string
-  creditsPerSession?: number
-}
+
+const createAppSchema = z.object({
+  name: z.string().min(1).max(100),
+  slug: z.string().min(1).max(50).regex(/^[a-z0-9-]+$/, 'slug must be lowercase alphanumeric with hyphens'),
+  description: z.string().max(500).optional(),
+  iframeUrl: z.string().url(),
+  creditsPerSession: z.number().int().min(0).optional(),
+})
 async function getOwnedChannel(channelSlug: string, userId: string) {
   const result = await db.query<ChannelRow>(
     `SELECT id, creator_id FROM marketplace.channels WHERE slug = $1 AND deleted_at IS NULL`,
@@ -29,15 +32,12 @@ export async function POST(
   const { channelSlug } = await params
   const channel = await getOwnedChannel(channelSlug, session.user.id)
   if (!channel) return NextResponse.json({ error: 'Channel not found' }, { status: 404 })
-  const body = await req.json() as ReqBody
-  const { name, slug, description, iframeUrl, creditsPerSession } = body
-  if (!name || !slug || !iframeUrl) {
-    return NextResponse.json({ error: 'name, slug, and iframeUrl are required' }, { status: 400 })
+  const parsed = createAppSchema.safeParse(await req.json())
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
   }
-  if (!/^[a-z0-9-]+$/.test(slug)) {
-    return NextResponse.json({ error: 'Invalid slug format' }, { status: 400 })
-  }
-  const credits = Math.max(1, Math.min(10000, Number(creditsPerSession) || 1))
+  const { name, slug, description, iframeUrl, creditsPerSession } = parsed.data
+  const credits = Math.max(1, Math.min(10000, creditsPerSession ?? 1))
   try {
     await db.query(
       `INSERT INTO marketplace.apps (channel_id, slug, name, description, iframe_url, credits_per_session, status)

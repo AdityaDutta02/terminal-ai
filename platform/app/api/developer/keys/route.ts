@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server'
 import crypto from 'crypto'
+import { z } from 'zod'
 import { db } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
+
+const createKeySchema = z.object({
+  name: z.string().trim().min(1).max(100),
+})
 
 export async function GET(): Promise<Response> {
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
@@ -32,17 +37,11 @@ export async function POST(req: Request): Promise<Response> {
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  let body: { name?: string }
-  try {
-    body = await req.json() as { name?: string }
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  const parsed = createKeySchema.safeParse(await req.json().catch(() => null))
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
   }
-
-  const name = body.name?.trim()
-  if (!name) {
-    return NextResponse.json({ error: 'name is required' }, { status: 400 })
-  }
+  const { name } = parsed.data
 
   const rawToken = `sk_tai_${crypto.randomBytes(32).toString('hex')}`
   const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex')

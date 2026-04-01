@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server'
 import { headers } from 'next/headers'
+import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { redis } from '@/lib/redis'
 import { logger } from '@/lib/logger'
+
 type RouteCtx = { params: Promise<{ channelSlug: string }> }
+
+const patchChannelSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  description: z.string().max(500).optional(),
+}).strict()
 export async function PATCH(req: Request, { params }: RouteCtx): Promise<NextResponse> {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -14,16 +21,19 @@ export async function PATCH(req: Request, { params }: RouteCtx): Promise<NextRes
     [channelSlug, session.user.id],
   )
   if (!owned.rows[0]) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  const body = await req.json() as { name?: string; description?: string }
+  const parsed = patchChannelSchema.safeParse(await req.json())
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
+  }
   const updates: string[] = []
   const values: unknown[] = []
-  if (body.name !== undefined) {
+  if (parsed.data.name !== undefined) {
     updates.push(`name = $${values.length + 1}`)
-    values.push(body.name)
+    values.push(parsed.data.name)
   }
-  if (body.description !== undefined) {
+  if (parsed.data.description !== undefined) {
     updates.push(`description = $${values.length + 1}`)
-    values.push(body.description)
+    values.push(parsed.data.description)
   }
   if (updates.length === 0) return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
   values.push(channelSlug)

@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server'
 import { headers } from 'next/headers'
+import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { logger } from '@/lib/logger'
+
+const createChannelSchema = z.object({
+  name: z.string().min(1).max(100),
+  slug: z.string().min(1).max(50).regex(/^[a-z0-9-]+$/, 'slug must be lowercase alphanumeric with hyphens'),
+  description: z.string().max(500).optional(),
+})
 export async function GET(): Promise<NextResponse> {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -18,10 +25,11 @@ export async function POST(req: Request): Promise<NextResponse> {
   if ((session.user as Record<string, unknown>).role !== 'creator' && (session.user as Record<string, unknown>).role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
-  const body = await req.json() as { name?: string; slug?: string; description?: string }
-  const { name, slug, description } = body
-  if (!name || !slug) return NextResponse.json({ error: 'name and slug are required' }, { status: 400 })
-  if (!/^[a-z0-9-]+$/.test(slug)) return NextResponse.json({ error: 'Invalid slug format' }, { status: 400 })
+  const parsed = createChannelSchema.safeParse(await req.json())
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
+  }
+  const { name, slug, description } = parsed.data
   try {
     const result = await db.query<{ slug: string }>(
       `INSERT INTO marketplace.channels (slug, name, description, creator_id)

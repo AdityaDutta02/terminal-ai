@@ -1,8 +1,17 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { db } from '@/lib/db'
 import { validateServiceToken, getCreatorIdFromRequest, unauthorizedResponse } from '@/lib/internal-auth'
 import { slugify } from '@/lib/slugify'
 import { logger } from '@/lib/logger'
+
+const createInternalAppSchema = z.object({
+  channelId: z.string().min(1),
+  name: z.string().min(1).max(100),
+  description: z.string().max(500).optional(),
+  githubRepo: z.string().min(1),
+  githubBranch: z.string().min(1).optional(),
+})
 
 export async function POST(req: Request): Promise<Response> {
   if (!validateServiceToken(req)) return unauthorizedResponse()
@@ -12,22 +21,11 @@ export async function POST(req: Request): Promise<Response> {
     return NextResponse.json({ error: 'Missing X-Creator-Id header' }, { status: 400 })
   }
 
-  const body = await req.json() as {
-    channelId?: string
-    name?: string
-    description?: string
-    githubRepo?: string
-    githubBranch?: string
+  const parsed = createInternalAppSchema.safeParse(await req.json())
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
   }
-
-  const { channelId, name, description, githubRepo, githubBranch } = body
-
-  if (!channelId || !name || !githubRepo) {
-    return NextResponse.json(
-      { error: 'channelId, name, and githubRepo are required' },
-      { status: 400 }
-    )
-  }
+  const { channelId, name, description, githubRepo, githubBranch } = parsed.data
 
   // Verify the channel belongs to this creator
   const channelCheck = await db.query<{ id: string }>(
@@ -91,6 +89,7 @@ export async function POST(req: Request): Promise<Response> {
 
   // Trigger deployment via deploy-manager
   const deployManagerUrl = process.env.DEPLOY_MANAGER_URL ?? 'http://deploy-manager:3002'
+  const deployPayload = JSON.stringify({ deploymentId, appId, githubRepo: githubRepoShort, branch, subdomain })
   try {
     const deployRes = await fetch(`${deployManagerUrl}/deploy`, {
       method: 'POST',
@@ -98,13 +97,7 @@ export async function POST(req: Request): Promise<Response> {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${process.env.INTERNAL_SERVICE_TOKEN ?? ''}`,
       },
-      body: JSON.stringify({
-        deploymentId,
-        appId,
-        githubRepo: githubRepoShort,
-        branch,
-        subdomain,
-      }),
+      body: deployPayload,
     })
 
     if (!deployRes.ok) {

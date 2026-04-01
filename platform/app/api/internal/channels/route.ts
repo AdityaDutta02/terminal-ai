@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { db } from '@/lib/db'
 import { validateServiceToken, getCreatorIdFromRequest, unauthorizedResponse } from '@/lib/internal-auth'
 import { slugify } from '@/lib/slugify'
+
+const createInternalChannelSchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().max(500).optional(),
+})
 
 export async function POST(req: Request): Promise<Response> {
   if (!validateServiceToken(req)) return unauthorizedResponse()
@@ -11,12 +17,11 @@ export async function POST(req: Request): Promise<Response> {
     return NextResponse.json({ error: 'Missing X-Creator-Id header' }, { status: 400 })
   }
 
-  const body = await req.json() as { name?: string; description?: string }
-  const { name, description } = body
-
-  if (!name || typeof name !== 'string' || name.trim().length === 0) {
-    return NextResponse.json({ error: 'name is required' }, { status: 400 })
+  const parsed = createInternalChannelSchema.safeParse(await req.json())
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
   }
+  const { name, description } = parsed.data
 
   const slug = slugify(name)
 
