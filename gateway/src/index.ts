@@ -13,17 +13,14 @@ app.use(
   '*',
   cors({
     origin: (origin) => {
-      // Allow requests from terminalai.app subdomains and localhost in dev
-      if (
-        origin?.endsWith('.terminalai.app') ||
-        origin === 'https://terminalai.app' ||
-        origin?.startsWith('http://localhost')
-      ) {
-        return origin
-      }
+      if (!origin) return null
+      if (origin === 'https://terminalai.app') return origin
+      if (/^https:\/\/[a-z0-9-]+\.apps\.terminalai\.app$/.test(origin)) return origin
+      // Allow localhost only in development
+      if (process.env.NODE_ENV !== 'production' && origin.startsWith('http://localhost')) return origin
       return null
     },
-    allowMethods: ['GET', 'POST', 'OPTIONS'],
+    allowMethods: ['POST', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
     maxAge: 86400,
   }),
