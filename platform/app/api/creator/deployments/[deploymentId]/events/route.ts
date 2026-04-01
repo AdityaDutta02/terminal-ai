@@ -14,6 +14,7 @@ export async function GET(
 
   const upstream = await fetch(
     `${DEPLOY_MANAGER_URL}/deployments/${deploymentId}/logs/stream`,
+    { headers: { Authorization: `Bearer ${process.env.INTERNAL_SERVICE_TOKEN ?? ''}` } },
   )
 
   return new Response(upstream.body, {

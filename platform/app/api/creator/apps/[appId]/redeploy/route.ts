@@ -39,6 +39,7 @@ export async function POST(
 
   const upstream = await fetch(`${DEPLOY_MANAGER_URL}/deployments/${prev.id}/retry`, {
     method: 'POST',
+    headers: { Authorization: `Bearer ${process.env.INTERNAL_SERVICE_TOKEN ?? ''}` },
   })
   const data: unknown = await upstream.json()
 

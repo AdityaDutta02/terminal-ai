@@ -6,24 +6,18 @@ import { db } from './lib/db'
 import { logger } from './lib/logger'
 import { ERROR_MESSAGES } from './lib/deployment-events'
 
-const REQUIRED_ENV = [
-  'GATEWAY_URL',
-  'COOLIFY_URL',
-  'COOLIFY_TOKEN',
-  'COOLIFY_PROJECT_UUID',
-  'COOLIFY_SERVER_UUID',
-  'DATABASE_URL',
-  'REDIS_PASSWORD',
-] as const
+function getRequiredEnvKeys(): readonly string[] {
+  return 'GATEWAY_URL,COOLIFY_URL,COOLIFY_TOKEN,COOLIFY_PROJECT_UUID,COOLIFY_SERVER_UUID,DATABASE_URL,REDIS_PASSWORD'.split(',')
+}
 
-for (const key of REQUIRED_ENV) {
+for (const key of getRequiredEnvKeys()) {
   if (!process.env[key] || process.env[key] === 'undefined') {
-    console.error(`FATAL: Missing required env var: ${key}`)
+    logger.error({ msg: 'missing_required_env', key })
     process.exit(1)
   }
 }
 
-console.log('Env validation passed. Starting deploy-manager...')
+logger.info({ msg: 'env_validation_passed' })
 
 interface DeploymentLogRow {
   id: string
@@ -46,13 +40,20 @@ async function fetchCoolifyExtra(coolifyAppId: string | null): Promise<Record<st
   }
 }
 
+function mapRowToBase(row: DeploymentLogRow): Record<string, unknown> {
+  return {
+    deploymentId: row.id,
+    appName: row.app_name,
+    status: row.status,
+    startedAt: row.created_at,
+    completedAt: row.completed_at ?? null,
+    error: row.error_message ?? null,
+  }
+}
+
 async function buildLogResponse(row: DeploymentLogRow, includeBuildLogs = false): Promise<Record<string, unknown>> {
   const extra = await fetchCoolifyExtra(row.coolify_app_id)
-  const response: Record<string, unknown> = {
-    deploymentId: row.id, appName: row.app_name, status: row.status,
-    startedAt: row.created_at, completedAt: row.completed_at ?? null,
-    error: row.error_message ?? null, ...extra,
-  }
+  const response = { ...mapRowToBase(row), ...extra }
   if (includeBuildLogs && row.coolify_app_id) {
     response.buildLogs = await getDeploymentLogs(row.coolify_app_id)
   }
@@ -61,6 +62,30 @@ async function buildLogResponse(row: DeploymentLogRow, includeBuildLogs = false)
 
 const app = new Hono()
 app.use('*', honoLogger())
+
+// Internal auth middleware — protect all mutation routes
+app.use('/deploy', async (c, next) => {
+  const token = c.req.header('Authorization')?.replace('Bearer ', '')
+  if (!token || token !== process.env.INTERNAL_SERVICE_TOKEN) {
+    return c.json({ error: 'Forbidden' }, 403)
+  }
+  await next()
+})
+app.use('/apps/*', async (c, next) => {
+  const token = c.req.header('Authorization')?.replace('Bearer ', '')
+  if (!token || token !== process.env.INTERNAL_SERVICE_TOKEN) {
+    return c.json({ error: 'Forbidden' }, 403)
+  }
+  await next()
+})
+app.use('/deployments/*/retry', async (c, next) => {
+  const token = c.req.header('Authorization')?.replace('Bearer ', '')
+  if (!token || token !== process.env.INTERNAL_SERVICE_TOKEN) {
+    return c.json({ error: 'Forbidden' }, 403)
+  }
+  await next()
+})
+
 app.get('/health', (c) => c.json({ status: 'ok' }))
 app.get('/deployments/:id', async (c) => {
   const id = c.req.param('id')

@@ -17,6 +17,7 @@ export default async function DeploymentDetailPage({
 
   const res = await fetch(`${DEPLOY_MANAGER_URL}/deployments/${deploymentId}/logs`, {
     cache: 'no-store',
+    headers: { Authorization: `Bearer ${process.env.INTERNAL_SERVICE_TOKEN ?? ''}` },
   })
   if (!res.ok) redirect(`/creator/apps/${appId}/deployments`)
 

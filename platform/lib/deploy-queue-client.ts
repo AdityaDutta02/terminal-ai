@@ -10,7 +10,10 @@ export const deployQueue = {
   add: async (_name: string, job: DeployJob): Promise<void> => {
     const res = await fetch(DEPLOY_MANAGER_URL + '/deploy', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${process.env.INTERNAL_SERVICE_TOKEN ?? ''}`,
+      },
       body: JSON.stringify(job),
     })
     if (!res.ok) throw new Error('deploy-manager enqueue failed: ' + res.status)
