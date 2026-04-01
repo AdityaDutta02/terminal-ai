@@ -1,72 +1,32 @@
-import { db } from '@/lib/db'
+import { headers } from 'next/headers'
+import { ChannelsTable } from './channels-table'
+
 type ChannelRow = {
   id: string
   name: string
   slug: string
-  status: string
-  creator_email: string | null
-  app_count: string
+  is_superadmin_channel: boolean
+  creator_balance: number
   created_at: string
+  owner_email: string
+  owner_name: string
+  apps_count: number
+  is_suspended: boolean
 }
-async function getChannels(): Promise<ChannelRow[]> {
-  const result = await db.query<ChannelRow>(
-    `SELECT c.id, c.name, c.slug, c.status, c.created_at,
-            u.email AS creator_email,
-            COUNT(a.id) AS app_count
-     FROM marketplace.channels c
-     LEFT JOIN "user" u ON u.id = c.creator_id
-     LEFT JOIN marketplace.apps a ON a.channel_id = c.id AND a.deleted_at IS NULL
-     WHERE c.deleted_at IS NULL
-     GROUP BY c.id, u.email
-     ORDER BY c.created_at DESC
-     LIMIT 200`,
-  )
-  return result.rows
-}
-function statusBadge(status: string): string {
-  if (status === 'active') return 'bg-green-900/40 text-green-400'
-  return 'bg-red-900/40 text-red-400'
-}
-export default async function AdminChannels() {
-  const channels = await getChannels()
+
+export default async function AdminChannelsPage() {
+  const hdrs = await headers()
+  const cookie = hdrs.get('cookie') ?? ''
+  const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/channels`, {
+    headers: { cookie },
+    cache: 'no-store',
+  })
+  const { channels } = (await res.json()) as { channels: ChannelRow[] }
+
   return (
     <div>
-      <h1 className="mb-8 text-2xl font-bold text-white">Channels</h1>
-      <div className="overflow-hidden rounded-xl border border-gray-800 bg-gray-900">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-800">
-              <th className="px-4 py-3 text-left font-medium text-gray-500">Channel</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-500">Creator</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-500">Status</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-500">Apps</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-800">
-            {channels.map((ch) => (
-              <tr key={ch.id} className="hover:bg-gray-800/50 transition-colors">
-                <td className="px-4 py-3">
-                  <p className="font-medium text-gray-100">{ch.name}</p>
-                  <p className="text-xs text-gray-500">@{ch.slug}</p>
-                </td>
-                <td className="px-4 py-3 text-gray-400 text-xs">{ch.creator_email ?? '—'}</td>
-                <td className="px-4 py-3">
-                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${statusBadge(ch.status)}`}>
-                    {ch.status}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-gray-300">{ch.app_count}</td>
-                <td className="px-4 py-3 text-right">
-                  <a href={`/c/${ch.slug}`} className="text-xs text-[#FF6B00] hover:underline" target="_blank">
-                    View
-                  </a>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <h1 className="text-[28px] font-extrabold text-slate-900 tracking-tight mb-6">Channels</h1>
+      <ChannelsTable channels={channels ?? []} />
     </div>
   )
 }
