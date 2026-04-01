@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 
 export interface CreatorChannel {
+  [key: string]: unknown
   id: string
   name: string
   slug: string

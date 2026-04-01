@@ -49,14 +49,12 @@ export const auth = betterAuth({
       },
     },
   },
-  hooks: {
-    after: [
-      {
-        matcher: (ctx: { path: string }) => ctx.path.startsWith('/get-session'),
-        handler: async (ctx: { context?: { session?: { user?: { id?: string } } } }) => {
-          const userId = ctx.context?.session?.user?.id
-          if (!userId) return
-
+  databaseHooks: {
+    session: {
+      create: {
+        before: async (session) => {
+          const userId = session.userId
+          if (!userId) return { data: session }
           const ban = await db.query(
             `SELECT id FROM platform.user_bans
              WHERE user_id = $1 AND is_active = true
@@ -64,11 +62,12 @@ export const auth = betterAuth({
             [userId],
           )
           if (ban.rows[0]) {
-            throw new Error('Account suspended')
+            return false // block session creation for banned users
           }
+          return { data: session }
         },
       },
-    ],
+    },
   },
 })
 

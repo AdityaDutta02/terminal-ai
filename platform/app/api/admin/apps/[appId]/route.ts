@@ -12,7 +12,7 @@ export async function PATCH(
   { params }: { params: Promise<{ appId: string }> },
 ): Promise<NextResponse> {
   const session = await auth.api.getSession({ headers: await headers() })
-  if (!session || session.user.role !== 'admin') {
+  if (!session || (session.user as Record<string, unknown>).role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   const { appId } = await params
@@ -37,7 +37,7 @@ export async function DELETE(
   { params }: { params: Promise<{ appId: string }> },
 ): Promise<NextResponse> {
   const session = await auth.api.getSession({ headers: await headers() })
-  if (!session || session.user.role !== 'admin') {
+  if (!session || (session.user as Record<string, unknown>).role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   const { appId } = await params

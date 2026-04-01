@@ -15,7 +15,7 @@ export async function GET(): Promise<NextResponse> {
 export async function POST(req: Request): Promise<NextResponse> {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role !== 'creator' && session.user.role !== 'admin') {
+  if ((session.user as Record<string, unknown>).role !== 'creator' && (session.user as Record<string, unknown>).role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   const body = await req.json() as { name?: string; slug?: string; description?: string }

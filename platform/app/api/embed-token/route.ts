@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
   let creditsDeducted = 0
 
   // Admins skip credit deduction entirely
-  const isAdmin = session.user.role === 'admin'
+  const isAdmin = (session.user as Record<string, unknown>).role === 'admin'
 
   if (isAdmin) {
     // no-op: admins are never charged
