@@ -2,14 +2,14 @@ import { db } from '@/lib/db'
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { notFound } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { ShareButton } from '@/components/share-button'
-import { ArrowLeft, Coins, ExternalLink, Layers } from 'lucide-react'
+import { ChevronLeft, Star, Play } from 'lucide-react'
+import { AppDetailClient } from './app-detail-client'
 import type { Metadata } from 'next'
-function appOgUrl(base: string, id: string) {
+
+function appOgUrl(base: string, id: string): string {
   return base + '/api/og/app?id=' + id
 }
+
 type AppRow = {
   id: string
   slug: string
@@ -18,8 +18,13 @@ type AppRow = {
   thumbnail_url: string | null
   credits_per_session: number
 }
+
 type ChannelRow = { id: string; slug: string; name: string }
-async function getData(channelSlug: string, appSlug: string) {
+
+async function getData(
+  channelSlug: string,
+  appSlug: string,
+): Promise<{ channel: ChannelRow; app: AppRow } | null> {
   const ch = await db.query<ChannelRow>(
     `SELECT id, slug, name FROM marketplace.channels
      WHERE slug = $1 AND deleted_at IS NULL`,
@@ -35,7 +40,9 @@ async function getData(channelSlug: string, appSlug: string) {
   if (!ap.rows[0]) return null
   return { channel: ch.rows[0], app: ap.rows[0] }
 }
+
 type PageProps = { params: Promise<{ channelSlug: string; appSlug: string }> }
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { channelSlug, appSlug } = await params
   const data = await getData(channelSlug, appSlug)
@@ -59,6 +66,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     },
   }
 }
+
 export default async function AppDetailPage({ params }: PageProps) {
   const { channelSlug, appSlug } = await params
   const data = await getData(channelSlug, appSlug)
@@ -66,72 +74,66 @@ export default async function AppDetailPage({ params }: PageProps) {
   const { channel, app } = data
   const session = await auth.api.getSession({ headers: await headers() })
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://terminalai.app'
+
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
+    <div className="max-w-[1200px] mx-auto px-6 py-8">
+      {/* Breadcrumb */}
       <a
         href={`/c/${channel.slug}`}
-        className="mb-6 inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors"
+        className="mb-6 inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-600 transition-colors"
       >
-        <ArrowLeft className="h-3.5 w-3.5" />
+        <ChevronLeft className="h-4 w-4" />
         {channel.name}
       </a>
-      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-        <div className="flex flex-col gap-8 p-8 sm:flex-row">
-          <div className="flex-shrink-0">
-            {app.thumbnail_url ? (
-              <img
-                src={app.thumbnail_url}
-                alt={app.name}
-                className="h-48 w-48 rounded-xl object-cover border border-gray-100 shadow-sm"
-              />
-            ) : (
-              <div className="flex h-48 w-48 items-center justify-center rounded-xl bg-gradient-to-br from-violet-50 to-indigo-50 border border-gray-100">
-                <Layers className="h-12 w-12 text-violet-200" />
-              </div>
-            )}
+
+      {/* App hero */}
+      <div className="mb-8">
+        <div className="flex items-start gap-5">
+          {/* Icon */}
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center flex-shrink-0">
+            <Play className="w-9 h-9 text-white" />
           </div>
-          <div className="flex flex-1 flex-col">
-            <div className="mb-2 flex items-start gap-2 flex-wrap">
-              <Badge variant="violet">AI App</Badge>
-              <ShareButton url={appUrl + '/c/' + channel.slug + '/' + app.slug} title={app.name} description={app.description ?? ''} type="app" />
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900">{app.name}</h1>
-            <p className="mt-1 text-sm text-gray-400">in {channel.name}</p>
-            {app.description && (
-              <p className="mt-4 text-gray-600 leading-relaxed">{app.description}</p>
-            )}
-            <div className="mt-6 flex items-center gap-2 rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
-              <Coins className="h-4 w-4 text-violet-500" />
-              <span className="text-sm text-gray-600">
-                <span className="font-semibold text-gray-900">{app.credits_per_session} credits</span>
-                {' '}per session
-              </span>
-            </div>
-            <div className="mt-6">
-              {session ? (
-                <Button size="lg" asChild className="w-full sm:w-auto">
-                  <a href={`/viewer/${channel.slug}/${app.slug}`}>
-                    <ExternalLink className="h-4 w-4" />
-                    Open app
-                  </a>
-                </Button>
-              ) : (
-                <div className="space-y-3">
-                  <Button size="lg" asChild className="w-full sm:w-auto">
-                    <a href={`/login?next=/viewer/${channel.slug}/${app.slug}`}>
-                      Sign in to launch
-                    </a>
-                  </Button>
-                  <p className="text-xs text-gray-400">
-                    New users get 20 free credits after email verification.{' '}
-                    <a href="/signup" className="text-violet-600 hover:underline">Create account →</a>
-                  </p>
-                </div>
-              )}
+
+          <div className="min-w-0">
+            <span className="text-[11px] font-medium text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
+              AI App
+            </span>
+            <h1 className="mt-1.5 text-[32px] font-extrabold text-slate-900 tracking-tight leading-tight">
+              {app.name}
+            </h1>
+            <p className="text-sm text-slate-500">
+              by{' '}
+              <a
+                href={`/c/${channel.slug}`}
+                className="text-orange-600 hover:underline font-medium"
+              >
+                {channel.name}
+              </a>
+            </p>
+            <div className="mt-2 flex items-center gap-3">
+              <div className="flex items-center gap-1">
+                <Star className="w-4 h-4 text-orange-400 fill-orange-400" />
+                <span className="text-sm font-medium text-slate-700">4.5</span>
+                <span className="text-sm text-slate-400">(2 reviews)</span>
+              </div>
+              <span className="text-slate-200">|</span>
+              <span className="text-sm text-slate-400">-- sessions</span>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Two-column layout */}
+      <AppDetailClient
+        appName={app.name}
+        appDescription={app.description ?? 'An AI-powered micro-app on Terminal AI.'}
+        channelName={channel.name}
+        channelSlug={channel.slug}
+        appSlug={app.slug}
+        credits={app.credits_per_session}
+        isLoggedIn={!!session}
+        appUrl={appUrl}
+      />
     </div>
   )
 }

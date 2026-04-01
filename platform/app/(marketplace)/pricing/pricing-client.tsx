@@ -1,10 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { Check, Loader2 } from 'lucide-react'
+import { Check, Loader2, Sparkles, Shield, Zap } from 'lucide-react'
 import { PLANS, CREDIT_PACKS, type PlanId, type CreditPackId } from '@/lib/pricing'
+import { Footer } from '@/components/footer'
 
 declare global {
   interface Window {
@@ -27,176 +27,138 @@ function loadRazorpayScript(): Promise<void> {
   })
 }
 
-interface ActiveSubscription {
-  plan_id: string
-  status: string
-}
-
 export interface PricingClientProps {
   isLoggedIn: boolean
-  activeSubscription: ActiveSubscription | null
+  activeSubscription: { plan_id: string; status: string } | null
   razorpayKeyId: string
   userEmail: string
   userName: string
 }
 
-// Feature lists derived from plan constants — no magic strings for credit counts.
-// Labels are built via Array push so the static analyser does not confuse
-// comma-separated entries with function parameters.
-type PlanFeatureMap = Record<PlanId, string[]>
-
-function buildPlanFeatures(): PlanFeatureMap {
-  const shared: string[] = []
-  shared.push('Session-based billing')
-  shared.push('Email support')
-
-  const starter: string[] = []
-  starter.push(`${PLANS.starter.credits} credits / month`)
-  starter.push(...shared)
-
-  const creator: string[] = []
-  creator.push(`${PLANS.creator.credits} credits / month`)
-  creator.push(...shared)
-  creator.push('Priority support')
-
-  const pro: string[] = []
-  pro.push(`${PLANS.pro.credits} credits / month`)
-  pro.push(...shared)
-  pro.push('Priority support')
-  pro.push('Dedicated support')
-
-  return { starter, creator, pro }
+function redirectToLogin(): void {
+  window.location.href = '/login?next=/pricing'
 }
 
-const PLAN_FEATURES: PlanFeatureMap = buildPlanFeatures()
-
-const PLAN_ORDER: PlanId[] = ['starter', 'creator', 'pro']
-
-// Shared auth-redirect helper used by both subscribe and buy flows
-function redirectToLogin() {
-  window.location.href = `/login?next=/pricing`
-}
-
-// Shared error extractor for failed API responses
 async function extractApiError(res: Response): Promise<string> {
   const body = (await res.json().catch(() => ({}))) as { error?: string }
   return body.error ?? 'Something went wrong'
 }
 
-// Shared button label with loading spinner
 function ButtonLabel({ loading, label }: { loading: boolean; label: string }) {
   if (!loading) return <>{label}</>
   return (
     <span className="flex items-center justify-center gap-2">
       <Loader2 className="h-4 w-4 animate-spin" />
-      Opening…
+      Opening...
     </span>
   )
 }
 
-interface SubscribeButtonProps {
-  planId: PlanId
-  isActive: boolean
-  isLoggedIn: boolean
+/* ── Credit pricing tiers ── */
+function getCreditPrice(amount: number): number {
+  if (amount <= 500) return 0.45
+  if (amount <= 1500) return 0.38
+  if (amount <= 3000) return 0.30
+  return 0.24
 }
 
-function SubscribeButton({ planId, isActive, isLoggedIn }: SubscribeButtonProps) {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+function getDiscountLabel(amount: number): string | null {
+  if (amount <= 500) return null
+  if (amount <= 1500) return '15% off'
+  if (amount <= 3000) return '33% off'
+  return '47% off'
+}
 
-  const isCreator = planId === 'creator'
+/* ── Subscription features ── */
+const subscriptionFeatures = [
+  'Monthly credit allowance',
+  'Session-based billing',
+  'Access all marketplace apps',
+  'Email support',
+  'Priority support (Creator+)',
+  'Usage analytics dashboard',
+]
 
-  async function handleSubscribe() {
+/* ── Trust section items ── */
+const trustItems = [
+  {
+    icon: Shield,
+    title: 'Secure by default',
+    desc: 'Bank-grade encryption. Your data never leaves our infrastructure.',
+  },
+  {
+    icon: Zap,
+    title: 'Lightning fast',
+    desc: 'Sub-second inference. Optimized pipelines for every model tier.',
+  },
+  {
+    icon: Sparkles,
+    title: 'Pay only for what you use',
+    desc: 'Credits map to actual compute. No hidden fees, no surprises.',
+  },
+]
+
+export function PricingClient(props: PricingClientProps) {
+  const { isLoggedIn, activeSubscription, razorpayKeyId, userEmail, userName } = props
+  const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly')
+  const [creditAmount, setCreditAmount] = useState(500)
+  const [subLoading, setSubLoading] = useState(false)
+  const [subError, setSubError] = useState<string | null>(null)
+  const [creditLoading, setCreditLoading] = useState(false)
+  const [creditError, setCreditError] = useState<string | null>(null)
+
+  const isSubscribed =
+    activeSubscription?.status === 'active'
+
+  const monthlyPrice = 299
+  const firstMonthPrice = 99
+  const annualPrice = 2499
+
+  const creditPrice = getCreditPrice(creditAmount)
+  const totalCreditPrice = Math.round(creditAmount * creditPrice)
+  const discountLabel = getDiscountLabel(creditAmount)
+
+  async function handleSubscribe(): Promise<void> {
     if (!isLoggedIn) { redirectToLogin(); return }
-
-    setLoading(true)
-    setError(null)
-
+    setSubLoading(true)
+    setSubError(null)
     try {
+      const planId: PlanId = 'creator'
       const res = await fetch('/api/subscriptions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ planId }),
       })
-
       if (!res.ok) throw new Error(await extractApiError(res))
-
       const { shortUrl } = (await res.json()) as { subscriptionId: string; shortUrl: string }
       window.location.href = shortUrl
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      setSubError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
-      setLoading(false)
+      setSubLoading(false)
     }
   }
 
-  if (isActive) {
-    return (
-      <button
-        disabled
-        data-testid={`plan-cta-${planId}`}
-        className="mt-6 w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-400 cursor-not-allowed"
-      >
-        Current plan
-      </button>
-    )
-  }
-
-  return (
-    <div className="mt-6">
-      <button
-        onClick={handleSubscribe}
-        disabled={loading}
-        data-testid={`plan-cta-${planId}`}
-        className={cn(
-          'w-full rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-60',
-          isCreator ? 'bg-violet-600 hover:bg-violet-700' : 'bg-gray-900 hover:bg-gray-700',
-        )}
-      >
-        <ButtonLabel
-          loading={loading}
-          label={isLoggedIn ? 'Subscribe' : 'Sign in to subscribe'}
-        />
-      </button>
-      {error && (
-        <p data-testid={`plan-error-${planId}`} className="mt-2 text-xs text-red-500">
-          {error}
-        </p>
-      )}
-    </div>
-  )
-}
-
-interface CreditPackButtonProps {
-  packId: CreditPackId
-  isLoggedIn: boolean
-  userContext: { razorpayKeyId: string; userEmail: string; userName: string }
-}
-
-function CreditPackButton({ packId, isLoggedIn, userContext }: CreditPackButtonProps) {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const pack = CREDIT_PACKS[packId]
-  const { razorpayKeyId, userEmail, userName } = userContext
-
-  async function handleBuy() {
+  async function handleBuyCredits(): Promise<void> {
     if (!isLoggedIn) { redirectToLogin(); return }
-
-    setLoading(true)
-    setError(null)
-
+    setCreditLoading(true)
+    setCreditError(null)
     try {
       await loadRazorpayScript()
+      // Find the closest pack
+      const packIds = Object.keys(CREDIT_PACKS) as CreditPackId[]
+      const packId = packIds.reduce((closest, pid) => {
+        const diff = Math.abs(CREDIT_PACKS[pid].credits - creditAmount)
+        const closestDiff = Math.abs(CREDIT_PACKS[closest].credits - creditAmount)
+        return diff < closestDiff ? pid : closest
+      }, packIds[0])
 
       const res = await fetch('/api/credits', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ packId }),
       })
-
       if (!res.ok) throw new Error(await extractApiError(res))
-
       const { orderId, amount, currency, keyId } = (await res.json()) as {
         orderId: string
         amount: number
@@ -204,8 +166,6 @@ function CreditPackButton({ packId, isLoggedIn, userContext }: CreditPackButtonP
         keyId: string
       }
 
-      // Build Razorpay options imperatively — inline object literal avoids
-      // the static analyser mistaking object keys for function parameters.
       type RzpOpts = Record<string, unknown>
       const rzpOpts: RzpOpts = {}
       rzpOpts['key'] = keyId || razorpayKeyId
@@ -213,124 +173,238 @@ function CreditPackButton({ packId, isLoggedIn, userContext }: CreditPackButtonP
       rzpOpts['order_id'] = orderId
       rzpOpts['amount'] = amount
       rzpOpts['name'] = 'Terminal AI'
-      rzpOpts['description'] = `${pack.credits.toLocaleString()} credits`
+      rzpOpts['description'] = `${creditAmount.toLocaleString()} credits`
       rzpOpts['prefill'] = { email: userEmail, name: userName }
-      rzpOpts['theme'] = { color: '#7c3aed' }
+      rzpOpts['theme'] = { color: '#FF6B00' }
       rzpOpts['handler'] = () => { window.location.reload() }
 
       const rzp = new window.Razorpay(rzpOpts)
       rzp.open()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      setCreditError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
-      setLoading(false)
+      setCreditLoading(false)
     }
   }
 
   return (
-    <div className="flex flex-col rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-      <p className="text-2xl font-bold text-gray-900">{pack.credits.toLocaleString()}</p>
-      <p className="text-sm text-gray-500">credits</p>
-      <p className="mt-1 text-lg font-semibold text-violet-600">₹{pack.priceInr}</p>
-      <p className="text-xs text-gray-400">one-time</p>
-      <button
-        onClick={handleBuy}
-        disabled={loading}
-        data-testid={`pack-cta-${packId}`}
-        className="mt-4 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:opacity-60"
-      >
-        <ButtonLabel loading={loading} label={isLoggedIn ? 'Buy' : 'Sign in to buy'} />
-      </button>
-      {error && (
-        <p data-testid={`pack-error-${packId}`} className="mt-2 text-xs text-red-500">
-          {error}
-        </p>
-      )}
-    </div>
-  )
-}
+    <>
+      {/* Dark hero header */}
+      <div className="bg-[#0A0A0A] pt-16 pb-24">
+        <div className="max-w-[1200px] mx-auto px-6 text-center">
+          <h1 className="text-4xl sm:text-[48px] font-black text-white tracking-tight leading-tight">
+            Simple, transparent pricing
+          </h1>
+          <p className="mt-4 text-white/50 text-lg">
+            Subscribe for monthly credits or pay as you go.
+          </p>
 
-export function PricingClient(props: PricingClientProps) {
-  const { isLoggedIn, activeSubscription, razorpayKeyId, userEmail, userName } = props
-  const userContext = { razorpayKeyId, userEmail, userName }
+          {/* Billing toggle */}
+          <div className="mt-8 inline-flex items-center bg-white/10 rounded-full p-1">
+            <button
+              onClick={() => setBilling('monthly')}
+              className={cn(
+                'px-5 py-2 rounded-full text-sm font-medium transition-colors',
+                billing === 'monthly'
+                  ? 'bg-[#FF6B00] text-white'
+                  : 'text-white/60 hover:text-white/80',
+              )}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setBilling('annual')}
+              className={cn(
+                'px-5 py-2 rounded-full text-sm font-medium transition-colors',
+                billing === 'annual'
+                  ? 'bg-[#FF6B00] text-white'
+                  : 'text-white/60 hover:text-white/80',
+              )}
+            >
+              Annual
+            </button>
+          </div>
+        </div>
+      </div>
 
-  return (
-    <div className="space-y-16">
-      {/* Subscription plans */}
-      <section>
-        <div className="grid gap-6 sm:grid-cols-3">
-          {PLAN_ORDER.map((planId) => {
-            const plan = PLANS[planId]
-            const isCreator = planId === 'creator'
-            const isActive =
-              activeSubscription?.status === 'active' &&
-              activeSubscription.plan_id === planId
+      {/* Pricing cards */}
+      <div className="max-w-[960px] mx-auto px-6 -mt-12">
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Subscription card */}
+          <div className="relative bg-white rounded-2xl border-2 border-[#FF6B00] shadow-lg p-8">
+            <div className="absolute -top-3 left-6">
+              <span className="bg-[#FF6B00] text-white text-xs font-semibold px-3 py-1 rounded-full">
+                Recommended
+              </span>
+            </div>
 
+            <p className="text-sm font-semibold uppercase tracking-wide text-orange-600 mb-1">
+              Subscription
+            </p>
+            <p className="text-sm text-slate-500 mb-4">
+              Best value for regular users
+            </p>
+
+            {billing === 'monthly' ? (
+              <div className="mb-6">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-bold text-slate-900">
+                    ₹{firstMonthPrice}
+                  </span>
+                  <span className="text-slate-400">/first month</span>
+                </div>
+                <p className="text-sm text-slate-500 mt-1">
+                  then ₹{monthlyPrice}/month
+                </p>
+              </div>
+            ) : (
+              <div className="mb-6">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-bold text-slate-900">
+                    ₹{annualPrice.toLocaleString()}
+                  </span>
+                  <span className="text-slate-400">/year</span>
+                </div>
+                <p className="text-sm text-slate-500 mt-1">
+                  Save ₹{(monthlyPrice * 12 - annualPrice).toLocaleString()} vs monthly
+                </p>
+              </div>
+            )}
+
+            {isSubscribed ? (
+              <button
+                disabled
+                className="w-full py-3 rounded-xl bg-slate-100 text-slate-400 font-semibold text-sm cursor-not-allowed"
+              >
+                Current plan
+              </button>
+            ) : (
+              <button
+                onClick={handleSubscribe}
+                disabled={subLoading}
+                className="w-full py-3 rounded-xl bg-[#FF6B00] hover:bg-[#E55D00] text-white font-semibold text-sm shadow-lg shadow-orange-200/50 transition-colors disabled:opacity-60"
+              >
+                <ButtonLabel
+                  loading={subLoading}
+                  label={isLoggedIn ? 'Subscribe now' : 'Sign in to subscribe'}
+                />
+              </button>
+            )}
+            {subError && (
+              <p className="mt-2 text-xs text-red-500">{subError}</p>
+            )}
+
+            <ul className="mt-6 space-y-2.5">
+              {subscriptionFeatures.map((feature) => (
+                <li key={feature} className="flex items-start gap-2 text-sm text-slate-600">
+                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-1.5 flex-shrink-0" />
+                  {feature}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Pay-as-you-go card */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
+            <p className="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-1">
+              Pay as you go
+            </p>
+            <p className="text-sm text-slate-500 mb-6">
+              Buy credits when you need them
+            </p>
+
+            {/* Credit slider */}
+            <div className="mb-4">
+              <div className="flex items-baseline justify-between mb-2">
+                <span className="text-3xl font-bold text-slate-900">
+                  {creditAmount.toLocaleString()}
+                </span>
+                <span className="text-sm text-slate-400">credits</span>
+              </div>
+              <input
+                type="range"
+                min={100}
+                max={5000}
+                step={100}
+                value={creditAmount}
+                onChange={(e) => setCreditAmount(Number(e.target.value))}
+                className="w-full h-1.5 bg-slate-200 rounded-full appearance-none cursor-pointer accent-[#FF6B00]"
+              />
+              <div className="flex justify-between text-xs text-slate-400 mt-1">
+                <span>100</span>
+                <span>5,000</span>
+              </div>
+            </div>
+
+            {/* Dynamic price */}
+            <div className="bg-slate-50 rounded-xl p-4 mb-4">
+              <div className="flex items-baseline justify-between">
+                <div>
+                  <span className="text-2xl font-bold text-slate-900">
+                    ₹{totalCreditPrice.toLocaleString()}
+                  </span>
+                  <span className="text-sm text-slate-400 ml-1">one-time</span>
+                </div>
+                <span className="text-xs text-slate-400">
+                  ₹{creditPrice.toFixed(2)}/credit
+                </span>
+              </div>
+              {discountLabel && (
+                <span className="inline-block mt-2 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+                  {discountLabel}
+                </span>
+              )}
+            </div>
+
+            <button
+              onClick={handleBuyCredits}
+              disabled={creditLoading}
+              className="w-full py-3 rounded-xl bg-[#0A0A0A] hover:bg-slate-800 text-white font-semibold text-sm transition-colors disabled:opacity-60"
+            >
+              <ButtonLabel
+                loading={creditLoading}
+                label={isLoggedIn ? 'Buy credits' : 'Sign in to buy'}
+              />
+            </button>
+            {creditError && (
+              <p className="mt-2 text-xs text-red-500">{creditError}</p>
+            )}
+
+            <p className="mt-4 text-xs text-slate-400 text-center">
+              Credits never expire. Powered by Razorpay.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Trust section */}
+      <div className="max-w-[960px] mx-auto px-6 mt-20 mb-16">
+        <h2 className="text-center text-xl font-bold text-slate-900 mb-8">
+          Why teams choose Terminal AI
+        </h2>
+        <div className="grid sm:grid-cols-3 gap-4">
+          {trustItems.map((item) => {
+            const Icon = item.icon
             return (
               <div
-                key={planId}
-                data-testid={`plan-card-${planId}`}
-                className={cn(
-                  'relative flex flex-col rounded-xl bg-white p-6',
-                  isCreator
-                    ? 'border-2 border-violet-500 shadow-md'
-                    : 'border border-gray-200 shadow-sm',
-                )}
+                key={item.title}
+                className="bg-[#0A0A0A] rounded-2xl p-6 text-center"
               >
-                {isCreator && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge variant="violet">Popular</Badge>
-                  </div>
-                )}
-
-                <p
-                  className={cn(
-                    'text-sm font-semibold uppercase tracking-wide',
-                    isCreator ? 'text-violet-500' : 'text-gray-400',
-                  )}
-                >
-                  {plan.name}
-                </p>
-
-                <p className="mt-3 text-3xl font-bold text-gray-900">
-                  ₹{plan.priceInr}
-                  <span className="text-base font-normal text-gray-400">/mo</span>
-                </p>
-
-                <ul className="mt-5 flex-1 space-y-2">
-                  {PLAN_FEATURES[planId].map((feature) => (
-                    <li key={feature} className="flex items-start gap-2 text-sm text-gray-600">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-violet-500" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-
-                <SubscribeButton planId={planId} isActive={isActive} isLoggedIn={isLoggedIn} />
+                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center mx-auto mb-3">
+                  <Icon className="w-5 h-5 text-orange-400" />
+                </div>
+                <h3 className="text-sm font-semibold text-white mb-1">{item.title}</h3>
+                <p className="text-xs text-white/50 leading-relaxed">{item.desc}</p>
               </div>
             )
           })}
         </div>
-      </section>
+      </div>
 
-      {/* Credit packs */}
-      <section>
-        <h2 className="mb-2 text-xl font-bold text-gray-900">One-time credit packs</h2>
-        <p className="mb-6 text-sm text-gray-500">
-          Top up your balance whenever you need. Credits never expire.
-        </p>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {(Object.keys(CREDIT_PACKS) as CreditPackId[]).map((packId) => (
-            <CreditPackButton
-              key={packId}
-              packId={packId}
-              isLoggedIn={isLoggedIn}
-              userContext={userContext}
-            />
-          ))}
-        </div>
-        <p className="mt-3 text-xs text-gray-400">Powered by Razorpay. Secure checkout.</p>
-      </section>
-    </div>
+      {/* Footer */}
+      <div className="max-w-[1200px] mx-auto px-6">
+        <Footer />
+      </div>
+    </>
   )
 }
