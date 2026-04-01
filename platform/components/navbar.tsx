@@ -1,7 +1,6 @@
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { Button } from '@/components/ui/button'
 import { NavbarUser } from '@/components/navbar-user'
 import { Zap } from 'lucide-react'
 
@@ -26,35 +25,22 @@ export async function Navbar() {
     : null
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-gray-100 bg-white/90 backdrop-blur-sm">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-        <a href="/" className="flex select-none items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-violet-600">
-            <Zap className="h-4 w-4 text-white" strokeWidth={2.5} />
+    <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100">
+      <div className="max-w-[1200px] mx-auto px-6 h-[60px] flex items-center justify-between">
+        <a href="/" className="flex items-center gap-2.5">
+          <div className="w-8 h-8 bg-[#0A0A0A] rounded-lg flex items-center justify-center">
+            <Zap className="w-4 h-4 text-white" />
           </div>
-          <span className="font-bold tracking-tight text-gray-900">Terminal AI</span>
+          <span className="text-[16px] font-bold text-slate-900 tracking-tight">Terminal AI</span>
         </a>
-
-        <div className="flex items-center gap-2">
-          {session && credits !== null ? (
-            <NavbarUser
-              name={session.user.name}
-              email={session.user.email}
-              credits={credits}
-              role={role ?? 'user'}
-            />
-          ) : (
-            <>
-              <Button variant="ghost" size="sm" asChild>
-                <a href="/login">Sign in</a>
-              </Button>
-              <Button size="sm" asChild>
-                <a href="/signup">Get started</a>
-              </Button>
-            </>
-          )}
-        </div>
+        <NavbarUser
+          isLoggedIn={!!session}
+          name={session?.user.name ?? null}
+          email={session?.user.email ?? null}
+          credits={credits}
+          role={role}
+        />
       </div>
-    </header>
+    </nav>
   )
 }
