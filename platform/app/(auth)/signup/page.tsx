@@ -2,10 +2,11 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { authClient } from '@/lib/auth-client'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Zap, CheckCircle2 } from 'lucide-react'
+import { Zap } from 'lucide-react'
+
+const inputClass =
+  'w-full h-[44px] px-4 rounded-xl border border-slate-200 text-[14px] text-slate-700 placeholder-slate-400 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all'
+const labelClass = 'text-[13px] font-medium text-slate-700 mb-1.5 block'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -29,33 +30,57 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12">
-      <div className="w-full max-w-sm">
-        {/* Logo */}
+    <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center px-4">
+      <div className="w-full max-w-[420px]">
+        {/* Header */}
         <div className="mb-8 text-center">
-          <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-violet-600 shadow-sm">
-            <Zap className="h-6 w-6 text-white" strokeWidth={2.5} />
+          <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-white">
+            <Zap className="h-6 w-6 text-[#0A0A0A]" strokeWidth={2.5} />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Create your account</h1>
-          <p className="mt-1 text-sm text-gray-500">Get 20 free credits after verification</p>
-        </div>
-
-        {/* Perks */}
-        <div className="mb-6 flex flex-col gap-2">
-          {['20 free credits after email verification', 'Access to all AI apps', 'No credit card required'].map((perk) => (
-            <div key={perk} className="flex items-center gap-2 text-sm text-gray-600">
-              <CheckCircle2 className="h-4 w-4 text-emerald-500 flex-shrink-0" />
-              {perk}
-            </div>
-          ))}
+          <h1 className="text-[28px] font-black text-white">Create your account</h1>
+          <p className="mt-1 text-sm text-white/40">Get 20 free credits on signup</p>
         </div>
 
         {/* Card */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+        <div className="rounded-2xl bg-white p-8 shadow-2xl">
+          {/* OAuth buttons */}
+          <div className="space-y-3 mb-6">
+            <button
+              type="button"
+              className="w-full flex items-center justify-center gap-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl py-3 text-[14px] font-medium text-slate-700 transition-colors"
+            >
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white border border-slate-200 text-[12px] font-bold text-slate-600">
+                G
+              </span>
+              Continue with Google
+            </button>
+            <button
+              type="button"
+              className="w-full flex items-center justify-center gap-3 bg-[#0A0A0A] hover:bg-[#1A1A1A] rounded-xl py-3 text-[14px] font-medium text-white transition-colors"
+            >
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-[11px] font-bold text-white">
+                GH
+              </span>
+              Continue with GitHub
+            </button>
+          </div>
+
+          {/* Divider */}
+          <div className="relative mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200" />
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-white px-3 text-[13px] text-slate-400">or</span>
+            </div>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-1.5">
-              <Label htmlFor="name">Full name</Label>
-              <Input
+            <div>
+              <label htmlFor="name" className={labelClass}>
+                Full name
+              </label>
+              <input
                 id="name"
                 type="text"
                 placeholder="Ada Lovelace"
@@ -63,11 +88,15 @@ export default function SignupPage() {
                 onChange={(e) => setName(e.target.value)}
                 required
                 autoComplete="name"
+                className={inputClass}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
-              <Input
+
+            <div>
+              <label htmlFor="email" className={labelClass}>
+                Email
+              </label>
+              <input
                 id="email"
                 type="email"
                 placeholder="you@example.com"
@@ -75,38 +104,53 @@ export default function SignupPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoComplete="email"
+                className={inputClass}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
-              <Input
+
+            <div>
+              <label htmlFor="password" className={labelClass}>
+                Password
+              </label>
+              <input
                 id="password"
                 type="password"
-                placeholder="Min. 10 characters"
+                placeholder="Min 8 characters"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={10}
+                minLength={8}
                 autoComplete="new-password"
+                className={inputClass}
               />
             </div>
 
             {error && (
-              <div className="rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+              <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
                 {error}
               </div>
             )}
 
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Creating account…' : 'Create account'}
-            </Button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-[#FF6B00] hover:bg-[#E55D00] text-[#0A0A0A] rounded-xl py-3 text-[14px] font-bold transition-colors disabled:opacity-50"
+            >
+              {loading ? 'Creating account...' : 'Create account'}
+            </button>
           </form>
+
+          <p className="mt-4 text-center text-[12px] text-slate-400">
+            By signing up, you agree to our{' '}
+            <span className="underline">Terms</span> and{' '}
+            <span className="underline">Privacy Policy</span>.
+          </p>
         </div>
 
-        <p className="mt-6 text-center text-sm text-gray-500">
+        <p className="mt-6 text-center text-sm text-white/40">
           Already have an account?{' '}
-          <a href="/login" className="font-medium text-violet-600 hover:underline">
-            Sign in →
+          <a href="/login" className="font-medium text-[#FF6B00] hover:underline">
+            Sign in
           </a>
         </p>
       </div>
