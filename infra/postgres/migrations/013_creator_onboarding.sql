@@ -1,0 +1,7 @@
+BEGIN;
+
+ALTER TABLE marketplace.channels
+  ADD COLUMN IF NOT EXISTS onboarding_step INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS onboarding_completed_at TIMESTAMPTZ;
+
+COMMIT;
