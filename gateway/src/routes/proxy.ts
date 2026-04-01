@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { streamSSE } from 'hono/streaming'
 import { embedTokenAuth } from '../middleware/auth.js'
 import { db } from '../db.js'
+import { logger } from '../lib/logger.js'
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
@@ -76,7 +77,7 @@ async function logCall(params: LogCallParams): Promise<void> {
     )
   } catch (err) {
     // Audit log failure must not crash the proxy response path
-    console.error('[logCall] failed to insert audit record', { sessionId, err: err instanceof Error ? err.message : String(err) })
+    logger.error({ msg: 'logCall_insert_failed', sessionId, err: err instanceof Error ? err.message : String(err) })
   }
 }
 

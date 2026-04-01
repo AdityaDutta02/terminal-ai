@@ -35,7 +35,7 @@ const purchaseSchema = z.object({
   packId: z.enum(['pack_100', 'pack_500', 'pack_2000']),
 })
 
-export async function POST(request: NextRequest): Promise<NextResponse> {
+export async function POST(request: NextRequest): Promise<Response> {
   const keyId = process.env.RAZORPAY_KEY_ID
   if (!keyId) {
     logger.warn({ msg: 'razorpay_not_configured' })
