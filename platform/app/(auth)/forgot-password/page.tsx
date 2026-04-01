@@ -16,7 +16,9 @@ export default function ForgotPasswordPage() {
     e.preventDefault()
     setError('')
     setLoading(true)
-    const { error } = await authClient.forgetPassword({ email, redirectTo: '/reset-password' })
+    // better-auth exposes forgetPassword at runtime but types may lag — cast to bypass
+    const client = authClient as unknown as { forgetPassword: (opts: { email: string; redirectTo: string }) => Promise<{ error: { message?: string } | null }> }
+    const { error } = await client.forgetPassword({ email, redirectTo: '/reset-password' })
     setLoading(false)
     if (error) {
       setError(error.message ?? 'Failed to send reset email.')
