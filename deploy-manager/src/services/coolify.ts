@@ -10,6 +10,14 @@ function coolifyConfig() {
   return { url, token, serverUuid, projectUuid }
 }
 
+export type ResourceClass = 'micro' | 'small' | 'medium'
+
+function getResourceLimits(rc: ResourceClass): { memory: string; cpus: string } {
+  if (rc === 'small') return { memory: '1g', cpus: '1.0' }
+  if (rc === 'medium') return { memory: '2g', cpus: '2.0' }
+  return { memory: '512m', cpus: '0.5' }
+}
+
 interface DeployResult {
   deploymentId: string
   status: string
@@ -71,8 +79,10 @@ export async function createApp(params: {
   branch: string
   port: number
   envVars: Record<string, string>
+  resourceClass?: ResourceClass
 }): Promise<CreateAppResult> {
   const { url, token, serverUuid, projectUuid } = coolifyConfig()
+  const limits = getResourceLimits(params.resourceClass ?? 'micro')
   const createBody = {
     name: params.name,
     git_repository: `https://github.com/${params.githubRepo}`,
@@ -83,6 +93,8 @@ export async function createApp(params: {
     project_uuid: projectUuid,
     environment_name: 'production',
     instant_deploy: false,
+    limits_memory: limits.memory,
+    limits_cpus: limits.cpus,
   }
   const res = await fetch(`${url}/api/v1/applications/public`, {
     method: 'POST',
