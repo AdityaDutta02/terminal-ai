@@ -49,6 +49,41 @@ function ChannelLink({ channelSlug }: { channelSlug: string }) {
   )
 }
 
+function DeployingState() {
+  const steps = [
+    'Queuing deployment…',
+    'Cloning repository…',
+    'Building your app…',
+    'Starting container…',
+    'Almost ready…',
+  ]
+  const [stepIndex, setStepIndex] = useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setStepIndex((i) => Math.min(i + 1, steps.length - 1))
+    }, 25_000)
+    return () => clearInterval(interval)
+  }, [steps.length])
+
+  return (
+    <div className="flex h-full items-center justify-center">
+      <div className="max-w-xs text-center">
+        <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-violet-500" />
+        <p className="font-medium text-gray-900">Deploying your app</p>
+        <p className="mt-1 text-sm text-gray-500">{steps[stepIndex]}</p>
+        <div className="mt-4 h-1 w-full rounded-full bg-gray-100 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-violet-500 transition-all duration-[25000ms] ease-linear"
+            style={{ width: `${Math.round(((stepIndex + 1) / steps.length) * 100)}%` }}
+          />
+        </div>
+        <p className="mt-2 text-xs text-gray-400">Usually 2–5 minutes</p>
+      </div>
+    </div>
+  )
+}
+
 export function ViewerShell(props: Props) {
   const { appId, appName, channelSlug, iframeUrl: initialIframeUrl, initialCredits, userName, deploymentStatus, deploymentError } = props
   const { toast } = useToast()
@@ -267,15 +302,7 @@ export function ViewerShell(props: Props) {
       </div>
 
       <div className="relative flex-1">
-        {viewState === 'deploying' && (
-          <div className="flex h-full items-center justify-center">
-            <div className="max-w-sm text-center">
-              <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-[#FF6B00]" />
-              <p className="font-medium text-zinc-100">Your app is deploying</p>
-              <p className="mt-1 text-sm text-zinc-400">This usually takes 2–5 minutes. This page will update automatically.</p>
-            </div>
-          </div>
-        )}
+        {viewState === 'deploying' && <DeployingState />}
 
         {viewState === 'deploy_failed' && (
           <div className="flex h-full items-center justify-center">
