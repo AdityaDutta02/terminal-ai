@@ -74,7 +74,7 @@ CREATE TABLE marketplace.apps (
   description         TEXT,
   thumbnail_url       TEXT,
   iframe_url          TEXT NOT NULL,
-  credits_per_session INTEGER NOT NULL DEFAULT 50 CHECK (credits_per_session >= 1),
+  credits_per_session INTEGER NOT NULL DEFAULT 1 CHECK (credits_per_session >= 1),
   status              TEXT NOT NULL DEFAULT 'live' CHECK (status IN ('pending', 'live', 'suspended', 'draft', 'archived')),
   deleted_at          TIMESTAMPTZ,
   created_at          TIMESTAMPTZ DEFAULT now() NOT NULL,

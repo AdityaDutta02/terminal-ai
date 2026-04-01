@@ -12,7 +12,7 @@ ALTER TABLE public."user" ALTER COLUMN credits SET DEFAULT 0;
 
 -- Session-based billing + free app + model tier on apps
 ALTER TABLE marketplace.apps
-  ADD COLUMN IF NOT EXISTS credits_per_session INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS credits_per_session INTEGER NOT NULL DEFAULT 1,
   ADD COLUMN IF NOT EXISTS is_free BOOLEAN NOT NULL DEFAULT false,
   ADD COLUMN IF NOT EXISTS model_tier VARCHAR(20) NOT NULL DEFAULT 'standard';
 

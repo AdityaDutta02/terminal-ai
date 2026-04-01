@@ -3,6 +3,8 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { X, RefreshCw, AlertCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CreditsPill } from '@/components/ui/credits-pill'
+import { useToast } from '@/hooks/use-toast'
+import { ToastAction } from '@/components/ui/toast'
 
 interface Props {
   appId: string
@@ -38,6 +40,7 @@ function ViewerSkeleton() {
 
 export function ViewerShell(props: Props) {
   const { appId, appName, channelSlug, iframeUrl: initialIframeUrl, initialCredits, userName, deploymentStatus, deploymentError } = props
+  const { toast } = useToast()
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const tokenRef = useRef<string | null>(null)
   const [iframeUrl, setIframeUrl] = useState(initialIframeUrl)
@@ -138,17 +141,39 @@ export function ViewerShell(props: Props) {
     return () => clearInterval(interval)
   }, [viewState, iframeUrl, fetchToken])
 
-  // Show expiry warning at 13 min (2 min before 15 min session expires)
+  // Show expiry warning toast at 13 min (2 min before 15 min session expires)
   useEffect(() => {
     if (!tokenIssuedAt || viewState !== 'ready') return
     const warningDelay = 13 * 60 * 1000 - (Date.now() - tokenIssuedAt)
     if (warningDelay <= 0) return
     const timer = setTimeout(() => {
-      // Simple browser alert is acceptable for beta — no toast library needed
-      console.warn('Terminal AI: session expires in 2 minutes')
+      toast({
+        title: 'Session expiring soon',
+        description: 'Your session will expire in 2 minutes.',
+        duration: 120000,
+        action: (
+          <ToastAction
+            altText="Extend session"
+            onClick={() => {
+              void (async () => {
+                try {
+                  const token = await fetchToken()
+                  tokenRef.current = token
+                  setTokenIssuedAt(Date.now())
+                  deliverToken(token, iframeUrl)
+                } catch {
+                  // silently fail — the auto-refresh interval will retry
+                }
+              })()
+            }}
+          >
+            Extend
+          </ToastAction>
+        ),
+      })
     }, warningDelay)
     return () => clearTimeout(timer)
-  }, [tokenIssuedAt, viewState])
+  }, [tokenIssuedAt, viewState, toast, fetchToken, iframeUrl])
 
   // Re-deliver token when iframe reloads
   function handleIframeLoad() {
@@ -204,7 +229,7 @@ export function ViewerShell(props: Props) {
               Retry
             </Button>
           )}
-          <CreditsPill credits={credits} />
+          <CreditsPill credits={credits} variant="dark" />
           <a
             href="/account"
             className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-600 text-xs font-bold text-white hover:bg-violet-700 transition-colors"

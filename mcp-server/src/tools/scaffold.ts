@@ -19,7 +19,7 @@ function isPython(framework: string): boolean {
 const GATEWAY_SDK = `// Terminal AI Gateway SDK — server-side only
 // The embed token is received from the viewer shell via postMessage,
 // sent by the client to your API route, and used here as the Bearer token.
-import config from '../terminal-ai.config.json' assert { type: 'json' }
+import config from './validate-config'
 
 const GATEWAY_URL = process.env.TERMINAL_AI_GATEWAY_URL!
 
@@ -37,7 +37,7 @@ export async function callGateway(
     body: JSON.stringify({ model: config.model_tier, messages, stream: true }),
   })
   if (res.status === 401) {
-    throw Object.assign(new Error('Gateway 401: token expired or invalid'), { code: 'TOKEN_EXPIRED' })
+    throw Object.assign(new Error('Session expired. The viewer will deliver a fresh token automatically — retry your request in a moment.'), { code: 'TOKEN_EXPIRED', retryable: true })
   }
   return res
 }
@@ -144,6 +144,19 @@ function buildNextjsFiles(input: ScaffoldInput): Record<string, string> {
   files['Dockerfile'] = NEXTJS_DOCKERFILE
   // Always include the embed token hook — every app needs it to receive auth from the viewer
   files['hooks/use-embed-token.ts'] = USE_EMBED_TOKEN_HOOK
+  files['lib/validate-config.ts'] = `// Validates terminal-ai.config.json at import time
+import config from '../terminal-ai.config.json' assert { type: 'json' }
+
+const REQUIRED_KEYS = ['app_name', 'framework', 'health_check_path', 'model_tier'] as const
+
+for (const key of REQUIRED_KEYS) {
+  if (!config[key as keyof typeof config]) {
+    throw new Error(\`terminal-ai.config.json is missing required key: "\${key}"\`)
+  }
+}
+
+export default config
+`
   if (input.uses_ai) {
     files['lib/terminal-ai.ts'] = GATEWAY_SDK
     files['app/api/ai/route.ts'] = EXAMPLE_API_ROUTE
@@ -156,7 +169,7 @@ function buildPythonFiles(input: ScaffoldInput): Record<string, string> {
     files['app.py'] = `import streamlit as st\nimport os\n\nst.title("${input.app_name}")\n`
     files['requirements.txt'] = 'streamlit>=1.32\nhttpx>=0.27\n'
   } else {
-    files['app.py'] = `from fastapi import FastAPI\nimport os\n\napp = FastAPI()\n\n@app.get("/health")\ndef health():\n    return {"ok": True}\n`
+    files['app.py'] = `from fastapi import FastAPI\nimport os\nimport json\nimport sys\n\n_config_path = os.path.join(os.path.dirname(__file__), 'terminal-ai.config.json')\nif os.path.exists(_config_path):\n    with open(_config_path) as f:\n        _config = json.load(f)\n    for key in ('app_name', 'framework', 'health_check_path', 'model_tier'):\n        if not _config.get(key):\n            sys.exit(f'terminal-ai.config.json missing required key: "{key}"')\n\napp = FastAPI()\n\n@app.get("/health")\ndef health():\n    return {"ok": True}\n`
     files['requirements.txt'] = 'fastapi>=0.110\nuvicorn>=0.29\nhttpx>=0.27\n'
   }
   files['.env.example'] = `TERMINAL_AI_GATEWAY_URL=\nTERMINAL_AI_APP_ID=`

@@ -37,7 +37,7 @@ export async function POST(
   if (!/^[a-z0-9-]+$/.test(slug)) {
     return NextResponse.json({ error: 'Invalid slug format' }, { status: 400 })
   }
-  const credits = Math.max(1, Math.min(10000, Number(creditsPerSession) || 50))
+  const credits = Math.max(1, Math.min(10000, Number(creditsPerSession) || 1))
   try {
     await db.query(
       `INSERT INTO marketplace.apps (channel_id, slug, name, description, iframe_url, credits_per_session, status)

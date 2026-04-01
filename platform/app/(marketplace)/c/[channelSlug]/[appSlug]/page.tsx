@@ -123,7 +123,7 @@ export default async function AppDetailPage({ params }: PageProps) {
                     </a>
                   </Button>
                   <p className="text-xs text-gray-400">
-                    New users get 200 free credits.{' '}
+                    New users get 20 free credits after email verification.{' '}
                     <a href="/signup" className="text-violet-600 hover:underline">Create account →</a>
                   </p>
                 </div>

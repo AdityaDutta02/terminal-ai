@@ -1,21 +1,12 @@
 import { db } from '@/lib/db'
-import { Avatar } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { SearchBar } from '@/components/search-bar'
-import { ArrowRight, Layers } from 'lucide-react'
+import { MarketplaceFilter, type FilterableChannel } from '@/components/marketplace-filter'
 
-type Channel = {
-  id: string
-  slug: string
-  name: string
-  description: string | null
-  avatar_url: string | null
-  app_count: string
-}
-
-async function getChannels(): Promise<Channel[]> {
-  const result = await db.query<Channel>(
+async function getChannels(): Promise<FilterableChannel[]> {
+  const result = await db.query<FilterableChannel>(
     `SELECT c.id, c.slug, c.name, c.description, c.avatar_url,
+            c.created_at,
             COUNT(a.id) AS app_count
      FROM marketplace.channels c
      LEFT JOIN marketplace.apps a
@@ -95,37 +86,7 @@ export default async function HomePage() {
       </div>
 
       {/* Channels */}
-      {channels.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-[--border] py-20 text-center">
-          <Layers className="mx-auto mb-3 h-8 w-8 text-gray-300" />
-          <p className="text-sm text-gray-400">No channels yet.</p>
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {channels.map((channel) => (
-            <a
-              key={channel.id}
-              href={`/c/${channel.slug}`}
-              className="group flex flex-col rounded-xl border border-[--border] bg-[--card] p-5 shadow-sm transition-all hover:border-[--primary] hover:shadow-md"
-            >
-              <div className="mb-4 flex items-center gap-3">
-                <Avatar src={channel.avatar_url} fallback={channel.name} size="md" />
-                <div className="min-w-0">
-                  <p className="truncate font-semibold text-[--foreground]">{channel.name}</p>
-                  <p className="text-xs text-gray-400">@{channel.slug}</p>
-                </div>
-              </div>
-              {channel.description && (
-                <p className="mb-4 line-clamp-2 text-sm text-[--muted-foreground]">{channel.description}</p>
-              )}
-              <div className="mt-auto flex items-center justify-between">
-                <span className="text-xs text-gray-400">{Number(channel.app_count).toLocaleString()} apps</span>
-                <ArrowRight className="h-4 w-4 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-violet-500" />
-              </div>
-            </a>
-          ))}
-        </div>
-      )}
+      <MarketplaceFilter channels={channels} />
     </div>
   )
 }
