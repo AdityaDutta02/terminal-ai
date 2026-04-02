@@ -26,7 +26,11 @@ export default function SignupPage() {
     const { error } = await authClient.signUp.email({ name, email, password })
     setLoading(false)
     if (error) {
-      setError(error.message ?? 'Sign up failed. Please try again.')
+      if (error.code === 'USER_ALREADY_EXISTS' || error.message?.includes('already')) {
+        setError('An account with this email already exists. Try signing in instead, or use the Google button if you signed up with Google.')
+      } else {
+        setError(error.message ?? 'Sign up failed. Please try again.')
+      }
       return
     }
     router.push(`/verify-email?email=${encodeURIComponent(email)}`)

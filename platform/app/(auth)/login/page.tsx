@@ -28,7 +28,11 @@ function LoginForm() {
         router.push(`/verify-email?email=${encodeURIComponent(email)}`)
         return
       }
-      setError(error.message ?? 'Sign in failed. Check your credentials.')
+      if (error.message?.includes('credentials') || error.code === 'INVALID_EMAIL_OR_PASSWORD') {
+        setError('Invalid email or password. If you signed up with Google, use the Google button above.')
+      } else {
+        setError(error.message ?? 'Sign in failed. Please try again.')
+      }
       return
     }
     if (!data?.token) {

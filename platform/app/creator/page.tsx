@@ -41,6 +41,8 @@ function getChannelColor(index: number): string {
 export default async function CreatorDashboard() {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) redirect('/login?next=/creator')
+  // Creator routes locked to admin — remove this check to open to all creators
+  if ((session.user as Record<string, unknown>).role !== 'admin') redirect('/')
   const channels = await getCreatorChannels(session.user.id)
 
   const totalApps = channels.reduce((sum, ch) => sum + Number(ch.app_count), 0)

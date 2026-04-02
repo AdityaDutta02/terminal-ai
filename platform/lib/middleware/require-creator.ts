@@ -27,6 +27,13 @@ export async function requireCreator(): Promise<
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  // Creator routes are currently locked to admin users only.
+  // To open to all creators: remove this role check.
+  const role = (session.user as Record<string, unknown>).role
+  if (role !== 'admin') {
+    return NextResponse.json({ error: 'Creator access is currently invite-only' }, { status: 403 })
+  }
+
   const channel = await getCreatorChannel(session.user.id)
   if (!channel) return NextResponse.json({ error: 'No creator channel found' }, { status: 403 })
 

@@ -24,8 +24,11 @@ export const auth = betterAuth({
   },
   emailVerification: {
     sendVerificationEmail: async ({ user, url }) => {
-      await sendVerificationEmail(user.email, url)
+      // Append callbackURL so user lands on login after verification
+      const verifyUrl = url.includes('?') ? `${url}&callbackURL=/login` : `${url}?callbackURL=/login`
+      await sendVerificationEmail(user.email, verifyUrl)
     },
+    autoSignInAfterVerification: false,
     afterEmailVerification: async (user) => {
       if (!user.id) return // guard against malformed user objects
       try {
