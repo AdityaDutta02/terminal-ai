@@ -6,7 +6,7 @@ import { db } from '@/lib/db'
 import { logger } from '@/lib/logger'
 
 const patchAppSchema = z.object({
-  status: z.enum(['live', 'draft', 'suspended']),
+  status: z.enum(['live', 'draft', 'suspended', 'coming_soon']),
 })
 export async function PATCH(
   req: Request,

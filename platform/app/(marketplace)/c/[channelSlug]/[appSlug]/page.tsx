@@ -17,6 +17,7 @@ type AppRow = {
   description: string | null
   thumbnail_url: string | null
   credits_per_session: number
+  status: 'live' | 'coming_soon'
 }
 
 type ChannelRow = { id: string; slug: string; name: string }
@@ -32,9 +33,9 @@ async function getData(
   )
   if (!ch.rows[0]) return null
   const ap = await db.query<AppRow>(
-    `SELECT id, slug, name, description, thumbnail_url, credits_per_session
+    `SELECT id, slug, name, description, thumbnail_url, credits_per_session, status
      FROM marketplace.apps
-     WHERE channel_id = $1 AND slug = $2 AND status = 'live' AND deleted_at IS NULL`,
+     WHERE channel_id = $1 AND slug = $2 AND status IN ('live', 'coming_soon') AND deleted_at IS NULL`,
     [ch.rows[0].id, appSlug],
   )
   if (!ap.rows[0]) return null
@@ -122,6 +123,18 @@ export default async function AppDetailPage({ params }: PageProps) {
           </div>
         </div>
       </div>
+
+      {/* Coming soon banner */}
+      {app.status === 'coming_soon' && (
+        <div
+          data-testid="coming-soon-banner"
+          className="rounded-xl border border-violet-200 bg-violet-50 p-4 mb-6"
+        >
+          <p className="text-sm font-medium text-violet-700">
+            This app is coming soon. Stay tuned!
+          </p>
+        </div>
+      )}
 
       {/* Two-column layout */}
       <AppDetailClient

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import type { ModelTier } from '@/lib/pricing'
 import { MODEL_TIER_CREDITS } from '@/lib/pricing'
 
-type AppStatus = 'live' | 'draft'
+type AppStatus = 'live' | 'draft' | 'coming_soon'
 
 export type AppSettingsData = {
   id: string
@@ -200,6 +200,18 @@ export function AppSettingsForm({ app }: { app: AppSettingsData }) {
                 }`}
               >
                 Draft
+              </button>
+              <button
+                data-testid="status-coming-soon-btn"
+                type="button"
+                onClick={() => setStatus('coming_soon')}
+                className={`px-5 py-1.5 rounded-lg text-[13px] font-semibold transition-all ${
+                  status === 'coming_soon'
+                    ? 'bg-violet-600 text-white shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                Coming Soon
               </button>
             </div>
           </div>

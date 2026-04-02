@@ -23,6 +23,7 @@ export type AppCardData = {
   category: string
   gradient: string
   icon: string
+  status?: 'live' | 'draft' | 'coming_soon'
 }
 
 export function AppCard({ app, href }: { app: AppCardData; href: string }) {
@@ -48,6 +49,14 @@ export function AppCard({ app, href }: { app: AppCardData; href: string }) {
           <span className="text-[11px] font-medium text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
             {app.category}
           </span>
+          {app.status === 'coming_soon' && (
+            <span
+              data-testid="coming-soon-badge"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-50 text-[11px] font-medium text-violet-600"
+            >
+              Coming Soon
+            </span>
+          )}
         </div>
         <h3 className="text-[15px] font-semibold text-slate-900 tracking-tight">{app.name}</h3>
         <p className="text-[13px] text-slate-500 mb-1">{app.channelName}</p>

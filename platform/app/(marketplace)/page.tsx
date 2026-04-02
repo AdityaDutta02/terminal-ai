@@ -52,7 +52,7 @@ async function getApps(): Promise<AppCardData[]> {
             c.name AS channel_name, c.slug AS channel_slug
      FROM marketplace.apps a
      JOIN marketplace.channels c ON c.id = a.channel_id
-     WHERE a.status = 'live' AND a.deleted_at IS NULL AND c.deleted_at IS NULL
+     WHERE a.status IN ('live', 'coming_soon') AND a.deleted_at IS NULL AND c.deleted_at IS NULL
      ORDER BY a.created_at DESC
      LIMIT 30`,
   )

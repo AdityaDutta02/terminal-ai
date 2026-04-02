@@ -9,7 +9,7 @@ const MODEL_TIERS = ['standard', 'advanced', 'premium', 'image-fast', 'image-pro
 const patchSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   description: z.string().max(500).optional(),
-  status: z.enum(['live', 'draft']).optional(),
+  status: z.enum(['live', 'draft', 'coming_soon']).optional(),
   is_free: z.boolean().optional(),
   model_tier: z.enum(MODEL_TIERS).optional(),
 })
