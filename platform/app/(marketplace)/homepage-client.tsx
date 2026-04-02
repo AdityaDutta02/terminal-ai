@@ -43,6 +43,16 @@ export function HomepageClient({
     return result
   }, [apps, activeTab, searchQuery])
 
+  const filteredChannels = useMemo(() => {
+    if (!searchQuery.trim()) return channels
+    const q = searchQuery.toLowerCase()
+    return channels.filter(
+      (ch) =>
+        ch.name.toLowerCase().includes(q) ||
+        ch.slug.toLowerCase().includes(q),
+    )
+  }, [channels, searchQuery])
+
   const tabs = ['All', 'Popular', 'New', ...categories]
 
   return (
@@ -213,7 +223,7 @@ export function HomepageClient({
             <AppCard
               key={app.id}
               app={app}
-              href={`/channels/${app.channelSlug}/${app.slug}`}
+              href={`/c/${app.channelSlug}/${app.slug}`}
             />
           ))}
         </div>
@@ -260,7 +270,7 @@ export function HomepageClient({
             <AppCard
               key={app.id}
               app={app}
-              href={`/channels/${app.channelSlug}/${app.slug}`}
+              href={`/c/${app.channelSlug}/${app.slug}`}
             />
           ))}
         </div>
@@ -315,11 +325,11 @@ export function HomepageClient({
           </p>
         </div>
         <div className="grid gap-5 sm:grid-cols-2">
-          {channels.map((channel) => (
+          {filteredChannels.map((channel) => (
             <ChannelCard
               key={channel.id}
               channel={channel}
-              href={`/channels/${channel.slug}`}
+              href={`/c/${channel.slug}`}
             />
           ))}
         </div>
