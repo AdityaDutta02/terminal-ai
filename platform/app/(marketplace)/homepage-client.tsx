@@ -103,7 +103,7 @@ export function HomepageClient({
             </p>
             <div className="flex items-center gap-4 mb-10">
               <a
-                href="/auth/signup"
+                href="/signup"
                 className="inline-flex items-center gap-2 rounded-xl bg-[#FF6B00] px-6 py-3 text-[15px] font-semibold text-white shadow-lg shadow-orange-500/20 hover:bg-orange-600 transition-colors"
               >
                 Start for free
@@ -299,7 +299,7 @@ export function HomepageClient({
             </p>
             <div className="flex items-center justify-center gap-4">
               <a
-                href="/auth/signup"
+                href="/signup"
                 className="inline-flex items-center gap-2 rounded-xl bg-[#FF6B00] px-6 py-3 text-[15px] font-semibold text-white shadow-lg shadow-orange-500/20 hover:bg-orange-600 transition-colors"
               >
                 Get started

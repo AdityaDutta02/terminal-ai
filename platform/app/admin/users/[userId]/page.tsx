@@ -3,24 +3,28 @@ import { notFound } from 'next/navigation'
 import { SidebarNav } from '@/components/sidebar-nav'
 import { ChevronLeft } from 'lucide-react'
 
-const adminTabs = [
-  { id: 'overview', label: 'Overview', icon: 'BarChart3', href: '/admin' },
-  { id: 'users', label: 'Users', icon: 'Users', href: '/admin/users' },
-  { id: 'apps', label: 'Apps', icon: 'Box', href: '/admin/apps' },
-  { id: 'activity', label: 'Activity Log', icon: 'Clock', href: '/admin' },
-]
+function getAdminTabs() {
+  return [
+    { id: 'overview', label: 'Overview', icon: 'BarChart3', href: '/admin' },
+    { id: 'users', label: 'Users', icon: 'Users', href: '/admin/users' },
+    { id: 'apps', label: 'Apps', icon: 'Box', href: '/admin/apps' },
+    { id: 'activity', label: 'Activity Log', icon: 'Clock', href: '/admin' },
+  ]
+}
 
 type UserDetail = {
+  [key: string]: unknown
   id: string
   name: string
   email: string
   role: string
   credits: number
-  banned: boolean | null
+  banned: boolean
   created_at: string
 }
 
 type CreditEntry = {
+  [key: string]: unknown
   reason: string
   delta: number
   balance_after: number
@@ -29,7 +33,9 @@ type CreditEntry = {
 
 async function getUser(userId: string): Promise<UserDetail | null> {
   const result = await db.query<UserDetail>(
-    `SELECT id, name, email, role, credits, banned, "createdAt" AS created_at FROM "user" WHERE id = $1`,
+    `SELECT u.id, u.name, u.email, u.role, u.credits, u."createdAt" AS created_at,
+            EXISTS(SELECT 1 FROM platform.user_bans b WHERE b.user_id = u.id AND b.is_active = true AND (b.expires_at IS NULL OR b.expires_at > NOW())) AS banned
+     FROM "user" u WHERE u.id = $1`,
     [userId],
   )
   return result.rows[0] ?? null
@@ -97,7 +103,7 @@ export default async function AdminUserDetail({
 
   return (
     <div className="max-w-[1200px] mx-auto px-6 py-8 flex gap-8">
-      <SidebarNav title="Admin Panel" tabs={adminTabs} />
+      <SidebarNav title="Admin Panel" tabs={getAdminTabs()} />
 
       <div className="flex-1 min-w-0">
         {/* Back breadcrumb */}
