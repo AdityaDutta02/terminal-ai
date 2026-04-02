@@ -1,0 +1,462 @@
+{
+  "url": "https://maeve-template.framer.website/",
+  "extractedAt": "2026-04-02T17:58:15.523Z",
+  "siteName": "Maeve",
+  "logo": null,
+  "favicons": [
+    {
+      "type": "icon",
+      "url": "https://framerusercontent.com/images/PY7jOMsRPAmfmcBzZemkFpLM3cU.jpg",
+      "sizes": null
+    },
+    {
+      "type": "icon",
+      "url": "https://framerusercontent.com/images/PY7jOMsRPAmfmcBzZemkFpLM3cU.jpg",
+      "sizes": null
+    },
+    {
+      "type": "og:image",
+      "url": "https://framerusercontent.com/images/IanZe0WSroZ7AQLK7LHMkPtQUgQ.jpg",
+      "sizes": null
+    },
+    {
+      "type": "twitter:image",
+      "url": "https://framerusercontent.com/images/IanZe0WSroZ7AQLK7LHMkPtQUgQ.jpg",
+      "sizes": null
+    },
+    {
+      "type": "favicon.ico",
+      "url": "https://maeve-template.framer.website/favicon.ico",
+      "sizes": null
+    }
+  ],
+  "colors": {
+    "semantic": {},
+    "palette": [
+      {
+        "color": "rgb(30, 30, 31)",
+        "normalized": "#1e1e1f",
+        "count": 150,
+        "confidence": "high",
+        "sources": [],
+        "lch": "lch(11.3% 0.73 290.4)",
+        "oklch": "oklch(23.54% 0.002 286.25)"
+      },
+      {
+        "color": "rgb(255, 255, 255)",
+        "normalized": "#ffffff",
+        "count": 25,
+        "confidence": "high",
+        "sources": [],
+        "lch": "lch(100% 0 158.2)",
+        "oklch": "oklch(100% 0 89.88)"
+      },
+      {
+        "color": "rgb(29, 29, 29)",
+        "normalized": "#1d1d1d",
+        "count": 1,
+        "confidence": "medium",
+        "sources": [
+          "hover/focus"
+        ]
+      }
+    ],
+    "cssVariables": {},
+    "_raw": [
+      {
+        "color": "rgb(0, 0, 0)",
+        "normalized": "#000000",
+        "count": 1042
+      },
+      {
+        "color": "rgb(0, 0, 238)",
+        "normalized": "#0000ee",
+        "count": 278
+      },
+      {
+        "color": "rgb(30, 30, 31)",
+        "normalized": "#1e1e1f",
+        "count": 150
+      },
+      {
+        "color": "rgb(255, 255, 255)",
+        "normalized": "#ffffff",
+        "count": 25
+      }
+    ]
+  },
+  "typography": {
+    "styles": [
+      {
+        "context": "heading-1",
+        "family": "Gambarino",
+        "fallbacks": "Gambarino Placeholder",
+        "size": "64px (4.00rem)",
+        "weight": 400,
+        "lineHeight": "1.10",
+        "spacing": "-1.92px",
+        "transform": null,
+        "fontFeatures": "\"blwf\", \"cv03\", \"cv04\", \"cv09\", \"cv11\""
+      },
+      {
+        "context": "heading-1",
+        "family": "Gambarino",
+        "fallbacks": "Gambarino Placeholder",
+        "size": "50px (3.13rem)",
+        "weight": 400,
+        "lineHeight": "1.10",
+        "spacing": "-2px",
+        "transform": null,
+        "fontFeatures": "\"blwf\", \"cv03\", \"cv04\", \"cv09\", \"cv11\""
+      },
+      {
+        "context": "heading-1",
+        "family": "Gambarino",
+        "fallbacks": "Gambarino Placeholder",
+        "size": "32px (2.00rem)",
+        "weight": 400,
+        "lineHeight": "1.30",
+        "spacing": "-1.28px",
+        "transform": null,
+        "fontFeatures": "\"blwf\", \"cv03\", \"cv04\", \"cv09\", \"cv11\""
+      },
+      {
+        "context": "heading-1",
+        "family": "Geist",
+        "fallbacks": "Geist Placeholder",
+        "size": "28px (1.75rem)",
+        "weight": 500,
+        "lineHeight": "1.30",
+        "spacing": "-1.12px",
+        "transform": null,
+        "fontFeatures": "\"blwf\", \"cv03\", \"cv04\", \"cv09\", \"cv11\""
+      },
+      {
+        "context": "heading-1",
+        "family": "Gambarino",
+        "fallbacks": "Gambarino Placeholder",
+        "size": "24px (1.50rem)",
+        "weight": 400,
+        "lineHeight": "1.10",
+        "spacing": "-1.2px",
+        "transform": null
+      },
+      {
+        "context": "heading-1",
+        "family": "Geist",
+        "fallbacks": "Geist Placeholder",
+        "size": "22px (1.38rem)",
+        "weight": 500,
+        "lineHeight": "1.40",
+        "spacing": "-0.88px",
+        "transform": null,
+        "fontFeatures": "\"blwf\", \"cv03\", \"cv04\", \"cv09\", \"cv11\""
+      },
+      {
+        "context": "heading-1",
+        "family": "Geist",
+        "fallbacks": "Geist Placeholder",
+        "size": "16px (1.00rem)",
+        "weight": 400,
+        "lineHeight": "1.30",
+        "spacing": "-0.64px",
+        "transform": null,
+        "fontFeatures": "\"blwf\", \"cv03\", \"cv04\", \"cv09\", \"cv11\""
+      },
+      {
+        "context": "heading-1",
+        "family": "Geist",
+        "fallbacks": "Geist Placeholder",
+        "size": "15px (0.94rem)",
+        "weight": 400,
+        "lineHeight": "1.40",
+        "spacing": "-0.6px",
+        "transform": null,
+        "fontFeatures": "\"blwf\", \"cv03\", \"cv04\", \"cv09\", \"cv11\""
+      },
+      {
+        "context": "caption",
+        "family": "Geist",
+        "fallbacks": "Geist Placeholder",
+        "size": "14px (0.88rem)",
+        "weight": 500,
+        "lineHeight": "1.30",
+        "spacing": "-0.7px",
+        "transform": null
+      },
+      {
+        "context": "link",
+        "family": "sans-serif",
+        "fallbacks": null,
+        "size": "12px (0.75rem)",
+        "weight": 400,
+        "lineHeight": null,
+        "spacing": null,
+        "transform": null
+      },
+      {
+        "context": "caption",
+        "family": "sans-serif",
+        "fallbacks": null,
+        "size": "12px (0.75rem)",
+        "weight": 400,
+        "lineHeight": null,
+        "spacing": null,
+        "transform": null
+      }
+    ],
+    "sources": {
+      "googleFonts": [],
+      "adobeFonts": false,
+      "variableFonts": false
+    }
+  },
+  "spacing": {
+    "scaleType": "8px",
+    "commonValues": [
+      {
+        "px": "2px",
+        "rem": "0.13rem",
+        "count": 14,
+        "numericValue": 2
+      },
+      {
+        "px": "4px",
+        "rem": "0.25rem",
+        "count": 32,
+        "numericValue": 4
+      },
+      {
+        "px": "8px",
+        "rem": "0.50rem",
+        "count": 1,
+        "numericValue": 8
+      },
+      {
+        "px": "10px",
+        "rem": "0.63rem",
+        "count": 2,
+        "numericValue": 10
+      },
+      {
+        "px": "12px",
+        "rem": "0.75rem",
+        "count": 2,
+        "numericValue": 12
+      },
+      {
+        "px": "16px",
+        "rem": "1.00rem",
+        "count": 3,
+        "numericValue": 16
+      },
+      {
+        "px": "20px",
+        "rem": "1.25rem",
+        "count": 2,
+        "numericValue": 20
+      },
+      {
+        "px": "32px",
+        "rem": "2.00rem",
+        "count": 13,
+        "numericValue": 32
+      },
+      {
+        "px": "80px",
+        "rem": "5.00rem",
+        "count": 1,
+        "numericValue": 80
+      },
+      {
+        "px": "160px",
+        "rem": "10.00rem",
+        "count": 9,
+        "numericValue": 160
+      }
+    ]
+  },
+  "borderRadius": {
+    "values": [
+      {
+        "value": "4px",
+        "count": 8,
+        "elements": [
+          "div"
+        ],
+        "confidence": "medium",
+        "numericValue": 4
+      },
+      {
+        "value": "6px",
+        "count": 8,
+        "elements": [
+          "div"
+        ],
+        "confidence": "medium",
+        "numericValue": 6
+      },
+      {
+        "value": "7px",
+        "count": 1,
+        "elements": [
+          "div"
+        ],
+        "confidence": "low",
+        "numericValue": 7
+      },
+      {
+        "value": "8px",
+        "count": 4,
+        "elements": [
+          "div"
+        ],
+        "confidence": "medium",
+        "numericValue": 8
+      },
+      {
+        "value": "10px",
+        "count": 3,
+        "elements": [
+          "a",
+          "div"
+        ],
+        "confidence": "low",
+        "numericValue": 10
+      },
+      {
+        "value": "11px",
+        "count": 2,
+        "elements": [
+          "div"
+        ],
+        "confidence": "low",
+        "numericValue": 11
+      },
+      {
+        "value": "24px",
+        "count": 6,
+        "elements": [
+          "div"
+        ],
+        "confidence": "medium",
+        "numericValue": 24
+      },
+      {
+        "value": "36px",
+        "count": 3,
+        "elements": [
+          "div"
+        ],
+        "confidence": "low",
+        "numericValue": 36
+      },
+      {
+        "value": "50%",
+        "count": 5,
+        "elements": [
+          "div"
+        ],
+        "confidence": "medium",
+        "numericValue": 50
+      },
+      {
+        "value": "100%",
+        "count": 2,
+        "elements": [
+          "nav",
+          "a"
+        ],
+        "confidence": "low",
+        "numericValue": 100
+      }
+    ]
+  },
+  "borders": {
+    "combinations": []
+  },
+  "shadows": [
+    {
+      "shadow": "rgb(0, 0, 0) 0px 0px 0px 1px inset",
+      "count": 2,
+      "confidence": "low"
+    },
+    {
+      "shadow": "rgba(0, 0, 0, 0.19) 0px 0.602187px 0.602187px -1.25px, rgba(0, 0, 0, 0.165) 0px 2.28853px 2.28853px -2.5px, rgba(0, 0, 0, 0.067) 0px 10px 10px -3.75px, rgba(0, 0, 0, 0.173) 0px 0.602187px 0.602187px -1.25px, rgba(0, 0, 0, 0.153) 0px 2.28853px 2.28853px -2.5px, rgba(0, 0, 0, 0.06) 0px 10px 10px -3.75px, rgba(0, 0, 0, 0.137) 0px 0.602187px 0.602187px -1.25px, rgba(0, 0, 0, 0.12) 0px 2.28853px 2.28853px -2.5px, rgba(0, 0, 0, 0.047) 0px 10px 10px -3.75px, rgba(0, 0, 0, 0.024) 0px 0.602187px 0.602187px -1.25px, rgba(0, 0, 0, 0.02) 0px 2.28853px 2.28853px -2.5px, rgba(0, 0, 0, 0.008) 0px 10px 10px -3.75px",
+      "count": 1,
+      "confidence": "low"
+    },
+    {
+      "shadow": "rgba(0, 0, 0, 0.17) 0px 0.602187px 1.56569px -1.5px, rgba(0, 0, 0, 0.14) 0px 2.28853px 5.95019px -3px, rgba(0, 0, 0, 0.02) 0px 10px 26px -4.5px",
+      "count": 1,
+      "confidence": "low"
+    }
+  ],
+  "components": {
+    "buttons": [],
+    "inputs": {
+      "text": [],
+      "checkbox": [],
+      "radio": [],
+      "select": []
+    },
+    "links": [
+      {
+        "color": "rgb(0, 0, 238)",
+        "textDecoration": "none",
+        "fontWeight": "400",
+        "states": {
+          "default": {
+            "color": "rgb(0, 0, 238)",
+            "textDecoration": "none"
+          },
+          "hover": {
+            "color": "var(--framer-link-hover-text-color,var(--framer-link-text-color,var(--framer-text-color,#000)))",
+            "textDecoration": "var(--framer-link-hover-text-decoration,var(--framer-link-text-decoration,var(--framer-text-decoration,none)))"
+          }
+        }
+      },
+      {
+        "color": "rgb(0, 0, 0)",
+        "textDecoration": "none",
+        "fontWeight": "400",
+        "states": {
+          "default": {
+            "color": "rgb(0, 0, 0)",
+            "textDecoration": "none"
+          },
+          "hover": {
+            "color": "var(--framer-link-hover-text-color,var(--framer-link-text-color,var(--framer-text-color,#000)))",
+            "textDecoration": "var(--framer-link-hover-text-decoration,var(--framer-link-text-decoration,var(--framer-text-decoration,none)))"
+          }
+        }
+      }
+    ],
+    "badges": {
+      "all": [],
+      "byVariant": {
+        "error": [],
+        "warning": [],
+        "success": [],
+        "info": [],
+        "neutral": []
+      }
+    }
+  },
+  "breakpoints": [
+    {
+      "px": "98px"
+    },
+    {
+      "px": "809px"
+    },
+    {
+      "px": "810px"
+    },
+    {
+      "px": "1199px"
+    }
+  ],
+  "iconSystem": [],
+  "frameworks": []
+}
