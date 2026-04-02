@@ -5,27 +5,37 @@ let redisClient: ReturnType<typeof createClient> | null = null
 
 function getRedis(): ReturnType<typeof createClient> | null {
   if (!redisClient) {
-    redisClient = createClient({ url: process.env.REDIS_URL ?? 'redis://redis:6379' })
-    redisClient.connect().catch(() => { redisClient = null })
+    try {
+      redisClient = createClient({ url: process.env.REDIS_URL ?? 'redis://redis:6379' })
+      redisClient.connect().catch(() => { redisClient = null })
+    } catch {
+      redisClient = null
+    }
   }
   return redisClient
 }
 
 async function checkLimit(key: string, limit: number, windowMs: number): Promise<boolean> {
-  const redis = getRedis()
-  if (!redis) return true // fail open if Redis unavailable
+  try {
+    const redis = getRedis()
+    if (!redis) return true
 
-  const now = Date.now()
-  const windowStart = now - windowMs
-  const rateLimitKey = `rl:gw:${key}`
+    const now = Date.now()
+    const windowStart = now - windowMs
+    const rateLimitKey = `rl:gw:${key}`
 
-  const count = await redis.zCount(rateLimitKey, windowStart, now)
-  if (count >= limit) return false
+    const count = await redis.zCount(rateLimitKey, windowStart, now)
+    if (count >= limit) return false
 
-  await redis.zAdd(rateLimitKey, { score: now, value: `${now}` })
-  await redis.zRemRangeByScore(rateLimitKey, '-inf', windowStart - 1)
-  await redis.expire(rateLimitKey, Math.ceil(windowMs / 1000))
-  return true
+    await redis.zAdd(rateLimitKey, { score: now, value: `${now}` })
+    await redis.zRemRangeByScore(rateLimitKey, '-inf', windowStart - 1)
+    await redis.expire(rateLimitKey, Math.ceil(windowMs / 1000))
+    return true
+  } catch {
+    // Redis command failed (auth, connection, etc.) — fail open
+    redisClient = null
+    return true
+  }
 }
 
 export function gatewayRateLimit() {
