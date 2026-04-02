@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { authClient } from '@/lib/auth-client'
 import { Zap } from 'lucide-react'
+import Link from 'next/link'
 
 const inputClass =
   'w-full h-[44px] px-4 rounded-xl border border-slate-200 text-[14px] text-slate-700 placeholder-slate-400 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all'
@@ -13,6 +14,7 @@ export default function SignupPage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -131,20 +133,44 @@ export default function SignupPage() {
               </div>
             )}
 
+            <label className="flex items-start gap-3 cursor-pointer" data-testid="terms-checkbox-label">
+              <input
+                type="checkbox"
+                required
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-orange-500 accent-orange-500 shrink-0"
+                data-testid="terms-checkbox"
+              />
+              <span className="text-[13px] text-slate-500 leading-relaxed">
+                I agree to the{' '}
+                <Link
+                  href="/terms"
+                  target="_blank"
+                  className="text-slate-700 underline underline-offset-2 hover:text-orange-500 transition-colors"
+                >
+                  Terms of Service
+                </Link>{' '}
+                and{' '}
+                <Link
+                  href="/privacy"
+                  target="_blank"
+                  className="text-slate-700 underline underline-offset-2 hover:text-orange-500 transition-colors"
+                >
+                  Privacy Policy
+                </Link>
+              </span>
+            </label>
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !agreedToTerms}
               className="w-full bg-[#FF6B00] hover:bg-[#E55D00] text-[#0A0A0A] rounded-xl py-3 text-[14px] font-bold transition-colors disabled:opacity-50"
+              data-testid="signup-submit"
             >
               {loading ? 'Creating account...' : 'Create account'}
             </button>
           </form>
-
-          <p className="mt-4 text-center text-[12px] text-slate-400">
-            By signing up, you agree to our{' '}
-            <span className="underline">Terms</span> and{' '}
-            <span className="underline">Privacy Policy</span>.
-          </p>
         </div>
 
         <p className="mt-6 text-center text-sm text-white/40">
