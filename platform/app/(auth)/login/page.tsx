@@ -3,6 +3,7 @@ import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { authClient } from '@/lib/auth-client'
 import { Zap } from 'lucide-react'
+import { SocialAuthButtons } from '@/components/social-auth-buttons'
 
 const inputClass =
   'w-full h-[44px] px-4 rounded-xl border border-slate-200 text-[14px] text-slate-700 placeholder-slate-400 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all'
@@ -45,25 +46,8 @@ function LoginForm() {
         {/* Card */}
         <div className="rounded-2xl bg-white p-8 shadow-2xl">
           {/* OAuth buttons */}
-          <div className="space-y-3 mb-6">
-            <button
-              type="button"
-              className="w-full flex items-center justify-center gap-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl py-3 text-[14px] font-medium text-slate-700 transition-colors"
-            >
-              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white border border-slate-200 text-[12px] font-bold text-slate-600">
-                G
-              </span>
-              Continue with Google
-            </button>
-            <button
-              type="button"
-              className="w-full flex items-center justify-center gap-3 bg-[#0A0A0A] hover:bg-[#1A1A1A] rounded-xl py-3 text-[14px] font-medium text-white transition-colors"
-            >
-              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-[11px] font-bold text-white">
-                GH
-              </span>
-              Continue with GitHub
-            </button>
+          <div className="mb-6">
+            <SocialAuthButtons />
           </div>
 
           {/* Divider */}

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { authClient } from '@/lib/auth-client'
 import { Zap } from 'lucide-react'
 import Link from 'next/link'
+import { SocialAuthButtons } from '@/components/social-auth-buttons'
 
 const inputClass =
   'w-full h-[44px] px-4 rounded-xl border border-slate-200 text-[14px] text-slate-700 placeholder-slate-400 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all'
@@ -171,6 +172,14 @@ export default function SignupPage() {
               {loading ? 'Creating account...' : 'Create account'}
             </button>
           </form>
+
+          {/* Divider */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200" /></div>
+            <div className="relative flex justify-center"><span className="bg-white px-4 text-[13px] text-slate-400">or</span></div>
+          </div>
+
+          <SocialAuthButtons />
         </div>
 
         <p className="mt-6 text-center text-sm text-white/40">
