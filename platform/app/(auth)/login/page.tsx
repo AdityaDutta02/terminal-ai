@@ -31,8 +31,8 @@ function LoginForm() {
       setError(error.message ?? 'Sign in failed. Check your credentials.')
       return
     }
-    if (!data?.session) {
-      // Sign-in returned no session — likely unverified email
+    if (!data?.token) {
+      // Sign-in returned no token — likely unverified email
       router.push(`/verify-email?email=${encodeURIComponent(email)}`)
       return
     }
