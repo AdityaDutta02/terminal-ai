@@ -5,8 +5,13 @@ let redis: ReturnType<typeof createClient> | null = null
 
 function getRedis(): ReturnType<typeof createClient> | null {
   if (!redis) {
-    redis = createClient({ url: process.env.REDIS_URL })
-    redis.connect().catch(() => { redis = null })
+    try {
+      redis = createClient({ url: process.env.REDIS_URL })
+      redis.connect().catch(() => { redis = null })
+    } catch {
+      // Invalid URL or other init error — disable rate limiting
+      redis = null
+    }
   }
   return redis
 }
