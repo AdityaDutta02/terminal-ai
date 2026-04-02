@@ -18,6 +18,15 @@ function addSecurityHeaders(res: NextResponse): NextResponse {
 }
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // Legacy URL redirects
+  if (pathname.startsWith('/auth/')) {
+    return NextResponse.redirect(new URL(pathname.replace('/auth/', '/'), request.url), 301)
+  }
+  if (pathname.startsWith('/channels/')) {
+    return NextResponse.redirect(new URL(pathname.replace('/channels/', '/c/'), request.url), 301)
+  }
+
   const isProtected = PROTECTED.some((p) => pathname.startsWith(p))
   if (isProtected) {
     const session = getSessionCookie(request)
@@ -43,6 +52,8 @@ export async function proxy(request: NextRequest) {
 }
 export const config = {
   matcher: [
+    '/auth/:path*',
+    '/channels/:path*',
     '/viewer/:path*',
     '/api/embed-token',
     '/api/auth/:path*',
