@@ -35,7 +35,7 @@ export function HomepageClient({
       result = result.filter(
         (a) =>
           a.name.toLowerCase().includes(q) ||
-          a.description.toLowerCase().includes(q) ||
+          (a.description ?? '').toLowerCase().includes(q) ||
           a.channelName.toLowerCase().includes(q),
       )
     }

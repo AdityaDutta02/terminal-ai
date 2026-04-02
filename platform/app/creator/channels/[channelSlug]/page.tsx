@@ -122,7 +122,7 @@ export default async function CreatorChannelPage({ params }: PageProps) {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <a
-                      href={`/creator/channels/${channel.slug}/apps/${app.slug}`}
+                      href={`/creator/apps/${app.id}`}
                       className="text-xs text-[#FF6B00] hover:underline"
                     >
                       Edit

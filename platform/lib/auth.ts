@@ -74,6 +74,24 @@ export const auth = betterAuth({
     },
   },
   databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          // Grant welcome credits to social OAuth users (auto-verified, skip email verification hook)
+          if (!user.emailVerified) return
+          try {
+            const existing = await db.query<Record<string, never>>(
+              `SELECT 1 FROM subscriptions.credit_ledger WHERE user_id = $1 AND reason = 'welcome_bonus' LIMIT 1`,
+              [user.id],
+            )
+            if (existing.rows.length > 0) return
+            await grantCredits(user.id, WELCOME_CREDITS, 'welcome_bonus')
+          } catch (err) {
+            logger.error({ msg: 'social_welcome_credits_failed', userId: user.id, err })
+          }
+        },
+      },
+    },
     session: {
       create: {
         before: async (session) => {
