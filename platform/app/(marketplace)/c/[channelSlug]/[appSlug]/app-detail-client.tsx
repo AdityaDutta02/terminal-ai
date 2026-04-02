@@ -239,7 +239,7 @@ export function AppDetailClient({
               Sign in to launch
             </a>
             <p className="text-xs text-slate-400 text-center">
-              New users get 20 free credits.{' '}
+              New users get 10 free credits.{' '}
               <a href="/signup" className="text-orange-600 hover:underline">
                 Create account
               </a>

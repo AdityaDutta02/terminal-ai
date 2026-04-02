@@ -26,6 +26,6 @@ export const CREDIT_PACKS = {
 
 export type CreditPackId = keyof typeof CREDIT_PACKS
 
-export const WELCOME_CREDITS = 20
+export const WELCOME_CREDITS = 10
 export const ANON_FREE_USES = 1
 export const CREATOR_REVENUE_SHARE = 0.5  // 50% to creator

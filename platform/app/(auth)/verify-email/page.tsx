@@ -47,7 +47,7 @@ export default async function VerifyEmailPage({
           )}
 
           <p className="text-[13px] text-slate-500 mb-6">
-            Verify your email to receive <strong className="text-slate-700">20 free credits</strong>{' '}
+            Verify your email to receive <strong className="text-slate-700">10 free credits</strong>{' '}
             and start using Terminal AI apps.
           </p>
 

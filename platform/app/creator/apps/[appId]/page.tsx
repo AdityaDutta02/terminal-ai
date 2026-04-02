@@ -30,20 +30,13 @@ export default async function CreatorAppSettingsPage({
 
   const { appId } = await params
 
-  // Get creator's channel
-  const channelResult = await db.query<{ [key: string]: unknown; id: string }>(
-    `SELECT id FROM marketplace.channels WHERE creator_id = $1 LIMIT 1`,
-    [session.user.id],
-  )
-  const channel = channelResult.rows[0]
-  if (!channel) redirect('/creator/onboarding')
-
-  // Get app with ownership check
+  // Get app with ownership check (app must belong to any channel owned by this user)
   const appResult = await db.query<AppRow>(
-    `SELECT id, name, slug, description, status, model_tier, is_free, iframe_url, created_at
-     FROM marketplace.apps
-     WHERE id = $1 AND channel_id = $2 AND deleted_at IS NULL`,
-    [appId, channel.id],
+    `SELECT a.id, a.name, a.slug, a.description, a.status, a.model_tier, a.is_free, a.iframe_url, a.created_at
+     FROM marketplace.apps a
+     JOIN marketplace.channels c ON c.id = a.channel_id
+     WHERE a.id = $1 AND c.creator_id = $2 AND a.deleted_at IS NULL`,
+    [appId, session.user.id],
   )
   const app = appResult.rows[0]
   if (!app) redirect('/creator/apps')

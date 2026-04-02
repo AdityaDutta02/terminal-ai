@@ -86,7 +86,7 @@ export function HomepageClient({
           <div className="flex-1 min-w-0">
             <span className="inline-flex items-center gap-2 rounded-full bg-orange-500/10 border border-orange-500/20 px-4 py-1.5 text-[13px] font-medium text-orange-400 mb-6">
               <Zap className="w-3.5 h-3.5" />
-              Now in Beta &mdash; 20 free credits on signup
+              Now in Beta &mdash; 10 free credits on signup
             </span>
             <h1 className="text-[56px] leading-[1.08] font-black text-white tracking-tight mb-6">
               AI micro-apps.

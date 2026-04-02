@@ -41,31 +41,14 @@ export default function SignupPage() {
             <Zap className="h-6 w-6 text-[#0A0A0A]" strokeWidth={2.5} />
           </div>
           <h1 className="text-[28px] font-black text-white">Create your account</h1>
-          <p className="mt-1 text-sm text-white/40">Get 20 free credits on signup</p>
+          <p className="mt-1 text-sm text-white/40">Get 10 free credits on signup</p>
         </div>
 
         {/* Card */}
         <div className="rounded-2xl bg-white p-8 shadow-2xl">
           {/* OAuth buttons */}
-          <div className="space-y-3 mb-6">
-            <button
-              type="button"
-              className="w-full flex items-center justify-center gap-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl py-3 text-[14px] font-medium text-slate-700 transition-colors"
-            >
-              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white border border-slate-200 text-[12px] font-bold text-slate-600">
-                G
-              </span>
-              Continue with Google
-            </button>
-            <button
-              type="button"
-              className="w-full flex items-center justify-center gap-3 bg-[#0A0A0A] hover:bg-[#1A1A1A] rounded-xl py-3 text-[14px] font-medium text-white transition-colors"
-            >
-              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-[11px] font-bold text-white">
-                GH
-              </span>
-              Continue with GitHub
-            </button>
+          <div className="mb-6">
+            <SocialAuthButtons />
           </div>
 
           {/* Divider */}
@@ -173,13 +156,6 @@ export default function SignupPage() {
             </button>
           </form>
 
-          {/* Divider */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200" /></div>
-            <div className="relative flex justify-center"><span className="bg-white px-4 text-[13px] text-slate-400">or</span></div>
-          </div>
-
-          <SocialAuthButtons />
         </div>
 
         <p className="mt-6 text-center text-sm text-white/40">
