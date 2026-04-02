@@ -56,7 +56,7 @@ export function ShareButton({ url, title, description = '', type }: ShareButtonP
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-zinc-700 text-zinc-300 hover:border-zinc-500 hover:text-white text-sm font-medium transition-colors"
+        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0A0A0A] text-white hover:bg-[#1A1A1A] text-sm font-medium transition-colors"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}

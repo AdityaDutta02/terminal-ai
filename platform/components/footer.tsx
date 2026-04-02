@@ -10,12 +10,6 @@ export function Footer() {
         <span className="text-[13px] font-semibold text-slate-400">Terminal AI</span>
       </div>
       <div className="flex items-center gap-6">
-        <a href="/pricing" className="text-[13px] text-slate-400 hover:text-slate-600 transition-colors">
-          Pricing
-        </a>
-        <a href="/developers" className="text-[13px] text-slate-400 hover:text-slate-600 transition-colors">
-          Developers
-        </a>
         <a href="/terms" className="text-[13px] text-slate-400 hover:text-slate-600 transition-colors">
           Terms
         </a>
