@@ -4,12 +4,16 @@ import { grantCredits } from './credits'
 import { db } from './db'
 import { logger } from './logger'
 import { WELCOME_CREDITS } from './pricing'
+import { sendVerificationEmail, sendPasswordResetEmail } from './email'
 
 export const auth = betterAuth({
   database: new Pool({ connectionString: process.env.DATABASE_URL! }),
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
+    sendResetPassword: async ({ user, url }) => {
+      await sendPasswordResetEmail(user.email, url)
+    },
   },
   socialProviders: {
     google: {
@@ -29,6 +33,9 @@ export const auth = betterAuth({
     },
   },
   emailVerification: {
+    sendVerificationEmail: async ({ user, url }) => {
+      await sendVerificationEmail(user.email, url)
+    },
     afterEmailVerification: async (user) => {
       if (!user.id) return // guard against malformed user objects
       try {

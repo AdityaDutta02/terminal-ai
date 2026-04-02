@@ -54,6 +54,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       await handleSubscriptionHalted(event.payload)
       break
     }
+    case 'payment.failed': {
+      await handlePaymentFailed(event.payload)
+      break
+    }
     default:
       // Unknown event — acknowledge receipt
       break
@@ -87,6 +91,17 @@ async function handlePaymentCaptured(payload: any): Promise<void> {
     )
 
     await grantCredits(user_id, credits, `credit_pack_${pack_id}`, client)
+
+    // Send payment confirmation email (non-blocking)
+    const userResult = await client.query<{ email: string }>(
+      `SELECT email FROM "user" WHERE id = $1`, [user_id],
+    )
+    if (userResult.rows[0]) {
+      const { sendPaymentConfirmationEmail } = await import('@/lib/email')
+      const amountInr = (payment.amount / 100).toString()
+      sendPaymentConfirmationEmail(userResult.rows[0].email, amountInr, credits, 'credit_pack')
+        .catch((err: unknown) => logger.error({ msg: 'payment_email_failed', err: String(err) }))
+    }
   })
 }
 
@@ -186,4 +201,27 @@ async function handleSubscriptionHalted(payload: any): Promise<void> {
      WHERE razorpay_subscription_id = $1`,
     [sub.id],
   )
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handlePaymentFailed(payload: any): Promise<void> {
+  const payment = payload.payment?.entity
+  if (!payment) return
+
+  const result = await db.query<{ user_id: string; email: string }>(
+    `SELECT cpp.user_id, u.email
+     FROM subscriptions.credit_pack_purchases cpp
+     JOIN "user" u ON u.id = cpp.user_id
+     WHERE cpp.razorpay_order_id = $1`,
+    [payment.order_id],
+  )
+
+  if (result.rows[0]) {
+    const { sendPaymentFailedEmail } = await import('@/lib/email')
+    await sendPaymentFailedEmail(result.rows[0].email).catch((err: unknown) => {
+      logger.error({ msg: 'payment_failed_email_send_error', err: String(err) })
+    })
+  }
+
+  logger.warn({ msg: 'payment_failed', orderId: payment.order_id, reason: payment.error_description })
 }
