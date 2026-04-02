@@ -33,7 +33,7 @@ async function getStats(): Promise<Stats> {
        (SELECT COALESCE(SUM(delta), 0) FROM subscriptions.credit_ledger WHERE delta > 0) AS total_credits_granted,
        (SELECT COUNT(*) FROM gateway.api_calls WHERE created_at >= CURRENT_DATE) AS sessions_today,
        (SELECT COUNT(DISTINCT user_id) FROM subscriptions.user_subscriptions WHERE status = 'active') AS paying_users,
-       (SELECT COALESCE(SUM(amount_paise), 0) / 100 FROM subscriptions.credit_pack_purchases WHERE status = 'completed') AS total_revenue_inr`,
+       (SELECT COALESCE(SUM(price_inr), 0) FROM subscriptions.credit_pack_purchases WHERE status = 'completed') AS total_revenue_inr`,
   )
   return result.rows[0]
 }
