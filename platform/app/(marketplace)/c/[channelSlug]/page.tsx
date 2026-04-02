@@ -1,7 +1,8 @@
 import { db } from '@/lib/db'
 import { notFound } from 'next/navigation'
 import { AppCard, type AppCardData } from '@/components/app-card'
-import { ChevronLeft, Share2, Box, Users } from 'lucide-react'
+import { ChevronLeft, Box, Users } from 'lucide-react'
+import { ShareButton } from '@/components/share-button'
 import type { Metadata } from 'next'
 
 function channelOgUrl(base: string, slug: string): string {
@@ -194,11 +195,12 @@ export default async function ChannelPage({ params }: PageProps) {
                 <p className="text-sm text-slate-400">@{channel.slug}</p>
               </div>
 
-              {/* Share button */}
-              <button className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-xl text-sm font-medium transition-colors flex-shrink-0">
-                <Share2 className="w-4 h-4" />
-                Share
-              </button>
+              <ShareButton
+                url={`https://terminalai.studioionique.com/c/${channel.slug}`}
+                title={channel.name}
+                description={channel.description ?? ''}
+                type="channel"
+              />
             </div>
 
             {channel.description && (

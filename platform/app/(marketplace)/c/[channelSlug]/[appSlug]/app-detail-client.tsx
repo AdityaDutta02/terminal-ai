@@ -1,10 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import { ShareButton } from '@/components/share-button'
 import {
   Star,
   Sparkles,
-  Share2,
   ExternalLink,
   Heart,
   Flag,
@@ -249,10 +249,14 @@ export function AppDetailClient({
 
         {/* Share + Save */}
         <div className="flex gap-2">
-          <button className="flex-1 flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-600 py-2.5 rounded-xl text-sm font-medium transition-colors">
-            <Share2 className="w-4 h-4" />
-            Share
-          </button>
+          <div className="flex-1">
+            <ShareButton
+              url={`https://terminalai.studioionique.com/c/${channelSlug}/${appSlug}`}
+              title={appName}
+              description={appDescription}
+              type="app"
+            />
+          </div>
           <button
             onClick={() => setSaved((s) => !s)}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-colors ${

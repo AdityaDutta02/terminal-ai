@@ -239,7 +239,9 @@ app.delete('/apps/:appId', async (c) => {
   // Must delete in FK order: embed_tokens → credit_ledger refs → deployments → apps
   try {
     await db.query(`DELETE FROM gateway.embed_tokens WHERE app_id = $1`, [appId])
+    await db.query(`UPDATE gateway.api_calls SET app_id = NULL WHERE app_id = $1`, [appId])
     await db.query(`DELETE FROM subscriptions.credit_ledger WHERE app_id = $1`, [appId])
+    await db.query(`DELETE FROM deployments.deployment_events WHERE deployment_id IN (SELECT id FROM deployments.deployments WHERE app_id = $1)`, [appId])
     await db.query(`DELETE FROM deployments.deployments WHERE app_id = $1`, [appId])
     await db.query(`DELETE FROM marketplace.apps WHERE id = $1`, [appId])
   } catch (dbErr) {
