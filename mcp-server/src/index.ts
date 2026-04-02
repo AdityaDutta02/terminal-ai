@@ -195,7 +195,7 @@ app.all('/mcp', async (c) => {
         channelId: row.id,
         name: row.name,
         slug: row.slug,
-        url: `https://terminalai.app/c/${row.slug}`,
+        url: `https://terminalai.studioionique.com/c/${row.slug}`,
         appCount: row.app_count,
       }))
       return {
@@ -232,7 +232,7 @@ app.all('/mcp', async (c) => {
           text: JSON.stringify({
             channelId: result.data.id,
             slug: result.data.slug,
-            url: `https://terminalai.app/c/${result.data.slug}`,
+            url: `https://terminalai.studioionique.com/c/${result.data.slug}`,
           }),
         }],
       }
@@ -241,7 +241,7 @@ app.all('/mcp', async (c) => {
 
   server.tool(
     'deploy_app',
-    'Register a GitHub repo as an app on Terminal AI and trigger deployment. The app will be built and deployed to *.apps.terminalai.app.',
+    'Register a GitHub repo as an app on Terminal AI and trigger deployment. The app will be built and deployed to *.apps.terminalai.studioionique.com.',
     DeployAppSchema,
     async (input) => {
       const result = await callPlatform<{ id: string; deploymentId: string; deploymentQueued: boolean }>(

@@ -106,7 +106,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const data = await getData(channelSlug)
   if (!data) return {}
   const { channel } = data
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://terminalai.app'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://terminalai.studioionique.com'
   const ogUrl = channelOgUrl(appUrl, channelSlug)
   return {
     title: `${channel.name} — Terminal AI`,

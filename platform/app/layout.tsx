@@ -29,7 +29,7 @@ const jetbrainsMono = JetBrains_Mono({
   display: 'swap',
 })
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://terminalai.app'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://terminalai.studioionique.com'
 export const metadata: Metadata = {
   title: { default: 'Terminal AI', template: '%s — Terminal AI' },
   description: 'AI-powered apps, built by creators.',

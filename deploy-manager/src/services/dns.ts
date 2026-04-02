@@ -10,7 +10,7 @@ function cfUrl(zoneId: string, suffix = ''): string {
 }
 export async function createSubdomain(subdomain: string): Promise<string> {
   const { token, zoneId, vpsIp } = dnsConfig()
-  const record = { type: 'A', name: `${subdomain}.apps.terminalai.app`, content: vpsIp, ttl: 60, proxied: true }
+  const record = { type: 'A', name: `${subdomain}.apps.terminalai.studioionique.com`, content: vpsIp, ttl: 60, proxied: true }
   const res = await fetch(cfUrl(zoneId), {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },

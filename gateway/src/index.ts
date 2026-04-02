@@ -14,7 +14,7 @@ app.use(
   cors({
     origin: (origin) => {
       if (!origin) return null
-      if (origin === 'https://terminalai.app') return origin
+      if (origin === 'https://terminalai.studioionique.com') return origin
       if (/^https:\/\/[a-z0-9-]+\.apps\.terminalai\.app$/.test(origin)) return origin
       // Allow localhost only in development
       if (process.env.NODE_ENV !== 'production' && origin.startsWith('http://localhost')) return origin

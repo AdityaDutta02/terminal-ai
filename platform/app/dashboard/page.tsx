@@ -183,7 +183,7 @@ export default async function DashboardPage() {
               <div>
                 <p className="font-medium text-white">{app.name as string}</p>
                 <p className="text-sm text-zinc-400">
-                  {app.subdomain ? `${app.subdomain as string}.apps.terminalai.app` : 'No subdomain yet'}
+                  {app.subdomain ? `${app.subdomain as string}.apps.terminalai.studioionique.com` : 'No subdomain yet'}
                 </p>
               </div>
               <span className={`text-xs px-2 py-1 rounded-full ${deployBadge((app.deploy_status ?? 'pending') as string)}`}>

@@ -99,7 +99,7 @@ export function GET(req: NextRequest): ImageResponse {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '18px' }}>
-            terminalai.app
+            terminalai.studioionique.com
           </span>
           {credits && (
             <div

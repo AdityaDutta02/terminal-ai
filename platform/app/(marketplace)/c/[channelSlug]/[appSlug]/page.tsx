@@ -49,7 +49,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const data = await getData(channelSlug, appSlug)
   if (!data) return {}
   const { channel, app } = data
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://terminalai.app'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://terminalai.studioionique.com'
   const ogUrl = appOgUrl(appUrl, app.id)
   return {
     title: `${app.name} — Terminal AI`,
@@ -74,7 +74,7 @@ export default async function AppDetailPage({ params }: PageProps) {
   if (!data) notFound()
   const { channel, app } = data
   const session = await auth.api.getSession({ headers: await headers() })
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://terminalai.app'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://terminalai.studioionique.com'
 
   return (
     <div className="max-w-[1200px] mx-auto px-6 py-8">

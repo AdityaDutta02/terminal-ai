@@ -19,7 +19,7 @@ proxy.post('/v1/chat/completions', embedTokenAuth, async (c) => {
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${process.env.OPENROUTER_API_KEY!}`,
-      'HTTP-Referer': 'https://terminalai.app',
+      'HTTP-Referer': 'https://terminalai.studioionique.com',
       'X-Title': 'Terminal AI',
     },
     body: JSON.stringify(body),

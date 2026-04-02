@@ -63,7 +63,7 @@ async function failDeployment(deploymentId: string, errorCode: string): Promise<
 function resolveUrl(subdomain: string | undefined, fqdn: string | null): string {
   const cloudflareConfigured = !!(process.env.CLOUDFLARE_TOKEN && process.env.CLOUDFLARE_ZONE_ID && process.env.VPS2_IP)
   if (cloudflareConfigured && subdomain) {
-    return `https://${subdomain}.apps.terminalai.app`
+    return `https://${subdomain}.apps.terminalai.studioionique.com`
   }
   const rawFqdn = (fqdn ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '')
   return rawFqdn ? `http://${rawFqdn}` : ''
@@ -253,7 +253,7 @@ export function startDeployWorker(): Worker {
       // sslip.io domain Coolify auto-generated and returned.
       let finalUrl: string
       if (cloudflareConfigured) {
-        finalUrl = `https://${subdomain}.apps.terminalai.app`
+        finalUrl = `https://${subdomain}.apps.terminalai.studioionique.com`
       } else {
         // Coolify returns fqdn as "http://..." — normalize to ensure it has a protocol
         const rawDomain = coolifyDomain.replace(/^https?:\/\//, '').replace(/\/$/, '')

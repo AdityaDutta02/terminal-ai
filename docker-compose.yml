@@ -88,7 +88,7 @@ services:
       - internal
     labels:
       - traefik.enable=true
-      - traefik.http.routers.platform.rule=Host(`terminalai.app`) || Host(`www.terminalai.app`)
+      - traefik.http.routers.platform.rule=Host(`terminalai.studioionique.com`) || Host(`www.terminalai.studioionique.com`)
       - traefik.http.routers.platform.entrypoints=websecure
       - traefik.http.routers.platform.tls.certresolver=letsencrypt
       - traefik.http.routers.platform.middlewares=secure-headers@file
@@ -118,7 +118,7 @@ services:
       - internal
     labels:
       - traefik.enable=true
-      - traefik.http.routers.gateway.rule=Host(`api.terminalai.app`)
+      - traefik.http.routers.gateway.rule=Host(`api.terminalai.studioionique.com`)
       - traefik.http.routers.gateway.entrypoints=websecure
       - traefik.http.routers.gateway.tls.certresolver=letsencrypt
       - traefik.http.routers.gateway.middlewares=secure-headers@file,rate-limit@file
@@ -221,7 +221,7 @@ services:
       - internal
     labels:
       - traefik.enable=true
-      - traefik.http.routers.mcp.rule=Host(`mcp.terminalai.app`)
+      - traefik.http.routers.mcp.rule=Host(`mcp.terminalai.studioionique.com`)
       - traefik.http.routers.mcp.entrypoints=websecure
       - traefik.http.routers.mcp.tls.certresolver=letsencrypt
       - traefik.http.routers.mcp.middlewares=secure-headers@file,rate-limit@file

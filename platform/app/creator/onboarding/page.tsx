@@ -57,7 +57,7 @@ export default function OnboardingPage() {
               placeholder="my-ai-studio"
               className="w-full h-[44px] px-4 border border-slate-200 rounded-xl bg-white text-[14px] text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-colors"
             />
-            <p className="text-[12px] text-slate-400 mt-1.5">terminalai.app/c/{slug || 'your-slug'}</p>
+            <p className="text-[12px] text-slate-400 mt-1.5">terminalai.studioionique.com/c/{slug || 'your-slug'}</p>
           </div>
           <div>
             <label className="block text-[12px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Description (optional)</label>

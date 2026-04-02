@@ -22,7 +22,7 @@ providers:
 certificatesResolvers:
   letsencrypt:
     acme:
-      email: aditya@terminalai.app
+      email: aditya@studioionique.com
       storage: /letsencrypt/acme.json
       tlsChallenge: {}
 
