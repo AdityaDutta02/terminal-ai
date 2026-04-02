@@ -1,15 +1,7 @@
 'use client'
 
-import { useState } from 'react'
 import { ShareButton } from '@/components/share-button'
-import {
-  Star,
-  Sparkles,
-  ExternalLink,
-  Heart,
-  Flag,
-  ImageIcon,
-} from 'lucide-react'
+import { Star, Sparkles, ExternalLink } from 'lucide-react'
 
 interface AppDetailClientProps {
   appName: string
@@ -22,23 +14,6 @@ interface AppDetailClientProps {
   appUrl: string
 }
 
-const placeholderReviews = [
-  {
-    user: 'Sarah Chen',
-    avatar: 'SC',
-    rating: 5,
-    date: '2 days ago',
-    text: 'Incredibly accurate. Helped me plan with real data.',
-  },
-  {
-    user: 'Marcus Reid',
-    avatar: 'MR',
-    rating: 4,
-    date: '1 week ago',
-    text: 'Great tool overall. Solid analysis.',
-  },
-]
-
 const placeholderFeatures = [
   'Real-time data processing',
   'Intelligent analysis engine',
@@ -48,8 +23,6 @@ const placeholderFeatures = [
   'Collaborative sharing',
 ]
 
-type TabId = 'overview' | 'screenshots' | 'reviews'
-
 export function AppDetailClient({
   appName,
   appDescription,
@@ -58,156 +31,28 @@ export function AppDetailClient({
   appSlug,
   credits,
   isLoggedIn,
-  appUrl,
 }: AppDetailClientProps) {
-  const [activeTab, setActiveTab] = useState<TabId>('overview')
-  const [saved, setSaved] = useState(false)
-
-  const tabs: { id: TabId; label: string }[] = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'screenshots', label: 'Screenshots' },
-    { id: 'reviews', label: 'Reviews' },
-  ]
-
-  const averageRating = 4.5
-  const totalReviews = placeholderReviews.length
+  const bugReportHref = `mailto:support@studioionique.com?subject=Bug Report: ${encodeURIComponent(appName)}&body=Please describe the issue you encountered:`
 
   return (
     <div className="flex gap-8 items-start">
       {/* Left column */}
       <div className="flex-1 min-w-0">
-        {/* Tab bar */}
-        <div className="flex items-center gap-6 border-b border-slate-100 mb-6">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`pb-3 text-sm font-medium transition-colors relative ${
-                activeTab === tab.id
-                  ? 'text-orange-600'
-                  : 'text-slate-400 hover:text-slate-600'
-              }`}
-            >
-              {tab.label}
-              {activeTab === tab.id && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-600 rounded-full" />
-              )}
-            </button>
-          ))}
+        {/* Overview content */}
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900 mb-3">About this app</h3>
+          <p className="text-slate-600 leading-relaxed mb-8">{appDescription}</p>
+
+          <h3 className="text-lg font-semibold text-slate-900 mb-4">Features</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {placeholderFeatures.map((feature) => (
+              <div key={feature} className="flex items-start gap-2.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-2 flex-shrink-0" />
+                <span className="text-sm text-slate-600">{feature}</span>
+              </div>
+            ))}
+          </div>
         </div>
-
-        {/* Overview tab */}
-        {activeTab === 'overview' && (
-          <div>
-            <h3 className="text-lg font-semibold text-slate-900 mb-3">About this app</h3>
-            <p className="text-slate-600 leading-relaxed mb-8">{appDescription}</p>
-
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">Features</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {placeholderFeatures.map((feature) => (
-                <div key={feature} className="flex items-start gap-2.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-2 flex-shrink-0" />
-                  <span className="text-sm text-slate-600">{feature}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Screenshots tab */}
-        {activeTab === 'screenshots' && (
-          <div>
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">Screenshots</h3>
-            <div className="grid grid-cols-2 gap-4">
-              {[1, 2, 3, 4].map((n) => (
-                <div
-                  key={n}
-                  className="aspect-video bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-center"
-                >
-                  <ImageIcon className="w-8 h-8 text-slate-300" />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Reviews tab */}
-        {activeTab === 'reviews' && (
-          <div>
-            {/* Rating summary */}
-            <div className="flex items-center gap-4 mb-6 p-4 bg-slate-50 rounded-xl">
-              <div className="text-center">
-                <p className="text-3xl font-bold text-slate-900">{averageRating}</p>
-                <div className="flex items-center gap-0.5 mt-1">
-                  {[1, 2, 3, 4, 5].map((s) => (
-                    <Star
-                      key={s}
-                      className={`w-3.5 h-3.5 ${
-                        s <= Math.round(averageRating)
-                          ? 'text-orange-400 fill-orange-400'
-                          : 'text-slate-200'
-                      }`}
-                    />
-                  ))}
-                </div>
-                <p className="text-xs text-slate-400 mt-1">{totalReviews} reviews</p>
-              </div>
-
-              <div className="flex-1 space-y-1">
-                {[5, 4, 3, 2, 1].map((star) => {
-                  const count = placeholderReviews.filter((r) => r.rating === star).length
-                  const pct = totalReviews > 0 ? (count / totalReviews) * 100 : 0
-                  return (
-                    <div key={star} className="flex items-center gap-2">
-                      <span className="text-xs text-slate-500 w-3">{star}</span>
-                      <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-orange-400 rounded-full"
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Review cards */}
-            <div className="space-y-4">
-              {placeholderReviews.map((review) => (
-                <div
-                  key={review.user}
-                  className="p-4 border border-slate-100 rounded-xl"
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
-                      <span className="text-xs font-semibold text-orange-700">
-                        {review.avatar}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">{review.user}</p>
-                      <p className="text-xs text-slate-400">{review.date}</p>
-                    </div>
-                    <div className="ml-auto flex items-center gap-0.5">
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <Star
-                          key={s}
-                          className={`w-3 h-3 ${
-                            s <= review.rating
-                              ? 'text-orange-400 fill-orange-400'
-                              : 'text-slate-200'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  <p className="text-sm text-slate-600">{review.text}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Right column - sticky sidebar */}
@@ -247,28 +92,13 @@ export function AppDetailClient({
           </div>
         )}
 
-        {/* Share + Save */}
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <ShareButton
-              url={`https://terminalai.studioionique.com/c/${channelSlug}/${appSlug}`}
-              title={appName}
-              description={appDescription}
-              type="app"
-            />
-          </div>
-          <button
-            onClick={() => setSaved((s) => !s)}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-              saved
-                ? 'bg-orange-50 text-orange-600 border border-orange-200'
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-            }`}
-          >
-            <Heart className={`w-4 h-4 ${saved ? 'fill-orange-600' : ''}`} />
-            {saved ? 'Saved' : 'Save'}
-          </button>
-        </div>
+        {/* Share */}
+        <ShareButton
+          url={`https://terminalai.studioionique.com/c/${channelSlug}/${appSlug}`}
+          title={appName}
+          description={appDescription}
+          type="app"
+        />
 
         {/* Details */}
         <div className="border border-slate-100 rounded-xl p-5 space-y-3">
@@ -298,11 +128,14 @@ export function AppDetailClient({
           </div>
         </div>
 
-        {/* Report */}
-        <button className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 transition-colors mx-auto">
-          <Flag className="w-3 h-3" />
-          Report this app
-        </button>
+        {/* Report a Bug */}
+        <a
+          href={bugReportHref}
+          className="block text-center text-xs text-slate-400 hover:text-slate-600 transition-colors"
+          data-testid="report-bug-link"
+        >
+          Report a Bug
+        </a>
       </div>
     </div>
   )

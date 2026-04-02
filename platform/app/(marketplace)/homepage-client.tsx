@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { AppCard, type AppCardData } from '@/components/app-card'
 import { ChannelCard, type ChannelCardData } from '@/components/channel-card'
 import { Footer } from '@/components/footer'
-import { ArrowRight, Zap, Star, BarChart3, Headphones, Search } from 'lucide-react'
+import { ArrowRight, Zap, Star, BarChart3, Headphones } from 'lucide-react'
 
 export function HomepageClient({
   apps,
@@ -16,7 +16,6 @@ export function HomepageClient({
   categories: string[]
 }) {
   const [activeTab, setActiveTab] = useState('All')
-  const [searchQuery, setSearchQuery] = useState('')
 
   const featuredApps = apps.slice(0, 3)
 
@@ -30,28 +29,8 @@ export function HomepageClient({
             ? [...apps].reverse().slice(0, 6)
             : apps.filter((a) => a.category === activeTab)
 
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
-      result = result.filter(
-        (a) =>
-          a.name.toLowerCase().includes(q) ||
-          (a.description ?? '').toLowerCase().includes(q) ||
-          a.channelName.toLowerCase().includes(q),
-      )
-    }
-
     return result
-  }, [apps, activeTab, searchQuery])
-
-  const filteredChannels = useMemo(() => {
-    if (!searchQuery.trim()) return channels
-    const q = searchQuery.toLowerCase()
-    return channels.filter(
-      (ch) =>
-        ch.name.toLowerCase().includes(q) ||
-        ch.slug.toLowerCase().includes(q),
-    )
-  }, [channels, searchQuery])
+  }, [apps, activeTab])
 
   const tabs = ['All', 'Popular', 'New', ...categories]
 
@@ -237,18 +216,6 @@ export function HomepageClient({
             Browse the full catalogue
           </p>
         </div>
-        {/* Search */}
-        <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search apps by name, description, or creator…"
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-[14px] text-slate-700 placeholder-slate-400 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all bg-white"
-          />
-        </div>
-
         {/* Filter tabs */}
         <div className="flex items-center gap-1 bg-slate-100/70 rounded-lg p-1 mb-8 overflow-x-auto">
           {tabs.map((tab) => (
@@ -276,9 +243,7 @@ export function HomepageClient({
         </div>
         {filteredApps.length === 0 && (
           <p className="text-center text-slate-400 py-12">
-            {searchQuery.trim()
-              ? `No apps matching "${searchQuery}". Try a different search.`
-              : 'No apps in this category yet.'}
+            {'No apps in this category yet.'}
           </p>
         )}
       </section>
@@ -325,7 +290,7 @@ export function HomepageClient({
           </p>
         </div>
         <div className="grid gap-5 sm:grid-cols-2">
-          {filteredChannels.map((channel) => (
+          {channels.map((channel) => (
             <ChannelCard
               key={channel.id}
               channel={channel}
