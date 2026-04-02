@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import type { ModelTier } from '@/lib/pricing'
 import { MODEL_TIER_CREDITS } from '@/lib/pricing'
 
@@ -52,6 +53,7 @@ function Toast({ toast, onDismiss }: { toast: ToastState; onDismiss: () => void 
 }
 
 export function AppSettingsForm({ app }: { app: AppSettingsData }) {
+  const router = useRouter()
   const [name, setName] = useState(app.name)
   const [description, setDescription] = useState(app.description ?? '')
   const [status, setStatus] = useState<AppStatus>(app.status)
@@ -102,11 +104,20 @@ export function AppSettingsForm({ app }: { app: AppSettingsData }) {
   async function handleDelete() {
     if (!deleteConfirmed) return
     setDeleting(true)
-    // TODO: wire to DELETE /api/creator/apps/[appId] when endpoint is created
-    await new Promise((r) => setTimeout(r, 400))
-    alert(`Delete is not yet available from the creator portal. Please contact support to remove "${app.name}".`)
-    setDeleting(false)
-    setDeleteNameInput('')
+    try {
+      const res = await fetch(`/api/creator/apps/${app.id}`, { method: 'DELETE' })
+      if (res.ok) {
+        router.push('/creator/apps')
+      } else {
+        const data = await res.json().catch(() => ({})) as { error?: string }
+        setToast({ type: 'error', message: data.error ?? 'Failed to delete app' })
+      }
+    } catch {
+      setToast({ type: 'error', message: 'Network error. Please try again.' })
+    } finally {
+      setDeleting(false)
+      setDeleteNameInput('')
+    }
   }
 
   return (

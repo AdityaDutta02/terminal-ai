@@ -5,6 +5,7 @@ import { MODEL_TIER_CREDITS } from '@/lib/pricing'
 import { z } from 'zod'
 
 const MODEL_TIERS = ['standard', 'advanced', 'premium', 'image-fast', 'image-pro'] as const
+const DEPLOY_MANAGER_URL = process.env.DEPLOY_MANAGER_URL ?? 'http://deploy-manager:3002'
 
 const patchSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -14,23 +15,29 @@ const patchSchema = z.object({
   model_tier: z.enum(MODEL_TIERS).optional(),
 })
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ appId: string }> }
-) {
-  const result = await requireCreator()
-  if (result instanceof NextResponse) return result
-  const { channel } = result
-  const { appId } = await params
-
-  // Verify ownership
-  const appCheck = await db.query(
-    `SELECT id FROM marketplace.apps WHERE id = $1 AND channel_id = $2 AND deleted_at IS NULL`,
-    [appId, channel.id],
+async function verifyOwnership(appId: string, userId: string): Promise<NextResponse | null> {
+  const result = await db.query(
+    `SELECT a.id FROM marketplace.apps a
+     JOIN marketplace.channels c ON c.id = a.channel_id
+     WHERE a.id = $1 AND c.creator_id = $2 AND a.deleted_at IS NULL`,
+    [appId, userId],
   )
-  if (!appCheck.rows[0]) {
+  if (!result.rows[0]) {
     return NextResponse.json({ error: 'App not found' }, { status: 404 })
   }
+  return null
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ appId: string }> },
+): Promise<Response> {
+  const result = await requireCreator()
+  if (result instanceof NextResponse) return result
+  const { appId } = await params
+
+  const denied = await verifyOwnership(appId, result.session.user.id)
+  if (denied) return denied
 
   const parsed = patchSchema.safeParse(await request.json())
   if (!parsed.success) {
@@ -39,7 +46,6 @@ export async function PATCH(
 
   const { name, description, status, is_free, model_tier } = parsed.data
 
-  // Build dynamic update
   const updates: string[] = []
   const values: unknown[] = []
   let idx = 1
@@ -64,4 +70,34 @@ export async function PATCH(
   }
 
   return NextResponse.json({ success: true })
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ appId: string }> },
+): Promise<Response> {
+  const result = await requireCreator()
+  if (result instanceof NextResponse) return result
+  const { appId } = await params
+
+  const denied = await verifyOwnership(appId, result.session.user.id)
+  if (denied) return denied
+
+  try {
+    const upstream = await fetch(`${DEPLOY_MANAGER_URL}/apps/${appId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${process.env.INTERNAL_SERVICE_TOKEN ?? ''}` },
+    })
+    if (!upstream.ok) {
+      const data = await upstream.json().catch(() => ({})) as { error?: string }
+      return NextResponse.json({ error: data.error ?? 'Delete failed' }, { status: upstream.status })
+    }
+  } catch {
+    await db.query(
+      `UPDATE marketplace.apps SET deleted_at = NOW(), status = 'draft' WHERE id = $1`,
+      [appId],
+    )
+  }
+
+  return NextResponse.json({ deleted: true })
 }
