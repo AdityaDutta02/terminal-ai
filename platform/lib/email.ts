@@ -1,11 +1,15 @@
 import { Resend } from 'resend'
 import { logger } from './logger'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+let _resend: Resend | null = null
+function getResend(): Resend {
+  if (!_resend) _resend = new Resend(process.env.RESEND_API_KEY ?? '')
+  return _resend
+}
 const FROM_EMAIL = process.env.FROM_EMAIL ?? 'Terminal AI <noreply@terminalai.app>'
 
 export async function sendVerificationEmail(email: string, url: string): Promise<void> {
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from: FROM_EMAIL,
     to: email,
     subject: 'Verify your Terminal AI account',
@@ -22,7 +26,7 @@ export async function sendVerificationEmail(email: string, url: string): Promise
 }
 
 export async function sendPasswordResetEmail(email: string, url: string): Promise<void> {
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from: FROM_EMAIL,
     to: email,
     subject: 'Reset your Terminal AI password',
@@ -48,7 +52,7 @@ export async function sendPaymentConfirmationEmail(
     ? 'Subscription activated — Terminal AI'
     : 'Payment confirmed — Terminal AI'
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from: FROM_EMAIL,
     to: email,
     subject,
@@ -66,7 +70,7 @@ export async function sendPaymentConfirmationEmail(
 }
 
 export async function sendPaymentFailedEmail(email: string): Promise<void> {
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from: FROM_EMAIL,
     to: email,
     subject: 'Payment failed — Terminal AI',
