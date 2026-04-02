@@ -8,7 +8,7 @@ function getAdminTabs() {
     { id: 'overview', label: 'Overview', icon: 'BarChart3', href: '/admin' },
     { id: 'users', label: 'Users', icon: 'Users', href: '/admin/users' },
     { id: 'apps', label: 'Apps', icon: 'Box', href: '/admin/apps' },
-    { id: 'activity', label: 'Activity Log', icon: 'Clock', href: '/admin' },
+    { id: 'activity', label: 'Activity Log', icon: 'Clock', href: '/admin/activity' },
   ]
 }
 

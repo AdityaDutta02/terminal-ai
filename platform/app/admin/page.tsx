@@ -7,7 +7,7 @@ function getAdminTabs() {
     { id: 'overview', label: 'Overview', icon: 'BarChart3', href: '/admin' },
     { id: 'users', label: 'Users', icon: 'Users', href: '/admin/users' },
     { id: 'apps', label: 'Apps', icon: 'Box', href: '/admin/apps' },
-    { id: 'activity', label: 'Activity Log', icon: 'Clock', href: '/admin' },
+    { id: 'activity', label: 'Activity Log', icon: 'Clock', href: '/admin/activity' },
   ]
 }
 
@@ -36,23 +36,6 @@ async function getStats(): Promise<Stats> {
        (SELECT COALESCE(SUM(price_inr), 0) FROM subscriptions.credit_pack_purchases WHERE status = 'completed') AS total_revenue_inr`,
   )
   return result.rows[0]
-}
-
-type ActivityRow = {
-  description: string
-  created_at: string
-}
-
-async function getRecentActivity(): Promise<ActivityRow[]> {
-  const result = await db.query<ActivityRow>(
-    `SELECT
-       CONCAT(u.name, ' created account') AS description,
-       u."createdAt" AS created_at
-     FROM "user" u
-     ORDER BY u."createdAt" DESC
-     LIMIT 8`,
-  )
-  return result.rows
 }
 
 type TierBreakdown = { [key: string]: unknown; plan_id: string; count: string }
@@ -92,20 +75,9 @@ async function getTopApps(): Promise<AppUsage[]> {
   return result.rows
 }
 
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 60) return `${mins}m ago`
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  return `${days}d ago`
-}
-
 export default async function AdminOverview() {
-  const [stats, activity, tierBreakdown, topApps] = await Promise.all([
+  const [stats, tierBreakdown, topApps] = await Promise.all([
     getStats(),
-    getRecentActivity(),
     getTierBreakdown(),
     getTopApps(),
   ])
@@ -227,23 +199,6 @@ export default async function AdminOverview() {
           </div>
         </div>
 
-        {/* Recent Activity */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm" data-testid="recent-activity">
-          <div className="px-6 py-4 border-b border-slate-100">
-            <h2 className="text-[15px] font-bold text-slate-900">Recent Activity</h2>
-          </div>
-          <div className="divide-y divide-slate-100">
-            {activity.map((item, idx) => (
-              <div key={idx} className="px-6 py-3.5 flex items-center justify-between">
-                <p className="text-[14px] text-slate-700">{item.description}</p>
-                <span className="text-[12px] text-slate-400 flex-shrink-0 ml-4">{timeAgo(item.created_at)}</span>
-              </div>
-            ))}
-            {activity.length === 0 && (
-              <div className="px-6 py-8 text-center text-[14px] text-slate-400">No recent activity.</div>
-            )}
-          </div>
-        </div>
       </div>
     </div>
   )

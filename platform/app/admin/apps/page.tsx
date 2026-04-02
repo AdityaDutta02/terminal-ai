@@ -2,12 +2,14 @@ import { db } from '@/lib/db'
 import { SidebarNav } from '@/components/sidebar-nav'
 import { AdminAppsTable } from './apps-table'
 
-const adminTabs = [
-  { id: 'overview', label: 'Overview', icon: 'BarChart3', href: '/admin' },
-  { id: 'users', label: 'Users', icon: 'Users', href: '/admin/users' },
-  { id: 'apps', label: 'Apps', icon: 'Box', href: '/admin/apps' },
-  { id: 'activity', label: 'Activity Log', icon: 'Clock', href: '/admin' },
-]
+function getAdminTabs() {
+  return [
+    { id: 'overview', label: 'Overview', icon: 'BarChart3', href: '/admin' },
+    { id: 'users', label: 'Users', icon: 'Users', href: '/admin/users' },
+    { id: 'apps', label: 'Apps', icon: 'Box', href: '/admin/apps' },
+    { id: 'activity', label: 'Activity Log', icon: 'Clock', href: '/admin/activity' },
+  ]
+}
 
 type AppRow = {
   id: string
@@ -44,7 +46,7 @@ export default async function AdminApps() {
   const apps = await getApps()
   return (
     <div className="max-w-[1200px] mx-auto px-6 py-8 flex gap-8">
-      <SidebarNav title="Admin Panel" tabs={adminTabs} />
+      <SidebarNav title="Admin Panel" tabs={getAdminTabs()} />
       <div className="flex-1 min-w-0">
         <h1 className="text-[28px] font-extrabold text-slate-900 tracking-tight">Apps</h1>
         <p className="text-[14px] text-slate-500 mt-1 mb-6">{apps.length} total apps</p>
