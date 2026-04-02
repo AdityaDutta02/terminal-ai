@@ -88,7 +88,7 @@ services:
       - internal
     labels:
       - traefik.enable=true
-      - traefik.http.routers.platform.rule=Host(`terminalai.studioionique.com`) || Host(`www.terminalai.studioionique.com`)
+      - traefik.http.routers.platform.rule=Host(`terminalai.studioionique.com`)
       - traefik.http.routers.platform.entrypoints=websecure
       - traefik.http.routers.platform.tls.certresolver=letsencrypt
       - traefik.http.routers.platform.middlewares=secure-headers@file

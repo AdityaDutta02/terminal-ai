@@ -24,7 +24,8 @@ certificatesResolvers:
     acme:
       email: aditya@studioionique.com
       storage: /letsencrypt/acme.json
-      tlsChallenge: {}
+      httpChallenge:
+        entryPoint: web
 
 log:
   level: INFO
