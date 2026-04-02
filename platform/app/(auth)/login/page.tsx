@@ -21,10 +21,19 @@ function LoginForm() {
     e.preventDefault()
     setError('')
     setLoading(true)
-    const { error } = await authClient.signIn.email({ email, password })
+    const { data, error } = await authClient.signIn.email({ email, password })
     setLoading(false)
     if (error) {
+      if (error.code === 'EMAIL_NOT_VERIFIED') {
+        router.push(`/verify-email?email=${encodeURIComponent(email)}`)
+        return
+      }
       setError(error.message ?? 'Sign in failed. Check your credentials.')
+      return
+    }
+    if (!data?.session) {
+      // Sign-in returned no session — likely unverified email
+      router.push(`/verify-email?email=${encodeURIComponent(email)}`)
       return
     }
     router.push(next)
