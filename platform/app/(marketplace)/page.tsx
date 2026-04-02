@@ -4,22 +4,14 @@ import type { AppCardData } from '@/components/app-card'
 import type { ChannelCardData } from '@/components/channel-card'
 /* ── Icon name + gradient maps ── */
 
-const categoryIcons: Record<string, string> = {
-  Finance: 'TrendingUp',
-  Security: 'Shield',
-  Developer: 'Cpu',
-  Analytics: 'BarChart3',
-  Productivity: 'Globe',
-  default: 'Layers',
+function getCategoryIcon(cat: string): string {
+  return 'Finance,TrendingUp|Security,Shield|Developer,Cpu|Analytics,BarChart3|Productivity,Globe'
+    .split('|').find((e) => e.startsWith(cat))?.split(',')[1] ?? 'Layers'
 }
 
-const categoryGradients: Record<string, string> = {
-  Finance: 'from-teal-500 to-cyan-600',
-  Security: 'from-blue-500 to-cyan-500',
-  Developer: 'from-green-500 to-teal-500',
-  Analytics: 'from-sky-500 to-blue-500',
-  Productivity: 'from-pink-500 to-rose-500',
-  default: 'from-orange-500 to-red-500',
+function getCategoryGradient(cat: string): string {
+  return 'Finance,from-teal-500 to-cyan-600|Security,from-blue-500 to-cyan-500|Developer,from-green-500 to-teal-500|Analytics,from-sky-500 to-blue-500|Productivity,from-pink-500 to-rose-500'
+    .split('|').find((e) => e.startsWith(cat))?.split(',')[1] ?? 'from-orange-500 to-red-500'
 }
 
 const channelColors = [
@@ -43,12 +35,13 @@ type AppRow = {
   credits_per_session: number
   channel_name: string
   channel_slug: string
+  status: string
 }
 
 async function getApps(): Promise<AppCardData[]> {
   const result = await db.query<AppRow>(
-    `SELECT a.id, a.name, a.slug, a.description,
-            COALESCE(a.credits_per_session, 50) AS credits_per_session,
+    `SELECT a.id, a.name, a.slug, a.description, a.status,
+            COALESCE(a.credits_per_session, 5) AS credits_per_session,
             c.name AS channel_name, c.slug AS channel_slug
      FROM marketplace.apps a
      JOIN marketplace.channels c ON c.id = a.channel_id
@@ -70,8 +63,9 @@ async function getApps(): Promise<AppCardData[]> {
       rating: Number((4.2 + Math.random() * 0.7).toFixed(1)),
       reviewCount: 10 + Math.floor(Math.random() * 90),
       category,
-      gradient: categoryGradients[category] ?? categoryGradients.default,
-      icon: categoryIcons[category] ?? categoryIcons.default,
+      status: row.status as 'live' | 'coming_soon',
+      gradient: getCategoryGradient(category),
+      icon: getCategoryIcon(category),
     }
   })
 }
