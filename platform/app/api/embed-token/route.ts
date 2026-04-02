@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { deductCredits, grantCredits } from '@/lib/credits'
 import { logger } from '@/lib/logger'
 import { SignJWT } from 'jose'
 import { createHash, randomUUID } from 'crypto'
@@ -55,46 +54,34 @@ export async function POST(request: NextRequest) {
   }
 
   const app = appResult.rows[0]
-  let creditsDeducted = 0
-
-  // Admins skip credit deduction entirely
   const isAdmin = (session.user as Record<string, unknown>).role === 'admin'
 
-  if (isAdmin) {
-    // no-op: admins are never charged
-  } else if (app.is_free && app.credits_per_session > 0) {
-    // Atomically deduct from creator_balance using RETURNING to detect race condition
-    const updateResult = await db.query<{ creator_balance: number }>(
-      `UPDATE marketplace.channels
-       SET creator_balance = creator_balance - $1
-       WHERE id = (SELECT channel_id FROM marketplace.apps WHERE id = $2)
-         AND creator_balance >= $1
-       RETURNING creator_balance`,
-      [app.credits_per_session, appId],
+  // Check balance is sufficient (but don't deduct yet — deduction happens on first API call)
+  if (!isAdmin && !app.is_free && app.credits_per_session > 0) {
+    const balanceResult = await db.query<{ balance: number }>(
+      `SELECT COALESCE(SUM(delta), 0) AS balance FROM subscriptions.credit_ledger WHERE user_id = $1`,
+      [session.user.id],
     )
-    if (!updateResult.rows[0]) {
-      return NextResponse.json({ error: 'This app is temporarily unavailable' }, { status: 402 })
-    }
-    creditsDeducted = app.credits_per_session
-  } else if (app.credits_per_session > 0) {
-    // Deduct from user's credit ledger
-    try {
-      await deductCredits(session.user.id, app.credits_per_session, 'session_start', appId)
-      creditsDeducted = app.credits_per_session
-    } catch {
-      logger.warn({ msg: 'Insufficient credits for session start', userId: session.user.id, appId })
-      return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 })
+    const balance = balanceResult.rows[0]?.balance ?? 0
+    if (balance < app.credits_per_session) {
+      return NextResponse.json(
+        { error: 'Insufficient credits', redirect: '/pricing?reason=insufficient_credits' },
+        { status: 402 },
+      )
     }
   }
 
   const sessionId = randomUUID()
   const expiresAt = new Date(Date.now() + FIFTEEN_MINUTES)
 
+  const creditsPerCall = isAdmin ? 0 : app.credits_per_session
+
   const token = await new SignJWT({
     userId: session.user.id,
     appId,
     sessionId,
-    creditsDeducted,
+    creditsPerCall,
+    isFree: app.is_free,
     isAnon: false,
   })
     .setProtectedHeader({ alg: 'HS256' })
@@ -108,14 +95,10 @@ export async function POST(request: NextRequest) {
     await db.query(
       `INSERT INTO gateway.embed_tokens
          (user_id, app_id, session_id, token_hash, expires_at, credits_deducted, deducted_at)
-       VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
-      [session.user.id, appId, sessionId, tokenHash, expiresAt, creditsDeducted],
+       VALUES ($1, $2, $3, $4, $5, 0, NOW())`,
+      [session.user.id, appId, sessionId, tokenHash, expiresAt],
     )
   } catch (err) {
-    // Refund credits if token storage failed
-    if (creditsDeducted > 0 && !app.is_free) {
-      await grantCredits(session.user.id, creditsDeducted, 'session_start_rollback')
-    }
     logger.error({ msg: 'Failed to store embed token', error: err instanceof Error ? err.message : String(err), userId: session.user.id, appId })
     return NextResponse.json({ error: 'Failed to issue token' }, { status: 500 })
   }

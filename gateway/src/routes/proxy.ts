@@ -9,7 +9,31 @@ const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 const proxy = new Hono()
 
 proxy.post('/v1/chat/completions', embedTokenAuth, async (c) => {
-  const { userId, appId, sessionId, creditsDeducted } = c.get('embedToken')
+  const { userId, appId, sessionId, creditsPerCall, isFree } = c.get('embedToken')
+
+  // Deduct credits on each API call (not on session start)
+  let creditsCharged = 0
+  if (userId && creditsPerCall > 0 && !isFree) {
+    try {
+      const balResult = await db.query<{ balance: number }>(
+        `SELECT COALESCE(SUM(delta), 0) AS balance FROM subscriptions.credit_ledger WHERE user_id = $1`,
+        [userId],
+      )
+      const balance = balResult.rows[0]?.balance ?? 0
+      if (balance < creditsPerCall) {
+        return c.json({ error: 'Insufficient credits', redirect: '/pricing?reason=insufficient_credits' }, 402)
+      }
+      await db.query(
+        `INSERT INTO subscriptions.credit_ledger (user_id, delta, balance_after, reason, app_id)
+         VALUES ($1, $2, (SELECT COALESCE(SUM(delta), 0) + $2 FROM subscriptions.credit_ledger WHERE user_id = $1), 'api_call', $3)`,
+        [userId, -creditsPerCall, appId],
+      )
+      creditsCharged = creditsPerCall
+    } catch (err) {
+      logger.error({ msg: 'credit_deduction_failed', userId, appId, err: String(err) })
+      return c.json({ error: 'Credit deduction failed' }, 500)
+    }
+  }
 
   const body = await c.req.json<Record<string, unknown>>()
   const startedAt = Date.now()
@@ -45,13 +69,13 @@ proxy.post('/v1/chat/completions', embedTokenAuth, async (c) => {
         }
       } finally {
         reader.releaseLock()
-        await logCall({ userId, appId, sessionId, body, latency: Date.now() - startedAt, status: 'ok', creditsCharged: creditsDeducted })
+        await logCall({ userId, appId, sessionId, body, latency: Date.now() - startedAt, status: 'ok', creditsCharged })
       }
     })
   }
 
   const json = await upstream.json<Record<string, unknown>>()
-  await logCall({ userId, appId, sessionId, body, latency: Date.now() - startedAt, status: 'ok', creditsCharged: creditsDeducted })
+  await logCall({ userId, appId, sessionId, body, latency: Date.now() - startedAt, status: 'ok', creditsCharged })
   return c.json(json)
 })
 

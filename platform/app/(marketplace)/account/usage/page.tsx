@@ -30,8 +30,7 @@ async function getUsageData(userId: string): Promise<{
         cl.created_at,
         cl.delta
       FROM subscriptions.credit_ledger cl
-      LEFT JOIN gateway.embed_tokens et ON et.id::text = cl.reference_id
-      LEFT JOIN marketplace.apps a ON a.id = et.app_id
+      LEFT JOIN marketplace.apps a ON a.id = cl.app_id
       LEFT JOIN marketplace.channels c ON c.id = a.channel_id
       WHERE cl.user_id = $1 AND cl.delta < 0
       ORDER BY cl.created_at DESC

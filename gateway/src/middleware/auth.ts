@@ -7,7 +7,8 @@ export interface EmbedTokenPayload {
   userId: string | null
   appId: string
   sessionId: string
-  creditsDeducted: number
+  creditsPerCall: number
+  isFree: boolean
   isAnon: boolean
 }
 

@@ -102,7 +102,11 @@ export function ViewerShell(props: Props) {
       body: JSON.stringify({ appId }),
     })
     if (!res.ok) {
-      const data = await res.json() as { error?: string }
+      const data = await res.json() as { error?: string; redirect?: string }
+      if (data.redirect) {
+        window.location.href = data.redirect
+        return '' // unreachable but satisfies type
+      }
       throw new Error(data.error ?? 'Failed to get token')
     }
     const { token } = await res.json() as { token: string }
