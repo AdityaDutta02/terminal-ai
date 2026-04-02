@@ -1,21 +1,26 @@
 import { db } from '@/lib/db'
 import { SidebarNav } from '@/components/sidebar-nav'
-import { Users, Box, Layers, TrendingUp, Play, Sparkles } from 'lucide-react'
+import { Users, Box, Layers, TrendingUp, Play, Sparkles, BadgeDollarSign, IndianRupee } from 'lucide-react'
 
-const adminTabs = [
-  { id: 'overview', label: 'Overview', icon: 'BarChart3', href: '/admin' },
-  { id: 'users', label: 'Users', icon: 'Users', href: '/admin/users' },
-  { id: 'apps', label: 'Apps', icon: 'Box', href: '/admin/apps' },
-  { id: 'activity', label: 'Activity Log', icon: 'Clock', href: '/admin' },
-]
+function getAdminTabs() {
+  return [
+    { id: 'overview', label: 'Overview', icon: 'BarChart3', href: '/admin' },
+    { id: 'users', label: 'Users', icon: 'Users', href: '/admin/users' },
+    { id: 'apps', label: 'Apps', icon: 'Box', href: '/admin/apps' },
+    { id: 'activity', label: 'Activity Log', icon: 'Clock', href: '/admin' },
+  ]
+}
 
 type Stats = {
+  [key: string]: unknown
   total_users: string
   total_channels: string
   total_apps: string
   total_sessions: string
   total_credits_granted: string
   sessions_today: string
+  paying_users: string
+  total_revenue_inr: string
 }
 
 async function getStats(): Promise<Stats> {
@@ -26,7 +31,9 @@ async function getStats(): Promise<Stats> {
        (SELECT COUNT(*) FROM marketplace.apps WHERE deleted_at IS NULL) AS total_apps,
        (SELECT COUNT(*) FROM gateway.api_calls) AS total_sessions,
        (SELECT COALESCE(SUM(delta), 0) FROM subscriptions.credit_ledger WHERE delta > 0) AS total_credits_granted,
-       (SELECT COUNT(*) FROM gateway.api_calls WHERE created_at >= CURRENT_DATE) AS sessions_today`,
+       (SELECT COUNT(*) FROM gateway.api_calls WHERE created_at >= CURRENT_DATE) AS sessions_today,
+       (SELECT COUNT(DISTINCT user_id) FROM subscriptions.user_subscriptions WHERE status = 'active') AS paying_users,
+       (SELECT COALESCE(SUM(amount_paise), 0) / 100 FROM subscriptions.credit_pack_purchases WHERE status = 'completed') AS total_revenue_inr`,
   )
   return result.rows[0]
 }
@@ -48,6 +55,43 @@ async function getRecentActivity(): Promise<ActivityRow[]> {
   return result.rows
 }
 
+type TierBreakdown = { [key: string]: unknown; plan_id: string; count: string }
+
+async function getTierBreakdown(): Promise<TierBreakdown[]> {
+  const result = await db.query<TierBreakdown>(
+    `SELECT plan_id, COUNT(*) AS count
+     FROM subscriptions.user_subscriptions
+     WHERE status = 'active'
+     GROUP BY plan_id
+     ORDER BY count DESC`,
+  )
+  return result.rows
+}
+
+type AppUsage = {
+  [key: string]: unknown
+  app_name: string
+  channel_name: string
+  sessions_30d: string
+  credits_used_30d: string
+}
+
+async function getTopApps(): Promise<AppUsage[]> {
+  const result = await db.query<AppUsage>(
+    `SELECT a.name AS app_name, c.name AS channel_name,
+            COUNT(ac.id) AS sessions_30d,
+            COALESCE(SUM(ac.credits_charged), 0) AS credits_used_30d
+     FROM marketplace.apps a
+     JOIN marketplace.channels c ON c.id = a.channel_id
+     LEFT JOIN gateway.api_calls ac ON ac.app_id = a.id AND ac.created_at >= NOW() - INTERVAL '30 days'
+     WHERE a.deleted_at IS NULL
+     GROUP BY a.id, a.name, c.name
+     ORDER BY sessions_30d DESC
+     LIMIT 20`,
+  )
+  return result.rows
+}
+
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
   const mins = Math.floor(diff / 60000)
@@ -59,8 +103,12 @@ function timeAgo(dateStr: string): string {
 }
 
 export default async function AdminOverview() {
-  const stats = await getStats()
-  const activity = await getRecentActivity()
+  const [stats, activity, tierBreakdown, topApps] = await Promise.all([
+    getStats(),
+    getRecentActivity(),
+    getTierBreakdown(),
+    getTopApps(),
+  ])
 
   const statCards = [
     { label: 'Total Users', value: Number(stats.total_users).toLocaleString(), icon: Users, iconBg: 'bg-blue-50', iconColor: 'text-blue-600' },
@@ -69,7 +117,11 @@ export default async function AdminOverview() {
     { label: 'Sessions Today', value: Number(stats.sessions_today).toLocaleString(), icon: Play, iconBg: 'bg-green-50', iconColor: 'text-green-600' },
     { label: 'Revenue (MTD)', value: '$0', icon: TrendingUp, iconBg: 'bg-emerald-50', iconColor: 'text-emerald-600' },
     { label: 'Credits in Circulation', value: Number(stats.total_credits_granted).toLocaleString(), icon: Sparkles, iconBg: 'bg-amber-50', iconColor: 'text-amber-600' },
+    { label: 'Paying Users', value: Number(stats.paying_users).toLocaleString(), icon: BadgeDollarSign, iconBg: 'bg-emerald-50', iconColor: 'text-emerald-600' },
+    { label: 'Revenue (INR)', value: `₹${Number(stats.total_revenue_inr).toLocaleString('en-IN')}`, icon: IndianRupee, iconBg: 'bg-amber-50', iconColor: 'text-amber-600' },
   ]
+
+  const adminTabs = getAdminTabs()
 
   return (
     <div className="max-w-[1200px] mx-auto px-6 py-8 flex gap-8">
@@ -96,7 +148,7 @@ export default async function AdminOverview() {
         </div>
 
         {/* Stat cards */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-3 gap-4 mb-8" data-testid="stat-cards">
           {statCards.map((card) => {
             const CardIcon = card.icon
             return (
@@ -113,8 +165,70 @@ export default async function AdminOverview() {
           })}
         </div>
 
+        {/* Subscription Breakdown */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm mb-8" data-testid="subscription-breakdown">
+          <div className="px-6 py-4 border-b border-slate-100">
+            <h2 className="text-[15px] font-bold text-slate-900">Subscription Breakdown</h2>
+          </div>
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-slate-100">
+                <th className="px-6 py-3 text-left text-[12px] font-semibold text-slate-400 uppercase tracking-wider">Plan</th>
+                <th className="px-6 py-3 text-right text-[12px] font-semibold text-slate-400 uppercase tracking-wider">Active Subscribers</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {tierBreakdown.map((row) => (
+                <tr key={row.plan_id} className="hover:bg-slate-50/50">
+                  <td className="px-6 py-3.5 text-[14px] font-medium text-slate-700">{row.plan_id}</td>
+                  <td className="px-6 py-3.5 text-[14px] text-slate-600 text-right">{Number(row.count).toLocaleString()}</td>
+                </tr>
+              ))}
+              {tierBreakdown.length === 0 && (
+                <tr>
+                  <td colSpan={2} className="px-6 py-8 text-center text-[14px] text-slate-400">No active subscriptions.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Top Apps */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm mb-8" data-testid="top-apps">
+          <div className="px-6 py-4 border-b border-slate-100">
+            <h2 className="text-[15px] font-bold text-slate-900">Top Apps <span className="text-slate-400 font-normal">(last 30 days)</span></h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  <th className="px-6 py-3 text-left text-[12px] font-semibold text-slate-400 uppercase tracking-wider">App</th>
+                  <th className="px-6 py-3 text-left text-[12px] font-semibold text-slate-400 uppercase tracking-wider">Channel</th>
+                  <th className="px-6 py-3 text-right text-[12px] font-semibold text-slate-400 uppercase tracking-wider">Sessions</th>
+                  <th className="px-6 py-3 text-right text-[12px] font-semibold text-slate-400 uppercase tracking-wider">Credits Used</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {topApps.map((app, idx) => (
+                  <tr key={idx} className="hover:bg-slate-50/50">
+                    <td className="px-6 py-3.5 text-[14px] font-medium text-slate-700">{app.app_name}</td>
+                    <td className="px-6 py-3.5 text-[14px] text-slate-500">{app.channel_name}</td>
+                    <td className="px-6 py-3.5 text-[14px] text-slate-600 text-right">{Number(app.sessions_30d).toLocaleString()}</td>
+                    <td className="px-6 py-3.5 text-[14px] text-slate-600 text-right">{Number(app.credits_used_30d).toLocaleString()}</td>
+                  </tr>
+                ))}
+                {topApps.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-8 text-center text-[14px] text-slate-400">No app usage in the last 30 days.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         {/* Recent Activity */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm" data-testid="recent-activity">
           <div className="px-6 py-4 border-b border-slate-100">
             <h2 className="text-[15px] font-bold text-slate-900">Recent Activity</h2>
           </div>
