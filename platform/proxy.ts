@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSessionCookie } from 'better-auth/cookies'
-const PROTECTED = ['/viewer', '/api/embed-token']
+const PROTECTED = ['/viewer']
 const AUTH_ROUTES = ['/api/auth/sign-in', '/api/auth/sign-up']
 function getIp(req: NextRequest): string {
   return (
