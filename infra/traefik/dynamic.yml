@@ -13,7 +13,7 @@ http:
           Content-Security-Policy: >-
             default-src 'self';
             script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com;
-            frame-src 'self' https://*.apps.terminalai.studioionique.com https:;
+            frame-src 'self' https://*.apps.terminalai.studioionique.com http://*.sslip.io https:;
             img-src 'self' data: https:;
             connect-src 'self' https://api.terminalai.studioionique.com https://checkout.razorpay.com;
             style-src 'self' 'unsafe-inline';
