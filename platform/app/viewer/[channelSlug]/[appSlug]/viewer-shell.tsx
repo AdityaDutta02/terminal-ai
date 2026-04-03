@@ -269,12 +269,20 @@ export function ViewerShell(props: Props) {
 
   return (
     <div className="dark flex h-screen flex-col bg-zinc-950">
-      <div className="flex h-12 flex-shrink-0 items-center justify-between border-b border-white/10 bg-[#0A0A0A] px-4">
+      <div className="flex h-12 flex-shrink-0 items-center justify-between border-b border-white/[0.08] bg-[#0A0A0A] px-4">
         <div className="flex items-center gap-3">
-          <a href={`/c/${channelSlug}`} className="flex items-center gap-1.5 text-sm text-white/50 hover:text-white transition-colors">
-            <X className="h-4 w-4" />
+          {/* Terminal AI logo mark */}
+          <a href="/" className="flex items-center justify-center w-6 h-6 rounded-full bg-[#FF6B00] flex-shrink-0" aria-label="Terminal AI home">
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
+              <path d="M8 1l2.1 4.3L15 6l-3.5 3.4.8 4.6L8 11.8 3.7 14l.8-4.6L1 6l4.9-.7L8 1z" fill="white" />
+            </svg>
           </a>
-          <span className="text-sm font-medium text-white">{appName}</span>
+          <span className="text-white/20 text-sm">/</span>
+          <a href={`/c/${channelSlug}`} className="text-sm text-white/40 hover:text-white/70 transition-colors truncate max-w-[120px]">
+            {channelSlug}
+          </a>
+          <span className="text-white/20 text-sm">/</span>
+          <span className="text-sm font-medium text-white truncate max-w-[180px]">{appName}</span>
         </div>
         <div className="flex items-center gap-3">
           {viewState === 'deploying' && (
@@ -298,10 +306,17 @@ export function ViewerShell(props: Props) {
           <CreditsPill credits={credits} variant="dark" />
           <a
             href="/account"
-            className="flex h-6 w-6 items-center justify-center rounded-full bg-[#FF6B00] text-xs font-bold text-[#0A0A0A] hover:bg-[#E55D00] transition-colors"
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-[#FF6B00] text-xs font-bold text-white hover:bg-[#E55D00] transition-colors"
             title={userName}
           >
             {initials}
+          </a>
+          <a
+            href={`/c/${channelSlug}`}
+            className="flex items-center justify-center w-7 h-7 rounded-full bg-white/[0.08] hover:bg-white/[0.14] transition-colors"
+            aria-label="Close viewer"
+          >
+            <X className="h-3.5 w-3.5 text-white/60" />
           </a>
         </div>
       </div>
