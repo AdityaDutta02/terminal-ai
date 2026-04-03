@@ -139,7 +139,7 @@ export function HomepageClient({
             come alive
           </h1>
           <p className="mt-6 text-[17px] text-[#1e1e1f]/55 max-w-md mx-auto leading-relaxed">
-            Discover, run, and build intelligent micro-apps — no setup, no code, no friction.
+            Discover and run AI-powered apps — instant access, zero setup.
           </p>
           <a
             href={isLoggedIn ? '/c/invest-os' : '/login'}
