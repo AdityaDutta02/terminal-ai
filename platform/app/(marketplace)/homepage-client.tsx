@@ -101,16 +101,20 @@ export function HomepageClient({
               <div className="absolute right-0 top-14 w-[180px] bg-white rounded-2xl border border-[#1e1e1f]/[0.06] shadow-2xl py-2 z-50 menu-enter">
                 {isLoggedIn ? (
                   <>
-                    <a href="/c/invest-os" className="block px-4 py-2.5 text-[14px] text-[#1e1e1f] hover:bg-[#1e1e1f]/[0.03] transition-colors">Explore</a>
                     <a href="/account" className="block px-4 py-2.5 text-[14px] text-[#1e1e1f] hover:bg-[#1e1e1f]/[0.03] transition-colors">Account</a>
-                    <a href="/pricing" className="block px-4 py-2.5 text-[14px] text-[#1e1e1f] hover:bg-[#1e1e1f]/[0.03] transition-colors">Pricing</a>
+                    <a href="/account/usage" className="block px-4 py-2.5 text-[14px] text-[#1e1e1f] hover:bg-[#1e1e1f]/[0.03] transition-colors">Usage</a>
+                    <div className="border-t border-[#1e1e1f]/[0.06] mt-1 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => { window.location.href = '/api/auth/sign-out?callbackURL=/' }}
+                        className="w-full text-left px-4 py-2.5 text-[14px] text-red-500 hover:bg-red-50/50 transition-colors"
+                      >
+                        Sign out
+                      </button>
+                    </div>
                   </>
                 ) : (
-                  <>
-                    <a href="/login" className="block px-4 py-2.5 text-[14px] text-[#1e1e1f] hover:bg-[#1e1e1f]/[0.03] transition-colors">Sign in</a>
-                    <a href="/signup" className="block px-4 py-2.5 text-[14px] text-[#1e1e1f] hover:bg-[#1e1e1f]/[0.03] transition-colors">Sign up</a>
-                    <a href="/pricing" className="block px-4 py-2.5 text-[14px] text-[#1e1e1f] hover:bg-[#1e1e1f]/[0.03] transition-colors">Pricing</a>
-                  </>
+                  <a href="/login" className="block px-4 py-2.5 text-[14px] text-[#1e1e1f] hover:bg-[#1e1e1f]/[0.03] transition-colors">Sign in</a>
                 )}
               </div>
             )}
@@ -148,10 +152,10 @@ export function HomepageClient({
       {/* ── App Carousel (sticky-scroll) ── */}
       <section
         ref={sectionRef}
-        className="bg-[#f5f5f0] pt-20 pb-10"
-        style={{ minHeight: '200vh' }}
+        className="bg-[#f5f5f0] pt-8 pb-10"
+        style={{ minHeight: '180vh' }}
       >
-        <div className="sticky top-0 pt-12 pb-20 overflow-hidden">
+        <div className="sticky top-0 pt-20 pb-12 overflow-hidden">
           <div className="max-w-[1400px] mx-auto px-8 mb-10">
             <h2 className="font-display text-[clamp(28px,4vw,42px)] text-[#1e1e1f] tracking-[-0.02em]">
               Featured Apps

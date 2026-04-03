@@ -58,14 +58,23 @@ export async function POST(request: NextRequest) {
 
   // Check balance is sufficient (but don't deduct yet — deduction happens on first API call)
   if (!isAdmin && !app.is_free && app.credits_per_session > 0) {
-    const balanceResult = await db.query<{ balance: number }>(
+    const balanceResult = await db.query<{ balance: number; [key: string]: unknown }>(
       `SELECT COALESCE(SUM(delta), 0) AS balance FROM subscriptions.credit_ledger WHERE user_id = $1`,
       [session.user.id],
     )
     const balance = balanceResult.rows[0]?.balance ?? 0
     if (balance < app.credits_per_session) {
+      // Check if user has active subscription → top-up page, otherwise → pricing
+      const subResult = await db.query<{ status: string; [key: string]: unknown }>(
+        `SELECT status FROM subscriptions.user_subscriptions
+         WHERE user_id = $1 AND status = 'active' LIMIT 1`,
+        [session.user.id],
+      )
+      const redirectUrl = subResult.rows[0]
+        ? '/top-up?reason=insufficient_credits'
+        : '/pricing?reason=insufficient_credits'
       return NextResponse.json(
-        { error: 'Insufficient credits', redirect: '/pricing?reason=insufficient_credits' },
+        { error: 'Insufficient credits', redirect: redirectUrl },
         { status: 402 },
       )
     }

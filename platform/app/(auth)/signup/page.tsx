@@ -7,7 +7,6 @@ import { SocialAuthButtons } from '@/components/social-auth-buttons'
 
 const inputClass =
   'w-full h-[44px] px-4 rounded-xl border border-[#1e1e1f]/10 bg-white text-[14px] text-[#1e1e1f] placeholder-[#1e1e1f]/30 outline-none focus:border-[#FF6B00] focus:ring-2 focus:ring-orange-100 transition-all'
-const labelClass = 'text-[13px] font-medium text-[#1e1e1f]/70 mb-1.5 block'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -26,7 +25,7 @@ export default function SignupPage() {
     setLoading(false)
     if (error) {
       if (error.code === 'USER_ALREADY_EXISTS' || error.message?.includes('already')) {
-        setError('An account with this email already exists. Try signing in instead, or use the Google button if you signed up with Google.')
+        setError('An account with this email already exists. Try signing in, or use Google if you signed up that way.')
       } else {
         setError(error.message ?? 'Sign up failed. Please try again.')
       }
@@ -36,21 +35,44 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f5f0] flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-[400px]">
-        {/* Header */}
-        <div className="mb-10 text-center">
+    <div className="min-h-screen bg-[#f5f5f0] flex">
+      {/* Left — brand panel */}
+      <div className="hidden lg:flex lg:w-[45%] relative overflow-hidden">
+        <div
+          className="absolute inset-0"
+          style={{ background: 'linear-gradient(145deg, #c9a7eb 0%, #f8a4c8 25%, #f4845f 50%, #f7b267 75%, #f0e0d0 100%)' }}
+        />
+        <div className="relative z-10 flex flex-col justify-between p-12 w-full">
           <a href="/" className="text-[22px] font-display text-[#1e1e1f] tracking-tight">
             Terminal AI
           </a>
-          <h1 className="mt-6 text-[clamp(28px,4vw,36px)] font-display text-[#1e1e1f] tracking-[-0.02em]">
+          <div>
+            <h2 className="font-display text-[clamp(32px,4vw,48px)] text-[#1e1e1f] tracking-[-0.02em] leading-[1.1] mb-4">
+              Build with
+              <br />intelligence
+            </h2>
+            <p className="text-[15px] text-[#1e1e1f]/50 max-w-[300px] leading-relaxed">
+              Get 10 free credits on signup. Run AI-powered apps instantly.
+            </p>
+          </div>
+          <p className="text-[12px] text-[#1e1e1f]/30">
+            &copy; {new Date().getFullYear()} Studio Ionique
+          </p>
+        </div>
+      </div>
+
+      {/* Right — form */}
+      <div className="flex-1 flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-[380px]">
+          <a href="/" className="lg:hidden block text-center text-[22px] font-display text-[#1e1e1f] tracking-tight mb-8">
+            Terminal AI
+          </a>
+
+          <h1 className="text-[28px] font-display text-[#1e1e1f] tracking-[-0.02em] mb-1">
             Create your account
           </h1>
-          <p className="mt-2 text-[14px] text-[#1e1e1f]/40">Get 10 free credits on signup</p>
-        </div>
+          <p className="text-[14px] text-[#1e1e1f]/40 mb-8">Get 10 free credits on signup</p>
 
-        {/* Form area */}
-        <div className="bg-white rounded-[24px] p-8 border border-[#1e1e1f]/[0.06]">
           <div className="mb-6">
             <SocialAuthButtons />
           </div>
@@ -60,51 +82,35 @@ export default function SignupPage() {
               <div className="w-full border-t border-[#1e1e1f]/8" />
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-white px-3 text-[12px] text-[#1e1e1f]/30 font-medium">or</span>
+              <span className="bg-[#f5f5f0] px-3 text-[12px] text-[#1e1e1f]/30 font-medium">or</span>
             </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="name" className={labelClass}>Full name</label>
+              <label htmlFor="name" className="text-[13px] font-medium text-[#1e1e1f]/70 mb-1.5 block">Full name</label>
               <input
-                id="name"
-                type="text"
-                placeholder="Ada Lovelace"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                autoComplete="name"
-                className={inputClass}
+                id="name" type="text" placeholder="Ada Lovelace"
+                value={name} onChange={(e) => setName(e.target.value)}
+                required autoComplete="name" className={inputClass}
               />
             </div>
 
             <div>
-              <label htmlFor="email" className={labelClass}>Email</label>
+              <label htmlFor="email" className="text-[13px] font-medium text-[#1e1e1f]/70 mb-1.5 block">Email</label>
               <input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                className={inputClass}
+                id="email" type="email" placeholder="you@example.com"
+                value={email} onChange={(e) => setEmail(e.target.value)}
+                required autoComplete="email" className={inputClass}
               />
             </div>
 
             <div>
-              <label htmlFor="password" className={labelClass}>Password</label>
+              <label htmlFor="password" className="text-[13px] font-medium text-[#1e1e1f]/70 mb-1.5 block">Password</label>
               <input
-                id="password"
-                type="password"
-                placeholder="Min 8 characters"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={8}
-                autoComplete="new-password"
-                className={inputClass}
+                id="password" type="password" placeholder="Min 8 characters"
+                value={password} onChange={(e) => setPassword(e.target.value)}
+                required minLength={8} autoComplete="new-password" className={inputClass}
               />
             </div>
 
@@ -116,42 +122,33 @@ export default function SignupPage() {
 
             <label className="flex items-start gap-3 cursor-pointer" data-testid="terms-checkbox-label">
               <input
-                type="checkbox"
-                required
-                checked={agreedToTerms}
+                type="checkbox" required checked={agreedToTerms}
                 onChange={(e) => setAgreedToTerms(e.target.checked)}
                 className="mt-0.5 h-4 w-4 rounded border-[#1e1e1f]/20 text-[#FF6B00] accent-[#FF6B00] shrink-0"
                 data-testid="terms-checkbox"
               />
               <span className="text-[12px] text-[#1e1e1f]/45 leading-relaxed">
                 I agree to the{' '}
-                <Link href="/terms" target="_blank" className="text-[#1e1e1f]/70 underline underline-offset-2 hover:text-[#FF6B00] transition-colors">
-                  Terms of Service
-                </Link>{' '}
-                and{' '}
-                <Link href="/privacy" target="_blank" className="text-[#1e1e1f]/70 underline underline-offset-2 hover:text-[#FF6B00] transition-colors">
-                  Privacy Policy
-                </Link>
+                <Link href="/terms" target="_blank" className="text-[#1e1e1f]/70 underline underline-offset-2 hover:text-[#FF6B00] transition-colors">Terms</Link>
+                {' '}and{' '}
+                <Link href="/privacy" target="_blank" className="text-[#1e1e1f]/70 underline underline-offset-2 hover:text-[#FF6B00] transition-colors">Privacy Policy</Link>
               </span>
             </label>
 
             <button
-              type="submit"
-              disabled={loading || !agreedToTerms}
+              type="submit" disabled={loading || !agreedToTerms}
               className="w-full bg-[#FF6B00] hover:bg-[#E55D00] text-white rounded-full py-3 text-[14px] font-medium transition-all duration-200 hover:shadow-lg hover:shadow-orange-200/50 active:scale-[0.98] disabled:opacity-50"
               data-testid="signup-submit"
             >
               {loading ? 'Creating account...' : 'Create account'}
             </button>
           </form>
-        </div>
 
-        <p className="mt-8 text-center text-[13px] text-[#1e1e1f]/35">
-          Already have an account?{' '}
-          <a href="/login" className="font-medium text-[#FF6B00] hover:text-[#E55D00] transition-colors">
-            Sign in
-          </a>
-        </p>
+          <p className="mt-8 text-[13px] text-[#1e1e1f]/35">
+            Already have an account?{' '}
+            <a href="/login" className="font-medium text-[#FF6B00] hover:text-[#E55D00] transition-colors">Sign in</a>
+          </p>
+        </div>
       </div>
     </div>
   )
