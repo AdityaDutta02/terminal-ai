@@ -82,8 +82,8 @@ export default async function AccountUsagePage() {
     <div className="space-y-8">
       {/* Heading */}
       <div>
-        <h1 className="text-[28px] font-extrabold text-slate-900">Usage History</h1>
-        <p className="mt-1 text-[15px] text-slate-500">
+        <h1 className="text-[28px] font-extrabold text-[#1e1e1f]">Usage History</h1>
+        <p className="mt-1 text-[15px] text-[#1e1e1f]/50">
           Track your app usage and credit consumption.
         </p>
       </div>
@@ -113,45 +113,45 @@ export default async function AccountUsagePage() {
       </div>
 
       {/* Usage table */}
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#1e1e1f]/[0.08] overflow-hidden">
         {/* Header */}
-        <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-slate-50 border-b border-slate-100">
-          <span className="col-span-3 text-[12px] font-semibold text-slate-500 uppercase tracking-wider">
+        <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-[#1e1e1f]/[0.02] border-b border-[#1e1e1f]/[0.05]">
+          <span className="col-span-3 text-[12px] font-semibold text-[#1e1e1f]/40 uppercase tracking-wider">
             App
           </span>
-          <span className="col-span-2 text-[12px] font-semibold text-slate-500 uppercase tracking-wider">
+          <span className="col-span-2 text-[12px] font-semibold text-[#1e1e1f]/40 uppercase tracking-wider">
             Channel
           </span>
-          <span className="col-span-3 text-[12px] font-semibold text-slate-500 uppercase tracking-wider">
+          <span className="col-span-3 text-[12px] font-semibold text-[#1e1e1f]/40 uppercase tracking-wider">
             Date
           </span>
-          <span className="col-span-2 text-[12px] font-semibold text-slate-500 uppercase tracking-wider">
+          <span className="col-span-2 text-[12px] font-semibold text-[#1e1e1f]/40 uppercase tracking-wider">
             Duration
           </span>
-          <span className="col-span-2 text-[12px] font-semibold text-slate-500 uppercase tracking-wider text-right">
+          <span className="col-span-2 text-[12px] font-semibold text-[#1e1e1f]/40 uppercase tracking-wider text-right">
             Credits
           </span>
         </div>
 
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
-            <Clock className="w-8 h-8 text-slate-300 mx-auto mb-3" />
-            <p className="text-[14px] text-slate-400">No usage data yet.</p>
+            <Clock className="w-8 h-8 text-[#1e1e1f]/20 mx-auto mb-3" />
+            <p className="text-[14px] text-[#1e1e1f]/40">No usage data yet.</p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-[#1e1e1f]/[0.05]">
             {rows.map((row, idx) => (
               <div
                 key={`${row.created_at}-${idx}`}
                 className="grid grid-cols-12 gap-4 px-6 py-3.5 items-center"
               >
-                <span className="col-span-3 text-[14px] font-medium text-slate-800 truncate">
+                <span className="col-span-3 text-[14px] font-medium text-[#1e1e1f] truncate">
                   {row.app_name}
                 </span>
-                <span className="col-span-2 text-[13px] text-slate-500 truncate">
+                <span className="col-span-2 text-[13px] text-[#1e1e1f]/50 truncate">
                   {row.channel_name || '\u2014'}
                 </span>
-                <span className="col-span-3 text-[13px] text-slate-500">
+                <span className="col-span-3 text-[13px] text-[#1e1e1f]/50">
                   {new Date(row.created_at).toLocaleDateString('en-GB', {
                     day: 'numeric',
                     month: 'short',
@@ -160,8 +160,8 @@ export default async function AccountUsagePage() {
                     minute: '2-digit',
                   })}
                 </span>
-                <span className="col-span-2 text-[13px] text-slate-500">{'\u2014'}</span>
-                <span className="col-span-2 text-[14px] font-semibold text-slate-700 text-right">
+                <span className="col-span-2 text-[13px] text-[#1e1e1f]/50">{'\u2014'}</span>
+                <span className="col-span-2 text-[14px] font-semibold text-[#1e1e1f] text-right">
                   {row.delta}
                 </span>
               </div>
@@ -185,16 +185,16 @@ function StatCard({
   subtitle?: string
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+    <div className="bg-white rounded-2xl border border-[#1e1e1f]/[0.08] p-5">
       <div className="flex items-center gap-2 mb-3">
-        <Icon className="w-4 h-4 text-slate-400" />
-        <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">
+        <Icon className="w-4 h-4 text-[#1e1e1f]/30" />
+        <span className="text-[12px] font-semibold text-[#1e1e1f]/40 uppercase tracking-wider">
           {label}
         </span>
       </div>
-      <p className="text-[24px] font-extrabold text-slate-900 leading-none">{value}</p>
+      <p className="text-[24px] font-extrabold text-[#1e1e1f] leading-none">{value}</p>
       {subtitle && (
-        <p className="text-[12px] text-slate-400 mt-1">{subtitle}</p>
+        <p className="text-[12px] text-[#1e1e1f]/35 mt-1">{subtitle}</p>
       )}
     </div>
   )
