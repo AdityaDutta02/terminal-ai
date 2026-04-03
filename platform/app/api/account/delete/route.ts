@@ -9,9 +9,17 @@ export async function DELETE(): Promise<Response> {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const userId = session.user.id
+  const userEmail = session.user.email
 
   try {
     await withTransaction(async (client) => {
+      // Prevent re-registration from claiming welcome credits again
+      if (userEmail) {
+        await client.query(
+          `INSERT INTO platform.email_welcome_grants (email) VALUES ($1) ON CONFLICT DO NOTHING`,
+          [userEmail],
+        )
+      }
       await client.query('DELETE FROM session WHERE "userId" = $1', [userId])
       await client.query('DELETE FROM account WHERE "userId" = $1', [userId])
       await client.query('DELETE FROM subscriptions.credit_ledger WHERE user_id = $1', [userId])

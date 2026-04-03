@@ -6,6 +6,32 @@ import { logger } from './logger'
 import { WELCOME_CREDITS } from './pricing'
 import { sendVerificationEmail, sendPasswordResetEmail } from './email'
 
+/**
+ * Idempotently grant welcome credits to a user.
+ * Checks both the email-level grant table (survives account deletion) and the
+ * ledger (in-place guard) before writing, so neither a delete-recreate cycle
+ * nor a duplicate hook invocation can award credits twice.
+ */
+async function maybeGrantWelcomeCredits(userId: string, email: string): Promise<void> {
+  const [emailGrant, ledgerGrant] = await Promise.all([
+    db.query<Record<string, never>>(
+      `SELECT 1 FROM platform.email_welcome_grants WHERE email = $1 LIMIT 1`,
+      [email],
+    ),
+    db.query<Record<string, never>>(
+      `SELECT 1 FROM subscriptions.credit_ledger
+       WHERE user_id = $1 AND reason = 'welcome_bonus' LIMIT 1`,
+      [userId],
+    ),
+  ])
+  if (emailGrant.rows.length > 0 || ledgerGrant.rows.length > 0) return
+  await grantCredits(userId, WELCOME_CREDITS, 'welcome_bonus')
+  await db.query(
+    `INSERT INTO platform.email_welcome_grants (email) VALUES ($1) ON CONFLICT DO NOTHING`,
+    [email],
+  )
+}
+
 export const auth = betterAuth({
   database: new Pool({ connectionString: process.env.DATABASE_URL! }),
   emailAndPassword: {
@@ -32,14 +58,7 @@ export const auth = betterAuth({
     afterEmailVerification: async (user) => {
       if (!user.id) return // guard against malformed user objects
       try {
-        // Idempotency check: skip if welcome credits were already granted
-        const existing = await db.query<Record<string, never>>(
-          `SELECT 1 FROM subscriptions.credit_ledger
-           WHERE user_id = $1 AND reason = 'welcome_bonus' LIMIT 1`,
-          [user.id],
-        )
-        if (existing.rows.length > 0) return
-        await grantCredits(user.id, WELCOME_CREDITS, 'welcome_bonus')
+        await maybeGrantWelcomeCredits(user.id, user.email)
       } catch (err) {
         logger.error({ msg: 'welcome_credits_grant_failed', userId: user.id, err })
       }
@@ -73,12 +92,7 @@ export const auth = betterAuth({
           // Grant welcome credits to social OAuth users (auto-verified, skip email verification hook)
           if (!user.emailVerified) return
           try {
-            const existing = await db.query<Record<string, never>>(
-              `SELECT 1 FROM subscriptions.credit_ledger WHERE user_id = $1 AND reason = 'welcome_bonus' LIMIT 1`,
-              [user.id],
-            )
-            if (existing.rows.length > 0) return
-            await grantCredits(user.id, WELCOME_CREDITS, 'welcome_bonus')
+            await maybeGrantWelcomeCredits(user.id, user.email)
           } catch (err) {
             logger.error({ msg: 'social_welcome_credits_failed', userId: user.id, err })
           }
