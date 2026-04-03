@@ -2,7 +2,6 @@ import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { NavbarUser } from '@/components/navbar-user'
-import { Zap } from 'lucide-react'
 
 async function getCreditBalance(userId: string): Promise<number> {
   const result = await db.query<{ credits: number }>(
@@ -25,13 +24,10 @@ export async function Navbar() {
     : null
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100">
+    <nav className="sticky top-0 z-50 bg-[#f5f5f0]/80 backdrop-blur-xl border-b border-[#1e1e1f]/[0.06]">
       <div className="max-w-[1200px] mx-auto px-6 h-[60px] flex items-center justify-between">
-        <a href="/" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-[#0A0A0A] rounded-lg flex items-center justify-center">
-            <Zap className="w-4 h-4 text-white" />
-          </div>
-          <span className="text-[16px] font-bold text-slate-900 tracking-tight">Terminal AI</span>
+        <a href="/" className="flex items-center gap-2">
+          <span className="text-[18px] font-display text-[#1e1e1f]">Terminal AI</span>
         </a>
         <NavbarUser
           isLoggedIn={!!session}

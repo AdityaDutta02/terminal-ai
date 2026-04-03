@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Sparkles, ChevronDown } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { useSignOut } from '@/hooks/use-sign-out'
 
 type Props = {
@@ -12,12 +12,14 @@ type Props = {
   role: string | null
 }
 
-export function NavbarUser({ isLoggedIn, name, email, credits: initialCredits, role }: Props) {
+export function NavbarUser(props: Props) {
+  const { isLoggedIn, name, email, credits: initialCredits, role } = props
   const [menuOpen, setMenuOpen] = useState(false)
   const [liveCredits, setLiveCredits] = useState(initialCredits)
+  const menuRef = useRef<HTMLDivElement>(null)
   const signOut = useSignOut()
 
-  // Live credit refresh — poll every 15 seconds when logged in
+  // Live credit refresh — poll every 15s
   useEffect(() => {
     if (!isLoggedIn) return
     let active = true
@@ -34,47 +36,65 @@ export function NavbarUser({ isLoggedIn, name, email, credits: initialCredits, r
     return () => { active = false; clearInterval(interval) }
   }, [isLoggedIn])
 
-  // Update from initial on mount
   useEffect(() => { setLiveCredits(initialCredits) }, [initialCredits])
+
+  // Close menu on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
   const initials = name
     ? name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
     : '??'
 
+  const creditCount = liveCredits ?? 0
+
   return (
     <div className="flex items-center gap-3">
       {isLoggedIn ? (
         <>
-          {/* Credits pill */}
+          {/* Tokens remaining pill */}
           <a
-            href="/account"
-            className="flex items-center gap-2 bg-orange-50 border border-orange-100 rounded-full px-3.5 py-1.5 cursor-pointer hover:bg-orange-100 transition-colors duration-150"
+            href="/pricing"
+            className="group flex items-center gap-2.5 rounded-full pl-2.5 pr-3.5 py-1.5 bg-[#1e1e1f]/[0.04] hover:bg-[#1e1e1f]/[0.08] transition-all duration-200 cursor-pointer"
           >
-            <Sparkles className="w-3.5 h-3.5 text-orange-600" />
-            <span className="text-[13px] font-semibold text-orange-700 font-mono">
-              {(liveCredits ?? 0).toLocaleString()}
+            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-[#FF6B00] text-white">
+              <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
+                <path d="M8 1l2.1 4.3L15 6l-3.5 3.4.8 4.6L8 11.8 3.7 14l.8-4.6L1 6l4.9-.7L8 1z" fill="currentColor" />
+              </svg>
+            </span>
+            <span className="text-[13px] font-mono font-semibold text-[#1e1e1f] tabular-nums">
+              {creditCount.toLocaleString()}
+            </span>
+            <span className="text-[11px] text-[#1e1e1f]/35 font-medium hidden sm:inline">
+              tokens
             </span>
           </a>
 
-          {/* Avatar dropdown */}
-          <div className="relative">
+          {/* Avatar + dropdown */}
+          <div className="relative" ref={menuRef}>
             <button
               onClick={() => setMenuOpen((prev) => !prev)}
-              className="flex items-center gap-2 hover:bg-slate-50 rounded-lg px-2 py-1.5 transition-colors duration-150"
+              className="flex items-center gap-1.5 rounded-full pl-1 pr-2 py-1 hover:bg-[#1e1e1f]/[0.05] transition-all duration-200"
             >
-              <div className="w-8 h-8 bg-gradient-to-br from-slate-700 to-slate-800 rounded-full flex items-center justify-center text-white text-[12px] font-semibold">
+              <div className="w-7 h-7 bg-[#1e1e1f] rounded-full flex items-center justify-center text-white text-[11px] font-semibold">
                 {initials}
               </div>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              <ChevronDown className={`w-3 h-3 text-[#1e1e1f]/35 transition-transform duration-200 ${menuOpen ? 'rotate-180' : ''}`} />
             </button>
             {menuOpen && (
-              <div className="absolute right-0 top-12 w-[200px] bg-white rounded-xl border border-slate-100 shadow-xl shadow-slate-200/50 py-1.5 z-50">
-                <div className="px-3.5 py-2.5 border-b border-slate-100">
-                  <p className="text-[13px] font-medium text-slate-900">{name}</p>
-                  <p className="text-[12px] text-slate-400">{email}</p>
+              <div className="absolute right-0 top-11 w-[210px] bg-white rounded-2xl border border-[#1e1e1f]/[0.06] shadow-2xl shadow-black/8 py-2 z-50 animate-[menuIn_0.15s_ease-out]">
+                <div className="px-4 py-2.5 border-b border-[#1e1e1f]/[0.06]">
+                  <p className="text-[13px] font-medium text-[#1e1e1f]">{name}</p>
+                  <p className="text-[11px] text-[#1e1e1f]/35">{email}</p>
                 </div>
                 <div className="py-1">
                   <DropdownLink href="/account">Account</DropdownLink>
+                  <DropdownLink href="/account/usage">Usage</DropdownLink>
                   {role === 'admin' && (
                     <DropdownLink href="/creator">Creator Studio</DropdownLink>
                   )}
@@ -83,11 +103,11 @@ export function NavbarUser({ isLoggedIn, name, email, credits: initialCredits, r
                     <DropdownLink href="/admin">Admin Panel</DropdownLink>
                   )}
                 </div>
-                <div className="border-t border-slate-100 pt-1">
+                <div className="border-t border-[#1e1e1f]/[0.06] pt-1">
                   <button
                     type="button"
                     onClick={signOut}
-                    className="w-full text-left px-3.5 py-2 text-[13px] text-red-500 hover:bg-red-50 transition-colors"
+                    className="w-full text-left px-4 py-2 text-[13px] text-red-500 hover:bg-red-50/50 transition-colors rounded-lg mx-0"
                   >
                     Sign out
                   </button>
@@ -97,16 +117,16 @@ export function NavbarUser({ isLoggedIn, name, email, credits: initialCredits, r
           </div>
         </>
       ) : (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <a
             href="/login"
-            className="px-4 py-2 text-[14px] font-medium text-slate-600 hover:text-slate-900 transition-colors"
+            className="px-4 py-2 text-[14px] font-medium text-[#1e1e1f]/50 hover:text-[#1e1e1f] transition-colors"
           >
             Sign in
           </a>
           <a
             href="/signup"
-            className="bg-[#FF6B00] hover:bg-[#E55D00] text-[#0A0A0A] rounded-xl px-5 py-2 text-[14px] font-semibold transition-colors"
+            className="bg-[#1e1e1f] hover:bg-[#333] text-white rounded-full px-5 py-2 text-[14px] font-medium hover:shadow-lg hover:shadow-black/15 active:scale-[0.98] transition-all duration-200"
           >
             Get started
           </a>
@@ -116,13 +136,13 @@ export function NavbarUser({ isLoggedIn, name, email, credits: initialCredits, r
   )
 }
 
-function DropdownLink({ href, children }: { href: string; children: React.ReactNode }) {
+function DropdownLink(linkProps: { href: string; children: React.ReactNode }) {
   return (
     <a
-      href={href}
-      className="block w-full text-left px-3.5 py-2 text-[13px] text-slate-600 hover:bg-slate-50 transition-colors"
+      href={linkProps.href}
+      className="block w-full text-left px-4 py-2 text-[13px] text-[#1e1e1f]/60 hover:text-[#1e1e1f] hover:bg-[#1e1e1f]/[0.03] transition-colors"
     >
-      {children}
+      {linkProps.children}
     </a>
   )
 }
