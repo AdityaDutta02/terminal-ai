@@ -6,9 +6,13 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
-const ICON_MAP: Record<string, LucideIcon> = {
-  TrendingUp, Shield, Cpu, BarChart3, Globe, Layers, Zap, Box, Sparkles, Star,
-}
+/* tw-safelist: from-teal-500 to-cyan-600 from-blue-500 to-cyan-500 from-green-500 to-teal-500 from-sky-500 to-blue-500 from-pink-500 to-rose-500 from-orange-500 to-red-500 */
+const ICON_ENTRIES: [string, LucideIcon][] = [
+  ['TrendingUp', TrendingUp], ['Shield', Shield],
+  ['Cpu', Cpu], ['BarChart3', BarChart3],
+  ['Globe', Globe], ['Layers', Layers],
+]
+const ICON_MAP = Object.fromEntries(ICON_ENTRIES) as Record<string, LucideIcon>
 
 export type AppCardData = {
   id: string
