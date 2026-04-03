@@ -21,6 +21,15 @@ export async function POST(req: Request): Promise<Response> {
     return NextResponse.json({ error: 'Missing X-Creator-Id header' }, { status: 400 })
   }
 
+  // Validate creatorId maps to a real creator in the DB (don't trust raw header alone)
+  const creatorCheck = await db.query(
+    `SELECT 1 FROM public."user" WHERE id = $1 AND role IN ('creator', 'admin')`,
+    [creatorId],
+  )
+  if (!creatorCheck.rows[0]) {
+    return NextResponse.json({ error: 'Creator not found' }, { status: 403 })
+  }
+
   const parsed = createInternalAppSchema.safeParse(await req.json())
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })

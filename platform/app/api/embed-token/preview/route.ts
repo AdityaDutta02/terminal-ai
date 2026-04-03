@@ -53,13 +53,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Sign in to use this app' }, { status: 401 })
   }
 
-  // Check: has this IP+cookie already used this app for free?
-  const existingUsage = await db.query(
-    `SELECT id FROM gateway.anonymous_usage
-     WHERE app_id = $1 AND ip_address = $2 AND cookie_id = $3`,
+  // Insert-first dedup: attempt to record usage before touching creator_balance.
+  // ON CONFLICT means rowCount=0 if this IP+cookie already used this app → return 402 without deducting.
+  // This eliminates the SELECT-then-UPDATE race where two concurrent requests both pass the old SELECT check.
+  const usageInsert = await db.query(
+    `INSERT INTO gateway.anonymous_usage (app_id, ip_address, cookie_id)
+     VALUES ($1, $2, $3)
+     ON CONFLICT DO NOTHING`,
     [appId, ip, cookieId],
   )
-  if (existingUsage.rows[0]) {
+  if (usageInsert.rowCount === 0) {
     logger.info({ msg: 'Anonymous usage limit reached', appId, ip })
     return NextResponse.json({
       error: 'Free usage already used. Sign up for more credits.',
@@ -67,7 +70,7 @@ export async function POST(request: NextRequest) {
     }, { status: 402 })
   }
 
-  // For free apps: atomically deduct from creator_balance using RETURNING to detect race condition
+  // Usage slot claimed — now deduct creator_balance atomically
   if (app.credits_per_session > 0) {
     const updateResult = await db.query<{ creator_balance: number }>(
       `UPDATE marketplace.channels
@@ -81,14 +84,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'This app is temporarily unavailable' }, { status: 402 })
     }
   }
-
-  // Record anonymous usage
-  await db.query(
-    `INSERT INTO gateway.anonymous_usage (app_id, ip_address, cookie_id)
-     VALUES ($1, $2, $3)
-     ON CONFLICT DO NOTHING`,
-    [appId, ip, cookieId],
-  )
 
   const sessionId = randomUUID()
   const expiresAt = new Date(Date.now() + FIFTEEN_MINUTES)
