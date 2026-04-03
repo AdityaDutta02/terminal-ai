@@ -3,6 +3,7 @@
 import { useRef, useEffect, useState } from 'react'
 import type { AppCardData } from '@/components/app-card'
 import { ArrowRight, ArrowUpRight, Plus, X } from 'lucide-react'
+import { useSignOut } from '@/hooks/use-sign-out'
 
 const CARD_GRADIENTS = 'from-green-400/80 to-emerald-600/90|from-orange-400/80 to-amber-600/90|from-violet-400/80 to-purple-600/90|from-cyan-400/80 to-teal-600/90|from-pink-400/80 to-rose-600/90|from-blue-400/80 to-indigo-600/90'
 
@@ -25,6 +26,7 @@ export function HomepageClient({
   const sectionRef = useRef<HTMLDivElement>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly')
+  const signOut = useSignOut()
 
   /* Sticky carousel: pin the section and scroll cards horizontally as user scrolls */
   useEffect(() => {
@@ -106,7 +108,7 @@ export function HomepageClient({
                     <div className="border-t border-[#1e1e1f]/[0.06] mt-1 pt-1">
                       <button
                         type="button"
-                        onClick={() => { window.location.href = '/api/auth/sign-out?callbackURL=/' }}
+                        onClick={signOut}
                         className="w-full text-left px-4 py-2.5 text-[14px] text-red-500 hover:bg-red-50/50 transition-colors"
                       >
                         Sign out
