@@ -2,13 +2,12 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { authClient } from '@/lib/auth-client'
-import { Zap } from 'lucide-react'
 import Link from 'next/link'
 import { SocialAuthButtons } from '@/components/social-auth-buttons'
 
 const inputClass =
-  'w-full h-[44px] px-4 rounded-xl border border-slate-200 text-[14px] text-slate-700 placeholder-slate-400 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all'
-const labelClass = 'text-[13px] font-medium text-slate-700 mb-1.5 block'
+  'w-full h-[44px] px-4 rounded-xl border border-[#1e1e1f]/10 bg-white text-[14px] text-[#1e1e1f] placeholder-[#1e1e1f]/30 outline-none focus:border-[#FF6B00] focus:ring-2 focus:ring-orange-100 transition-all'
+const labelClass = 'text-[13px] font-medium text-[#1e1e1f]/70 mb-1.5 block'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -37,39 +36,37 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center px-4">
-      <div className="w-full max-w-[420px]">
+    <div className="min-h-screen bg-[#f5f5f0] flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-[400px]">
         {/* Header */}
-        <div className="mb-8 text-center">
-          <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-white">
-            <Zap className="h-6 w-6 text-[#0A0A0A]" strokeWidth={2.5} />
-          </div>
-          <h1 className="text-[28px] font-black text-white">Create your account</h1>
-          <p className="mt-1 text-sm text-white/40">Get 10 free credits on signup</p>
+        <div className="mb-10 text-center">
+          <a href="/" className="text-[22px] font-display text-[#1e1e1f] tracking-tight">
+            Terminal AI
+          </a>
+          <h1 className="mt-6 text-[clamp(28px,4vw,36px)] font-display text-[#1e1e1f] tracking-[-0.02em]">
+            Create your account
+          </h1>
+          <p className="mt-2 text-[14px] text-[#1e1e1f]/40">Get 10 free credits on signup</p>
         </div>
 
-        {/* Card */}
-        <div className="rounded-2xl bg-white p-8 shadow-2xl">
-          {/* OAuth buttons */}
+        {/* Form area */}
+        <div className="bg-white rounded-[24px] p-8 border border-[#1e1e1f]/[0.06]">
           <div className="mb-6">
             <SocialAuthButtons />
           </div>
 
-          {/* Divider */}
           <div className="relative mb-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200" />
+              <div className="w-full border-t border-[#1e1e1f]/8" />
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-white px-3 text-[13px] text-slate-400">or</span>
+              <span className="bg-white px-3 text-[12px] text-[#1e1e1f]/30 font-medium">or</span>
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="name" className={labelClass}>
-                Full name
-              </label>
+              <label htmlFor="name" className={labelClass}>Full name</label>
               <input
                 id="name"
                 type="text"
@@ -83,9 +80,7 @@ export default function SignupPage() {
             </div>
 
             <div>
-              <label htmlFor="email" className={labelClass}>
-                Email
-              </label>
+              <label htmlFor="email" className={labelClass}>Email</label>
               <input
                 id="email"
                 type="email"
@@ -99,9 +94,7 @@ export default function SignupPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className={labelClass}>
-                Password
-              </label>
+              <label htmlFor="password" className={labelClass}>Password</label>
               <input
                 id="password"
                 type="password"
@@ -116,7 +109,7 @@ export default function SignupPage() {
             </div>
 
             {error && (
-              <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+              <div className="rounded-xl border border-red-200/50 bg-red-50 px-4 py-3 text-[13px] text-red-600">
                 {error}
               </div>
             )}
@@ -127,24 +120,16 @@ export default function SignupPage() {
                 required
                 checked={agreedToTerms}
                 onChange={(e) => setAgreedToTerms(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-orange-500 accent-orange-500 shrink-0"
+                className="mt-0.5 h-4 w-4 rounded border-[#1e1e1f]/20 text-[#FF6B00] accent-[#FF6B00] shrink-0"
                 data-testid="terms-checkbox"
               />
-              <span className="text-[13px] text-slate-500 leading-relaxed">
+              <span className="text-[12px] text-[#1e1e1f]/45 leading-relaxed">
                 I agree to the{' '}
-                <Link
-                  href="/terms"
-                  target="_blank"
-                  className="text-slate-700 underline underline-offset-2 hover:text-orange-500 transition-colors"
-                >
+                <Link href="/terms" target="_blank" className="text-[#1e1e1f]/70 underline underline-offset-2 hover:text-[#FF6B00] transition-colors">
                   Terms of Service
                 </Link>{' '}
                 and{' '}
-                <Link
-                  href="/privacy"
-                  target="_blank"
-                  className="text-slate-700 underline underline-offset-2 hover:text-orange-500 transition-colors"
-                >
+                <Link href="/privacy" target="_blank" className="text-[#1e1e1f]/70 underline underline-offset-2 hover:text-[#FF6B00] transition-colors">
                   Privacy Policy
                 </Link>
               </span>
@@ -153,18 +138,17 @@ export default function SignupPage() {
             <button
               type="submit"
               disabled={loading || !agreedToTerms}
-              className="w-full bg-[#FF6B00] hover:bg-[#E55D00] text-[#0A0A0A] rounded-xl py-3 text-[14px] font-bold transition-colors disabled:opacity-50"
+              className="w-full bg-[#FF6B00] hover:bg-[#E55D00] text-white rounded-full py-3 text-[14px] font-medium transition-all duration-200 hover:shadow-lg hover:shadow-orange-200/50 active:scale-[0.98] disabled:opacity-50"
               data-testid="signup-submit"
             >
               {loading ? 'Creating account...' : 'Create account'}
             </button>
           </form>
-
         </div>
 
-        <p className="mt-6 text-center text-sm text-white/40">
+        <p className="mt-8 text-center text-[13px] text-[#1e1e1f]/35">
           Already have an account?{' '}
-          <a href="/login" className="font-medium text-[#FF6B00] hover:underline">
+          <a href="/login" className="font-medium text-[#FF6B00] hover:text-[#E55D00] transition-colors">
             Sign in
           </a>
         </p>

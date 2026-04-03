@@ -12,10 +12,14 @@ function getGradient(i: number): string {
 
 export function HomepageClient({
   apps,
+  isLoggedIn = false,
+  credits = null,
 }: {
   apps: AppCardData[]
   channels: unknown[]
   categories: string[]
+  isLoggedIn?: boolean
+  credits?: number | null
 }) {
   const carouselRef = useRef<HTMLDivElement>(null)
   const sectionRef = useRef<HTMLDivElement>(null)
@@ -66,23 +70,51 @@ export function HomepageClient({
         <a href="/" className="text-[22px] font-display text-[#1e1e1f] tracking-tight">
           Terminal AI
         </a>
-        <div className="relative">
-          <button
-            onClick={() => setMenuOpen((p) => !p)}
-            className="w-10 h-10 rounded-full bg-[#1e1e1f] flex items-center justify-center transition-all duration-200 hover:scale-110 hover:shadow-lg hover:shadow-black/20 active:scale-95"
-          >
-            {menuOpen
-              ? <X className="w-5 h-5 text-white plus-open" />
-              : <Plus className="w-5 h-5 text-white plus-closed" />}
-          </button>
-          {menuOpen && (
-            <div className="absolute right-0 top-14 w-[180px] bg-white rounded-2xl border border-slate-100 shadow-2xl py-2 z-50 menu-enter">
-              <a href="/login" className="block px-4 py-2.5 text-[14px] text-[#1e1e1f] hover:bg-slate-50 transition-colors">Sign in</a>
-              <a href="/signup" className="block px-4 py-2.5 text-[14px] text-[#1e1e1f] hover:bg-slate-50 transition-colors">Sign up</a>
-              <a href="/pricing" className="block px-4 py-2.5 text-[14px] text-[#1e1e1f] hover:bg-slate-50 transition-colors">Pricing</a>
-              <a href="/account" className="block px-4 py-2.5 text-[14px] text-[#1e1e1f] hover:bg-slate-50 transition-colors">Account</a>
-            </div>
+        <div className="flex items-center gap-3">
+          {/* Tokens pill — only when logged in */}
+          {isLoggedIn && (
+            <a
+              href="/pricing"
+              className="flex items-center gap-2.5 rounded-full pl-2.5 pr-3.5 py-1.5 bg-white/60 backdrop-blur-sm hover:bg-white/80 transition-all duration-200"
+            >
+              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-[#FF6B00] text-white">
+                <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
+                  <path d="M8 1l2.1 4.3L15 6l-3.5 3.4.8 4.6L8 11.8 3.7 14l.8-4.6L1 6l4.9-.7L8 1z" fill="currentColor" />
+                </svg>
+              </span>
+              <span className="text-[13px] font-mono font-semibold text-[#1e1e1f] tabular-nums">
+                {(credits ?? 0).toLocaleString()}
+              </span>
+              <span className="text-[11px] text-[#1e1e1f]/35 font-medium hidden sm:inline">tokens</span>
+            </a>
           )}
+          <div className="relative">
+            <button
+              onClick={() => setMenuOpen((p) => !p)}
+              className="w-10 h-10 rounded-full bg-[#1e1e1f] flex items-center justify-center transition-all duration-200 hover:scale-110 hover:shadow-lg hover:shadow-black/20 active:scale-95"
+            >
+              {menuOpen
+                ? <X className="w-5 h-5 text-white plus-open" />
+                : <Plus className="w-5 h-5 text-white plus-closed" />}
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 top-14 w-[180px] bg-white rounded-2xl border border-[#1e1e1f]/[0.06] shadow-2xl py-2 z-50 menu-enter">
+                {isLoggedIn ? (
+                  <>
+                    <a href="/c/invest-os" className="block px-4 py-2.5 text-[14px] text-[#1e1e1f] hover:bg-[#1e1e1f]/[0.03] transition-colors">Explore</a>
+                    <a href="/account" className="block px-4 py-2.5 text-[14px] text-[#1e1e1f] hover:bg-[#1e1e1f]/[0.03] transition-colors">Account</a>
+                    <a href="/pricing" className="block px-4 py-2.5 text-[14px] text-[#1e1e1f] hover:bg-[#1e1e1f]/[0.03] transition-colors">Pricing</a>
+                  </>
+                ) : (
+                  <>
+                    <a href="/login" className="block px-4 py-2.5 text-[14px] text-[#1e1e1f] hover:bg-[#1e1e1f]/[0.03] transition-colors">Sign in</a>
+                    <a href="/signup" className="block px-4 py-2.5 text-[14px] text-[#1e1e1f] hover:bg-[#1e1e1f]/[0.03] transition-colors">Sign up</a>
+                    <a href="/pricing" className="block px-4 py-2.5 text-[14px] text-[#1e1e1f] hover:bg-[#1e1e1f]/[0.03] transition-colors">Pricing</a>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -104,10 +136,10 @@ export function HomepageClient({
             Discover, run, and build intelligent micro-apps — no setup, no code, no friction.
           </p>
           <a
-            href="/login"
+            href={isLoggedIn ? '/c/invest-os' : '/login'}
             className="mt-8 inline-flex items-center gap-2 bg-[#1e1e1f] text-white rounded-full px-7 py-3.5 text-[15px] font-medium hover:bg-[#333] transition-all duration-200 hover:shadow-lg hover:shadow-black/15 active:scale-[0.98]"
           >
-            Get Started
+            {isLoggedIn ? 'Explore Apps' : 'Get Started'}
             <ArrowRight className="w-4 h-4" />
           </a>
         </div>

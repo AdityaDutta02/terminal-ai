@@ -1,4 +1,6 @@
 import { db } from '@/lib/db'
+import { headers } from 'next/headers'
+import { auth } from '@/lib/auth'
 import { HomepageClient } from './homepage-client'
 import type { AppCardData } from '@/components/app-card'
 import type { ChannelCardData } from '@/components/channel-card'
@@ -12,6 +14,19 @@ function getCategoryIcon(cat: string): string {
 function getCategoryGradient(cat: string): string {
   return 'Finance,from-teal-500 to-cyan-600|Security,from-blue-500 to-cyan-500|Developer,from-green-500 to-teal-500|Analytics,from-sky-500 to-blue-500|Productivity,from-pink-500 to-rose-500'
     .split('|').find((e) => e.startsWith(cat))?.split(',')[1] ?? 'from-orange-500 to-red-500'
+}
+
+async function getCreditBalance(userId: string): Promise<number> {
+  const result = await db.query<{ credits: number; [key: string]: unknown }>(
+    `SELECT COALESCE(
+       (SELECT balance_after FROM subscriptions.credit_ledger
+        WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1),
+       (SELECT credits FROM "user" WHERE id = $1),
+       0
+     ) AS credits`,
+    [userId],
+  ).catch(() => null)
+  return result?.rows[0]?.credits ?? 0
 }
 
 const channelColors = [
@@ -109,9 +124,22 @@ async function getChannels(): Promise<ChannelCardData[]> {
 /* ── Page ── */
 
 export default async function HomePage() {
-  const [apps, channels] = await Promise.all([getApps(), getChannels()])
+  const [apps, channels, session] = await Promise.all([
+    getApps(),
+    getChannels(),
+    auth.api.getSession({ headers: await headers() }),
+  ])
+  const credits = session ? await getCreditBalance(session.user.id) : null
 
   const categories = Array.from(new Set(apps.map((a) => a.category)))
 
-  return <HomepageClient apps={apps} channels={channels} categories={categories} />
+  return (
+    <HomepageClient
+      apps={apps}
+      channels={channels}
+      categories={categories}
+      isLoggedIn={!!session}
+      credits={credits}
+    />
+  )
 }

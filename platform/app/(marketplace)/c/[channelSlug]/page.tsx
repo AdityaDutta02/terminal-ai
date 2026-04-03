@@ -1,7 +1,6 @@
 import { db } from '@/lib/db'
 import { notFound } from 'next/navigation'
-import { AppCard, type AppCardData } from '@/components/app-card'
-import { ArrowLeft, Sparkles } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, Sparkles } from 'lucide-react'
 import { ShareButton } from '@/components/share-button'
 import type { Metadata } from 'next'
 
@@ -9,19 +8,6 @@ function channelOgUrl(base: string, slug: string): string {
   return base + '/api/og/channel?slug=' + slug
 }
 
-/* ── Category maps (same as homepage) ── */
-
-function getCategoryIcon(cat: string): string {
-  return 'Finance,TrendingUp|Security,Shield|Developer,Cpu|Analytics,BarChart3|Productivity,Globe'
-    .split('|').find((e) => e.startsWith(cat))?.split(',')[1] ?? 'Layers'
-}
-
-function getCategoryGradient(cat: string): string {
-  return 'Finance,from-teal-500 to-cyan-600|Security,from-blue-500 to-cyan-500|Developer,from-green-500 to-teal-500|Analytics,from-sky-500 to-blue-500|Productivity,from-pink-500 to-rose-500'
-    .split('|').find((e) => e.startsWith(cat))?.split(',')[1] ?? 'from-orange-500 to-red-500'
-}
-
-const FALLBACK_CATEGORIES = 'Productivity|Finance|Developer|Analytics|Security'.split('|')
 
 /* tw-safelist: from-orange-400 to-amber-600 from-violet-400 to-purple-600 from-cyan-400 to-teal-600 from-pink-400 to-rose-600 from-blue-400 to-indigo-600 */
 const AVATAR_GRADIENTS = 'from-orange-400 to-amber-600|from-violet-400 to-purple-600|from-cyan-400 to-teal-600|from-pink-400 to-rose-600|from-blue-400 to-indigo-600'.split('|')
@@ -115,25 +101,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 }
 
-function mapAppsToCards(apps: App[], channelName: string, channelSlug: string): AppCardData[] {
-  return apps.map((app, idx) => {
-    const category = FALLBACK_CATEGORIES[idx % FALLBACK_CATEGORIES.length]
-    return {
-      id: app.id,
-      name: app.name,
-      slug: app.slug,
-      channelName,
-      channelSlug,
-      description: app.description ?? 'An AI-powered micro-app',
-      credits: app.credits_per_session,
-      rating: Number((4.2 + (idx * 0.13 % 0.7)).toFixed(1)),
-      reviewCount: 10 + ((idx * 17) % 90),
-      category,
-      status: app.status as 'live' | 'coming_soon',
-      gradient: getCategoryGradient(category),
-      icon: getCategoryIcon(category),
-    }
-  })
+/* tw-safelist: from-green-400/80 to-emerald-600/90 from-orange-400/80 to-amber-600/90 from-violet-400/80 to-purple-600/90 from-cyan-400/80 to-teal-600/90 from-pink-400/80 to-rose-600/90 from-blue-400/80 to-indigo-600/90 */
+const CARD_GRADIENTS = 'from-green-400/80 to-emerald-600/90|from-orange-400/80 to-amber-600/90|from-violet-400/80 to-purple-600/90|from-cyan-400/80 to-teal-600/90|from-pink-400/80 to-rose-600/90|from-blue-400/80 to-indigo-600/90'
+
+function getCardGradient(idx: number): string {
+  return CARD_GRADIENTS.split('|')[idx % 6]
 }
 
 export default async function ChannelPage({ params }: PageProps) {
@@ -142,7 +114,6 @@ export default async function ChannelPage({ params }: PageProps) {
   if (!data) notFound()
   const { channel, apps, sessionCount } = data
 
-  const appCards = mapAppsToCards(apps, channel.name, channel.slug)
   const gradientClass = AVATAR_GRADIENTS[channel.name.charCodeAt(0) % AVATAR_GRADIENTS.length]
   const initial = channel.name.charAt(0).toUpperCase()
 
@@ -232,13 +203,43 @@ export default async function ChannelPage({ params }: PageProps) {
             <p className="text-[12px] font-semibold uppercase tracking-widest text-[#1e1e1f]/30 mb-6">
               {apps.length} {apps.length === 1 ? 'App' : 'Apps'}
             </p>
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {appCards.map((app) => (
-                <AppCard
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {apps.map((app, i) => (
+                <a
                   key={app.id}
-                  app={app}
-                  href={`/c/${channel.slug}/${app.slug}`}
-                />
+                  href={app.status === 'coming_soon' ? '#' : `/c/${channel.slug}/${app.slug}`}
+                  className="group block"
+                >
+                  <div className={`relative h-[200px] rounded-[24px] overflow-hidden mb-4 bg-gradient-to-br ${getCardGradient(i)}`}>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-20 h-20 rounded-3xl bg-white/20 backdrop-blur-sm rotate-12 group-hover:rotate-3 transition-transform duration-700" />
+                      <div className="absolute w-12 h-12 rounded-2xl bg-white/30 backdrop-blur-sm -rotate-12 translate-x-8 translate-y-6 group-hover:-rotate-3 transition-transform duration-700" />
+                    </div>
+                    {app.status === 'coming_soon' ? (
+                      <div className="absolute top-3 right-3 flex items-center gap-1 bg-[#1e1e1f] rounded-full px-2.5 py-1">
+                        <span className="text-[11px] font-medium text-white">Coming soon</span>
+                      </div>
+                    ) : (
+                      <div className="absolute top-3 right-3 flex items-center gap-1 bg-[#1e1e1f]/80 backdrop-blur-sm rounded-full px-2.5 py-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <span className="text-[11px] font-medium text-white">Open</span>
+                        <ArrowUpRight className="w-3 h-3 text-white" />
+                      </div>
+                    )}
+                  </div>
+                  <h3 className="text-[16px] font-medium text-[#1e1e1f] mb-1 tracking-[-0.01em]">{app.name}</h3>
+                  <p className="text-[13px] text-[#1e1e1f]/45 leading-relaxed line-clamp-2 mb-2">
+                    {app.description ?? 'An AI-powered micro-app'}
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[13px] font-medium text-[#1e1e1f]/55">{app.credits_per_session} credits</span>
+                    {app.status === 'live' && (
+                      <span className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-600">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        Live
+                      </span>
+                    )}
+                  </div>
+                </a>
               ))}
             </div>
           </>
