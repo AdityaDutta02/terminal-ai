@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 
 interface ShareButtonProps {
   url: string
@@ -11,6 +11,7 @@ interface ShareButtonProps {
 
 export function ShareButton({ url }: ShareButtonProps) {
   const [copied, setCopied] = useState(false)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const copyLink = async () => {
     try {
@@ -28,7 +29,8 @@ export function ShareButton({ url }: ShareButtonProps) {
         document.body.removeChild(ta)
       }
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+      timeoutRef.current = setTimeout(() => setCopied(false), 2000)
     } catch {
       /* ignore clipboard errors */
     }

@@ -129,9 +129,9 @@ export default function SignupPage() {
               />
               <span className="text-[12px] text-[#1e1e1f]/45 leading-relaxed">
                 I agree to the{' '}
-                <Link href="/terms" target="_blank" className="text-[#1e1e1f]/70 underline underline-offset-2 hover:text-[#FF6B00] transition-colors">Terms</Link>
+                <Link href="/terms" target="_blank" rel="noopener noreferrer" className="text-[#1e1e1f]/70 underline underline-offset-2 hover:text-[#FF6B00] transition-colors">Terms</Link>
                 {' '}and{' '}
-                <Link href="/privacy" target="_blank" className="text-[#1e1e1f]/70 underline underline-offset-2 hover:text-[#FF6B00] transition-colors">Privacy Policy</Link>
+                <Link href="/privacy" target="_blank" rel="noopener noreferrer" className="text-[#1e1e1f]/70 underline underline-offset-2 hover:text-[#FF6B00] transition-colors">Privacy Policy</Link>
               </span>
             </label>
 

@@ -3,13 +3,14 @@ import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { authClient } from '@/lib/auth-client'
 import { SocialAuthButtons } from '@/components/social-auth-buttons'
+import { safeRedirectPath } from '@/lib/utils'
 
 const inputClass =
   'w-full h-[44px] px-4 rounded-xl border border-[#1e1e1f]/10 bg-white text-[14px] text-[#1e1e1f] placeholder-[#1e1e1f]/30 outline-none focus:border-[#FF6B00] focus:ring-2 focus:ring-orange-100 transition-all'
 
 function LoginForm() {
   const router = useRouter()
-  const next = useSearchParams().get('next') ?? '/'
+  const next = safeRedirectPath(useSearchParams().get('next'))
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')

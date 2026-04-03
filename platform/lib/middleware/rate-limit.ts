@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from 'redis'
+import { logger } from '@/lib/logger'
 
 let redis: ReturnType<typeof createClient> | null = null
 
@@ -22,7 +23,10 @@ export async function checkRateLimit(
   windowMs: number,
 ): Promise<boolean> {
   const r = getRedis()
-  if (!r) return true // fail open if Redis unavailable
+  if (!r) {
+    logger.error({ msg: 'rate_limit_redis_unavailable_failing_open', key })
+    return true
+  }
 
   const now = Date.now()
   const windowStart = now - windowMs
@@ -37,7 +41,7 @@ export async function checkRateLimit(
   return true
 }
 
-export function rateLimitResponse(): Response {
+export function rateLimitResponse(): NextResponse {
   return NextResponse.json(
     { error: 'Too many requests. Please slow down.' },
     { status: 429 },

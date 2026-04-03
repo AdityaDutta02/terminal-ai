@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
-import { db } from '@/lib/db'
+import { withTransaction } from '@/lib/db'
 import { logger } from '@/lib/logger'
 
 export async function DELETE(): Promise<Response> {
@@ -11,12 +11,14 @@ export async function DELETE(): Promise<Response> {
   const userId = session.user.id
 
   try {
-    await db.query('DELETE FROM session WHERE "userId" = $1', [userId])
-    await db.query('DELETE FROM account WHERE "userId" = $1', [userId])
-    await db.query('DELETE FROM subscriptions.credit_ledger WHERE user_id = $1', [userId])
-    await db.query('DELETE FROM subscriptions.credit_pack_purchases WHERE user_id = $1', [userId])
-    await db.query('DELETE FROM subscriptions.user_subscriptions WHERE user_id = $1', [userId])
-    await db.query('DELETE FROM "user" WHERE id = $1', [userId])
+    await withTransaction(async (client) => {
+      await client.query('DELETE FROM session WHERE "userId" = $1', [userId])
+      await client.query('DELETE FROM account WHERE "userId" = $1', [userId])
+      await client.query('DELETE FROM subscriptions.credit_ledger WHERE user_id = $1', [userId])
+      await client.query('DELETE FROM subscriptions.credit_pack_purchases WHERE user_id = $1', [userId])
+      await client.query('DELETE FROM subscriptions.user_subscriptions WHERE user_id = $1', [userId])
+      await client.query('DELETE FROM "user" WHERE id = $1', [userId])
+    })
 
     logger.info({ msg: 'account_deleted', userId })
     return NextResponse.json({ deleted: true })

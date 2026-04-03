@@ -34,7 +34,7 @@ export async function GET(
 }
 
 const patchSchema = z.object({
-  role: z.enum(['user', 'creator', 'admin']).optional(),
+  role: z.enum(['user', 'creator']).optional(), // 'admin' excluded — role escalation must be done via direct DB access
   credits: z.number().int().optional(),
   reason: z.string().min(1).optional(),
 })

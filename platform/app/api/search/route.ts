@@ -1,7 +1,14 @@
 import { NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { searchApps } from '@/lib/search'
 import { logger } from '@/lib/logger'
-export async function GET(req: Request): Promise<NextResponse> {
+import { checkRateLimit, rateLimitResponse } from '@/lib/middleware/rate-limit'
+
+export async function GET(req: NextRequest): Promise<NextResponse> {
+  const ip = (req.headers.get('x-forwarded-for') ?? 'unknown').split(',')[0].trim()
+  const allowed = await checkRateLimit(`search:${ip}`, 30, 60_000)
+  if (!allowed) return rateLimitResponse()
+
   const { searchParams } = new URL(req.url)
   const query = searchParams.get('q') ?? ''
   const limitParam = searchParams.get('limit')

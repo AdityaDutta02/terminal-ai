@@ -1,6 +1,10 @@
 import { Resend } from 'resend'
 import { logger } from './logger'
 
+function safeHref(url: string): string {
+  return url.startsWith('https://') || url.startsWith('http://') ? url : '#'
+}
+
 let _resend: Resend | null = null
 function getResend(): Resend {
   if (!_resend) _resend = new Resend(process.env.RESEND_API_KEY ?? '')
@@ -17,7 +21,7 @@ export async function sendVerificationEmail(email: string, url: string): Promise
       <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
         <h2 style="color: #0F172A;">Verify your email</h2>
         <p style="color: #64748B;">Click the button below to verify your Terminal AI account.</p>
-        <a href="${url}" style="display: inline-block; background: #FF6B00; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 16px 0;">Verify Email</a>
+        <a href="${safeHref(url)}" style="display: inline-block; background: #FF6B00; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 16px 0;">Verify Email</a>
         <p style="color: #94A3B8; font-size: 13px;">If you didn&apos;t create an account, ignore this email.</p>
       </div>
     `,
@@ -34,7 +38,7 @@ export async function sendPasswordResetEmail(email: string, url: string): Promis
       <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
         <h2 style="color: #0F172A;">Reset your password</h2>
         <p style="color: #64748B;">Click the button below to reset your password.</p>
-        <a href="${url}" style="display: inline-block; background: #FF6B00; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 16px 0;">Reset Password</a>
+        <a href="${safeHref(url)}" style="display: inline-block; background: #FF6B00; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 16px 0;">Reset Password</a>
         <p style="color: #94A3B8; font-size: 13px;">If you didn&apos;t request this, ignore this email.</p>
       </div>
     `,

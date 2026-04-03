@@ -75,6 +75,9 @@ export function NavbarUser(props: Props) {
       <div className="relative" ref={menuRef}>
         <button
           onClick={() => setMenuOpen((prev) => !prev)}
+          aria-haspopup="true"
+          aria-expanded={menuOpen}
+          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
           className="w-9 h-9 rounded-full bg-[#1e1e1f] flex items-center justify-center transition-all duration-200 hover:scale-110 hover:shadow-lg hover:shadow-black/20 active:scale-95"
         >
           {menuOpen
@@ -82,7 +85,7 @@ export function NavbarUser(props: Props) {
             : <Plus className="w-4 h-4 text-white" />}
         </button>
         {menuOpen && (
-          <div className="absolute right-0 top-12 w-[180px] bg-white rounded-2xl border border-[#1e1e1f]/[0.06] shadow-2xl py-2 z-50 animate-[menuIn_0.15s_ease-out]">
+          <div role="menu" aria-label="Navigation menu" className="absolute right-0 top-12 w-[180px] bg-white rounded-2xl border border-[#1e1e1f]/[0.06] shadow-2xl py-2 z-50 animate-[menuIn_0.15s_ease-out]">
             {isLoggedIn ? (
               <>
                 <MenuLink href="/account">Account</MenuLink>
@@ -96,6 +99,7 @@ export function NavbarUser(props: Props) {
                 <div className="border-t border-[#1e1e1f]/[0.06] mt-1 pt-1">
                   <button
                     type="button"
+                    role="menuitem"
                     onClick={signOut}
                     className="w-full text-left px-4 py-2.5 text-[14px] text-red-500 hover:bg-red-50/50 transition-colors"
                   >
@@ -117,6 +121,7 @@ function MenuLink(linkProps: { href: string; children: React.ReactNode }) {
   return (
     <a
       href={linkProps.href}
+      role="menuitem"
       className="block px-4 py-2.5 text-[14px] text-[#1e1e1f] hover:bg-[#1e1e1f]/[0.03] transition-colors"
     >
       {linkProps.children}

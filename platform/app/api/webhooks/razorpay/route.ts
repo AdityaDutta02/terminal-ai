@@ -109,6 +109,7 @@ interface SubscriptionRow {
   user_id: string
   plan_id: string
   credits_per_month: number
+  credits_granted_at: string | null
 }
 
 
@@ -126,7 +127,7 @@ async function grantPeriodCredits(
   // Use transaction + FOR UPDATE to prevent double-crediting on concurrent delivery
   await withTransaction(async (client) => {
     const result = await client.query<SubscriptionRow>(
-      `SELECT us.user_id, us.plan_id, p.credits_per_month
+      `SELECT us.user_id, us.plan_id, us.credits_granted_at, p.credits_per_month
        FROM subscriptions.user_subscriptions us
        JOIN subscriptions.plans p ON p.id = us.plan_id
        WHERE us.razorpay_subscription_id = $1
@@ -135,6 +136,13 @@ async function grantPeriodCredits(
     )
     const row = result.rows[0]
     if (!row) return
+
+    // Idempotency: skip if credits already granted for this period
+    if (row.credits_granted_at && sub.current_start) {
+      const grantedMs = new Date(row.credits_granted_at).getTime()
+      const periodStartMs = sub.current_start * 1000
+      if (grantedMs >= periodStartMs) return
+    }
 
     const { user_id, plan_id, credits_per_month } = row
 

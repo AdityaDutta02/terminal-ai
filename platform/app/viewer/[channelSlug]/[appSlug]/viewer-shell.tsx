@@ -19,6 +19,10 @@ interface Props {
 
 type ViewState = 'deploying' | 'deploy_failed' | 'loading' | 'ready' | 'error' | 'session_ended'
 
+function getIframeOrigin(url: string): string {
+  try { return new URL(url).origin } catch { return '*' }
+}
+
 function getInitialViewState(iframeUrl: string, deploymentStatus: string | null): ViewState {
   if (iframeUrl) return 'loading'
   if (deploymentStatus === 'failed') return 'deploy_failed'
@@ -116,11 +120,7 @@ export function ViewerShell(props: Props) {
   function deliverToken(token: string) {
     const iframe = iframeRef.current
     if (!iframe?.contentWindow) return
-    // Use '*' as targetOrigin — the token is session-scoped, short-lived (15 min),
-    // and bound to a specific appId, so origin restriction adds no real security here.
-    // Strict origin matching silently fails when Cloudflare proxies HTTP↔HTTPS or
-    // when sslip.io domains don't match the stored iframe_url exactly.
-    iframe.contentWindow.postMessage({ type: 'TERMINAL_AI_TOKEN', token }, '*')
+    iframe.contentWindow.postMessage({ type: 'TERMINAL_AI_TOKEN', token }, getIframeOrigin(iframeUrl))
   }
 
   // Fetch token once the app URL is available
@@ -246,6 +246,7 @@ export function ViewerShell(props: Props) {
   useEffect(() => {
     if (!iframeUrl) return
     function handleMessage(event: MessageEvent) {
+      if (event.origin !== getIframeOrigin(iframeUrl)) return
       const data = event.data
       if (!data || typeof data !== 'object') return
 
@@ -360,7 +361,7 @@ export function ViewerShell(props: Props) {
             src={iframeUrl}
             onLoad={handleIframeLoad}
             className="h-full w-full border-0"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads"
+            sandbox="allow-scripts allow-forms allow-popups-to-escape-sandbox"
             title={appName}
           />
         )}
