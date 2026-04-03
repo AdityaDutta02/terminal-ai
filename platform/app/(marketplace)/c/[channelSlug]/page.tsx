@@ -23,6 +23,7 @@ function getCategoryGradient(cat: string): string {
 
 const FALLBACK_CATEGORIES = 'Productivity|Finance|Developer|Analytics|Security'.split('|')
 
+/* tw-safelist: from-orange-400 to-amber-600 from-violet-400 to-purple-600 from-cyan-400 to-teal-600 from-pink-400 to-rose-600 from-blue-400 to-indigo-600 */
 const AVATAR_GRADIENTS = 'from-orange-400 to-amber-600|from-violet-400 to-purple-600|from-cyan-400 to-teal-600|from-pink-400 to-rose-600|from-blue-400 to-indigo-600'.split('|')
 
 type App = {
