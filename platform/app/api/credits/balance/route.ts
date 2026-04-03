@@ -1,9 +1,14 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { checkRateLimit, rateLimitResponse } from '@/lib/middleware/rate-limit'
 
-export async function GET(): Promise<Response> {
+export async function GET(req: NextRequest): Promise<Response> {
+  const ip = (req.headers.get('x-forwarded-for') ?? 'unknown').split(',')[0].trim()
+  const allowed = await checkRateLimit(`balance:${ip}`, 60, 60_000)
+  if (!allowed) return rateLimitResponse()
+
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) return NextResponse.json({ balance: 0 }, { status: 401 })
 

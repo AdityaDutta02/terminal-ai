@@ -145,9 +145,9 @@ export default async function DashboardPage() {
           <p className="text-sm">No activity yet</p>
         </div>
       ) : (
-        <div className="space-y-3 mb-10">
+        <ul className="space-y-3 mb-10" role="list">
           {recentSessions.map((session, index) => (
-            <div
+            <li
               key={index}
               data-testid="recent-activity-row"
               className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex items-center justify-between">
@@ -162,9 +162,9 @@ export default async function DashboardPage() {
               <span className="text-xs px-2 py-1 rounded-full bg-amber-900/30 text-amber-400 whitespace-nowrap">
                 -{session.credits_deducted} credits
               </span>
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
 
       {/* Apps */}

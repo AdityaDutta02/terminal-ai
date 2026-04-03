@@ -98,6 +98,9 @@ export function PricingClient(props: PricingClientProps) {
       })
       if (!res.ok) throw new Error(await extractApiError(res))
       const { shortUrl } = (await res.json()) as { subscriptionId: string; shortUrl: string }
+      if (!shortUrl.startsWith('https://rzp.io/') && !shortUrl.startsWith('https://pages.razorpay.com/')) {
+        throw new Error('Invalid subscription URL')
+      }
       window.location.href = shortUrl
     } catch (err) {
       setSubError(err instanceof Error ? err.message : 'Something went wrong')
@@ -156,12 +159,16 @@ export function PricingClient(props: PricingClientProps) {
             <div className="inline-flex items-center bg-[#1e1e1f] rounded-full p-1">
               <button
                 onClick={() => setBilling('monthly')}
+                aria-pressed={billing === 'monthly'}
+                aria-label="Monthly billing"
                 className={`px-5 py-2 rounded-full text-[13px] font-medium transition-all duration-200 ${billing === 'monthly' ? 'bg-[#FF6B00] text-white' : 'text-white/50 hover:text-white/80'}`}
               >
                 Monthly
               </button>
               <button
                 onClick={() => setBilling('annual')}
+                aria-pressed={billing === 'annual'}
+                aria-label="Annual billing"
                 className={`px-5 py-2 rounded-full text-[13px] font-medium transition-all duration-200 ${billing === 'annual' ? 'bg-[#FF6B00] text-white' : 'text-white/50 hover:text-white/80'}`}
               >
                 Annual

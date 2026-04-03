@@ -7,10 +7,20 @@ let redis: ReturnType<typeof createClient> | null = null
 function getRedis(): ReturnType<typeof createClient> | null {
   if (!redis) {
     try {
-      redis = createClient({ url: process.env.REDIS_URL })
-      redis.connect().catch(() => { redis = null })
-    } catch {
-      // Invalid URL or other init error — disable rate limiting
+      const password = process.env.REDIS_PASSWORD
+      const host = process.env.REDIS_HOST ?? 'redis'
+      if (password) {
+        // Use socket+password to avoid URL-encoding issues with special chars in password
+        redis = createClient({ socket: { host, port: 6379 }, password })
+      } else {
+        redis = createClient({ url: process.env.REDIS_URL })
+      }
+      redis.connect().catch((err: unknown) => {
+        logger.error({ msg: 'rate_limit_redis_connect_failed', err: String(err) })
+        redis = null
+      })
+    } catch (err) {
+      logger.error({ msg: 'rate_limit_redis_init_failed', err: String(err) })
       redis = null
     }
   }
@@ -28,17 +38,22 @@ export async function checkRateLimit(
     return true
   }
 
-  const now = Date.now()
-  const windowStart = now - windowMs
-  const rlKey = `rl:platform:${key}`
+  try {
+    const now = Date.now()
+    const windowStart = now - windowMs
+    const rlKey = `rl:platform:${key}`
 
-  const count = await r.zCount(rlKey, windowStart, now)
-  if (count >= limit) return false
+    const count = await r.zCount(rlKey, windowStart, now)
+    if (count >= limit) return false
 
-  await r.zAdd(rlKey, { score: now, value: `${now}` })
-  await r.zRemRangeByScore(rlKey, '-inf', windowStart - 1)
-  await r.expire(rlKey, Math.ceil(windowMs / 1000))
-  return true
+    await r.zAdd(rlKey, { score: now, value: `${now}` })
+    await r.zRemRangeByScore(rlKey, '-inf', windowStart - 1)
+    await r.expire(rlKey, Math.ceil(windowMs / 1000))
+    return true
+  } catch (err) {
+    logger.error({ msg: 'rate_limit_redis_error_failing_open', key, err: String(err) })
+    return true
+  }
 }
 
 export function rateLimitResponse(): NextResponse {

@@ -40,6 +40,19 @@ const channelColors = [
 /* ── Category assignment (round-robin until a real column exists) ── */
 const FALLBACK_CATEGORIES = ['Productivity', 'Finance', 'Developer', 'Analytics', 'Security']
 
+/* ── Deterministic pseudo-random values seeded by app ID ── */
+function idHash(id: string, seed: number): number {
+  let h = seed
+  for (let i = 0; i < id.length; i++) h = (Math.imul(h, 31) + id.charCodeAt(i)) | 0
+  return h >>> 0
+}
+function deterministicRating(id: string): number {
+  return Number((4.2 + (idHash(id, 7) % 8) * 0.1).toFixed(1))
+}
+function deterministicReviewCount(id: string): number {
+  return 10 + (idHash(id, 13) % 90)
+}
+
 /* ── Data fetching ── */
 
 type AppRow = {
@@ -75,8 +88,8 @@ async function getApps(): Promise<AppCardData[]> {
       channelSlug: row.channel_slug,
       description: row.description ?? 'An AI-powered micro-app',
       credits: row.credits_per_session,
-      rating: Number((4.2 + Math.random() * 0.7).toFixed(1)),
-      reviewCount: 10 + Math.floor(Math.random() * 90),
+      rating: deterministicRating(row.id),
+      reviewCount: deterministicReviewCount(row.id),
       category,
       status: row.status as 'live' | 'coming_soon',
       gradient: getCategoryGradient(category),

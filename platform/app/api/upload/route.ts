@@ -33,7 +33,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     await putObject(key, buffer, contentType)
     const url = getPublicUrl(key)
     logger.info({ msg: 'file_uploaded', userId: session.user.id, key, size: buffer.byteLength })
-    return NextResponse.json({ url, key })
+    return NextResponse.json({ url })
   } catch (err) {
     logger.error({ msg: 'upload_failed', err: String(err) })
     return NextResponse.json({ error: 'Upload failed' }, { status: 500 })

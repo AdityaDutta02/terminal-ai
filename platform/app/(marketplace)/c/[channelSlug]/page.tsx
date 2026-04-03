@@ -172,14 +172,14 @@ export default async function ChannelPage({ params }: PageProps) {
 
               {/* Stats — minimal, inline */}
               <div className="mt-5 flex items-center gap-6">
-                <div className="flex items-center gap-2">
-                  <span className="text-[14px] font-semibold text-[#1e1e1f] font-mono">{apps.length}</span>
-                  <span className="text-[13px] text-[#1e1e1f]/40">apps</span>
+                <div className="flex items-center gap-2" aria-label={`${apps.length} apps`}>
+                  <span className="text-[14px] font-semibold text-[#1e1e1f] font-mono" aria-hidden="true">{apps.length}</span>
+                  <span className="text-[13px] text-[#1e1e1f]/40" aria-hidden="true">apps</span>
                 </div>
-                <div className="w-px h-3 bg-[#1e1e1f]/10" />
-                <div className="flex items-center gap-2">
-                  <span className="text-[14px] font-semibold text-[#1e1e1f] font-mono">{sessionCount.toLocaleString()}</span>
-                  <span className="text-[13px] text-[#1e1e1f]/40">sessions</span>
+                <div className="w-px h-3 bg-[#1e1e1f]/10" aria-hidden="true" />
+                <div className="flex items-center gap-2" aria-label={`${sessionCount.toLocaleString()} sessions`}>
+                  <span className="text-[14px] font-semibold text-[#1e1e1f] font-mono" aria-hidden="true">{sessionCount.toLocaleString()}</span>
+                  <span className="text-[13px] text-[#1e1e1f]/40" aria-hidden="true">sessions</span>
                 </div>
               </div>
             </div>

@@ -125,6 +125,8 @@ export function TopUpClient(props: TopUpClientProps) {
             <button
               key={amt}
               onClick={() => setSelected(amt)}
+              aria-pressed={selected === amt}
+              aria-label={`${amt.toLocaleString()} tokens`}
               className={`py-3 rounded-[16px] text-center transition-all duration-200 ${
                 selected === amt
                   ? 'bg-[#1e1e1f] text-white shadow-lg shadow-black/10'

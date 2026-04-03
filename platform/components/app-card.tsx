@@ -37,7 +37,7 @@ export function AppCard({ app, href }: { app: AppCardData; href: string }) {
   return (
     <a
       href={href}
-      className={`bg-white rounded-2xl border transition-all duration-200 cursor-pointer flex flex-col ${
+      className={`bg-white rounded-2xl border transition-all duration-200 cursor-pointer flex flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2 ${
         hovered
           ? 'border-orange-200 shadow-lg shadow-orange-100/50 -translate-y-0.5'
           : 'border-slate-100 shadow-sm'
