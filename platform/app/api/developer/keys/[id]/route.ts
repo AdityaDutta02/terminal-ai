@@ -10,6 +10,11 @@ export async function DELETE(
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const role = (session.user as Record<string, unknown>).role as string | undefined
+  if (role !== 'admin' && role !== 'creator') {
+    return NextResponse.json({ error: 'Creator access required' }, { status: 403 })
+  }
+
   const { id } = await params
 
   try {

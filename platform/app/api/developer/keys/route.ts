@@ -9,9 +9,30 @@ const createKeySchema = z.object({
   name: z.string().trim().min(1).max(100),
 })
 
-export async function GET(): Promise<Response> {
+type CreatorSession = NonNullable<Awaited<ReturnType<typeof auth.api.getSession>>>
+
+/** Returns the session when the user is an admin or creator, or a 401/403 Response. */
+async function requireCreatorSession(): Promise<
+  | { session: CreatorSession; error: null }
+  | { session: null; error: Response }
+> {
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!session) {
+    return { session: null, error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+  }
+  const role = (session.user as Record<string, unknown>).role as string | undefined
+  if (role !== 'admin' && role !== 'creator') {
+    return {
+      session: null,
+      error: NextResponse.json({ error: 'Creator access required' }, { status: 403 }),
+    }
+  }
+  return { session, error: null }
+}
+
+export async function GET(): Promise<Response> {
+  const { session, error } = await requireCreatorSession()
+  if (error) return error
 
   try {
     const result = await db.query<{
@@ -34,8 +55,8 @@ export async function GET(): Promise<Response> {
 }
 
 export async function POST(req: Request): Promise<Response> {
-  const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireCreatorSession()
+  if (error) return error
 
   const parsed = createKeySchema.safeParse(await req.json().catch(() => null))
   if (!parsed.success) {
