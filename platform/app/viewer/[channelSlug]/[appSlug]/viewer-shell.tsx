@@ -19,9 +19,6 @@ interface Props {
 
 type ViewState = 'deploying' | 'deploy_failed' | 'loading' | 'ready' | 'error' | 'session_ended'
 
-function getIframeOrigin(url: string): string {
-  try { return new URL(url).origin } catch { return '*' }
-}
 
 function getInitialViewState(iframeUrl: string, deploymentStatus: string | null): ViewState {
   if (iframeUrl) return 'loading'
@@ -120,7 +117,8 @@ export function ViewerShell(props: Props) {
   function deliverToken(token: string) {
     const iframe = iframeRef.current
     if (!iframe?.contentWindow) return
-    iframe.contentWindow.postMessage({ type: 'TERMINAL_AI_TOKEN', token }, getIframeOrigin(iframeUrl))
+    // Sandboxed iframes have a null effective origin; must use '*' or message is silently dropped
+    iframe.contentWindow.postMessage({ type: 'TERMINAL_AI_TOKEN', token }, '*')
   }
 
   // Fetch token once the app URL is available
@@ -246,7 +244,9 @@ export function ViewerShell(props: Props) {
   useEffect(() => {
     if (!iframeUrl) return
     function handleMessage(event: MessageEvent) {
-      if (event.origin !== getIframeOrigin(iframeUrl)) return
+      // Sandboxed iframe sends from null origin; accept null or the app's URL origin
+      const expectedOrigin = (() => { try { return new URL(iframeUrl).origin } catch { return null } })()
+      if (event.origin !== expectedOrigin && event.origin !== 'null') return
       const data = event.data
       if (!data || typeof data !== 'object') return
 
