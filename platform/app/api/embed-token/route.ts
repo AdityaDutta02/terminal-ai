@@ -56,6 +56,18 @@ export async function POST(request: NextRequest) {
   }
 
   const app = appResult.rows[0]
+
+  // Reject token issuance for banned users (ban check at session creation only blocks new sessions)
+  const banCheck = await db.query(
+    `SELECT id FROM platform.user_bans
+     WHERE user_id = $1 AND is_active = true AND (expires_at IS NULL OR expires_at > NOW())`,
+    [session.user.id],
+  )
+  if (banCheck.rows[0]) {
+    logger.warn({ msg: 'embed_token_denied_banned_user', userId: session.user.id, appId })
+    return NextResponse.json({ error: 'Account suspended' }, { status: 403 })
+  }
+
   const isAdmin = (session.user as Record<string, unknown>).role === 'admin'
 
   let token: string

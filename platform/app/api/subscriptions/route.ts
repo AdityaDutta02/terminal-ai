@@ -127,6 +127,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   try {
+    // Idempotency: return existing pending/active subscription without creating a new one
+    const existing = await db.query<{ razorpay_subscription_id: string; short_url: string | null }>(
+      `SELECT razorpay_subscription_id FROM subscriptions.user_subscriptions
+       WHERE user_id = $1 AND status IN ('pending', 'active') LIMIT 1`,
+      [session.user.id],
+    )
+    if (existing.rows[0]) {
+      const existingSubId = existing.rows[0].razorpay_subscription_id
+      logger.info({ msg: 'subscription_already_exists', userId: session.user.id, subscriptionId: existingSubId })
+      // Fetch the short_url from Razorpay for the existing subscription
+      const rzpRes = await fetch(`https://api.razorpay.com/v1/subscriptions/${existingSubId}`, {
+        headers: { Authorization: razorpayAuth(keys) },
+      })
+      if (rzpRes.ok) {
+        const rzpData = await rzpRes.json() as { id: string; short_url: string }
+        return NextResponse.json({ subscriptionId: rzpData.id, shortUrl: rzpData.short_url })
+      }
+    }
+
     const rzpSub = await createPlanSubscription(
       keys,
       { razorpayPlanId: plan.razorpayPlanId, userId: session.user.id, planId },

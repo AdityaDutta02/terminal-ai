@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Plus, X } from 'lucide-react'
 import { useSignOut } from '@/hooks/use-sign-out'
 
@@ -18,6 +18,27 @@ export function NavbarUser(props: Props) {
   const [liveCredits, setLiveCredits] = useState(initialCredits)
   const menuRef = useRef<HTMLDivElement>(null)
   const signOut = useSignOut()
+
+  const handleMenuKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (!menuOpen) return
+    if (e.key === 'Escape') {
+      setMenuOpen(false)
+      menuRef.current?.querySelector<HTMLElement>('button')?.focus()
+      return
+    }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      const items = Array.from(
+        menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [],
+      )
+      if (items.length === 0) return
+      const idx = items.indexOf(document.activeElement as HTMLElement)
+      const next = e.key === 'ArrowDown'
+        ? items[(idx + 1) % items.length]
+        : items[(idx - 1 + items.length) % items.length]
+      next.focus()
+    }
+  }, [menuOpen])
 
   // Live credit refresh — poll every 15s
   useEffect(() => {
@@ -72,7 +93,7 @@ export function NavbarUser(props: Props) {
       )}
 
       {/* Plus button + dropdown — same pattern as landing page */}
-      <div className="relative" ref={menuRef}>
+      <div className="relative" ref={menuRef} onKeyDown={handleMenuKeyDown}>
         <button
           onClick={() => setMenuOpen((prev) => !prev)}
           aria-haspopup="true"
