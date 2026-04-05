@@ -1,7 +1,7 @@
 import { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Terms of Service — Terminal AI',
+  title: 'Terms of Service - Terminal AI',
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {

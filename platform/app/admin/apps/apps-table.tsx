@@ -99,7 +99,7 @@ export function AdminAppsTable({ apps }: { apps: AppRow[] }) {
               <p className="text-[12px] text-slate-400 truncate">{app.slug}</p>
             </div>
             <div className="col-span-2 text-[13px] text-slate-600 truncate">{app.channel_name}</div>
-            <div className="col-span-2 text-[13px] text-slate-500 truncate">{app.creator_name ?? '—'}</div>
+            <div className="col-span-2 text-[13px] text-slate-500 truncate">{app.creator_name ?? '-'}</div>
             <div className="col-span-1">
               <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${statusBadgeClass(app.status)}`}>
                 {app.status}

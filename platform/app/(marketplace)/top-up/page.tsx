@@ -6,13 +6,17 @@ import { TopUpClient } from './top-up-client'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Top Up — Terminal AI',
+  title: 'Top Up - Terminal AI',
   description: 'Buy more tokens for your Terminal AI account.',
 }
 
 type SubRow = { status: string; [key: string]: unknown }
 
-export default async function TopUpPage() {
+export default async function TopUpPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ reason?: string }>
+}) {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) redirect('/login?next=/top-up')
 
@@ -29,12 +33,14 @@ export default async function TopUpPage() {
   if (!hasSubscription) redirect('/pricing')
 
   const razorpayKeyId = process.env.RAZORPAY_KEY_ID ?? ''
+  const { reason } = await searchParams
 
   return (
     <TopUpClient
       razorpayKeyId={razorpayKeyId}
       userEmail={session.user.email ?? ''}
       userName={session.user.name ?? ''}
+      showInsufficientMessage={reason === 'insufficient_credits'}
     />
   )
 }

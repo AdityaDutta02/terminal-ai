@@ -60,8 +60,8 @@ export default async function CreatorAppsPage(): Promise<React.ReactElement> {
                     </td>
                     <td className="px-5 py-3.5 text-right font-mono text-slate-700">{app.sessions_30d}</td>
                     <td className="px-5 py-3.5 text-right font-mono text-slate-700">{app.credits_earned_30d}</td>
-                    <td className="px-5 py-3.5 text-[12px] text-slate-400">{app.model_tier ?? '—'}</td>
-                    <td className="px-5 py-3.5 text-[12px] text-slate-400">{app.is_free ? 'Yes' : '—'}</td>
+                    <td className="px-5 py-3.5 text-[12px] text-slate-400">{app.model_tier ?? '-'}</td>
+                    <td className="px-5 py-3.5 text-[12px] text-slate-400">{app.is_free ? 'Yes' : '-'}</td>
                   </tr>
                 ))}
                 {(!apps || apps.length === 0) && (

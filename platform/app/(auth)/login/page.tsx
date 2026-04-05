@@ -60,7 +60,7 @@ function LoginForm() {
               <br />come alive
             </h2>
             <p className="text-[15px] text-[#1e1e1f]/50 max-w-[300px] leading-relaxed">
-              Discover and run AI-powered apps — instant access, zero setup.
+              Discover and run AI-powered apps - instant access, zero setup.
             </p>
           </div>
           <p className="text-[12px] text-[#1e1e1f]/30">

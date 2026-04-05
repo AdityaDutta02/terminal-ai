@@ -178,7 +178,7 @@ export function AppSettingsForm({ app }: { app: AppSettingsData }) {
             >
               {MODEL_TIER_OPTIONS.map((tier) => (
                 <option key={tier} value={tier}>
-                  {getTierLabel(tier)} — {MODEL_TIER_CREDITS[tier]} cr/session
+                  {getTierLabel(tier)} - {MODEL_TIER_CREDITS[tier]} cr/session
                 </option>
               ))}
             </select>

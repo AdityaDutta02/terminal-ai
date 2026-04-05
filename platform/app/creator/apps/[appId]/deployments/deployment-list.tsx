@@ -22,7 +22,7 @@ function statusDotClass(status: string): string {
 }
 
 function durationStr(start: string | null, end: string | null): string {
-  if (!start) return '—'
+  if (!start) return '-'
   const startMs = new Date(start).getTime()
   const endMs = end ? new Date(end).getTime() : Date.now()
   const secs = Math.round((endMs - startMs) / 1000)
@@ -73,7 +73,7 @@ export function DeploymentList({
               <td className="px-4 py-3 text-muted-foreground">
                 {dep.started_at
                   ? formatDistanceToNow(new Date(dep.started_at), { addSuffix: true })
-                  : '—'}
+                  : '-'}
               </td>
               <td className="px-4 py-3 font-mono text-xs">
                 {durationStr(dep.started_at, dep.completed_at)}

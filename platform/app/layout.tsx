@@ -31,7 +31,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://terminalai.studioionique.com'
 export const metadata: Metadata = {
-  title: { default: 'Terminal AI', template: '%s — Terminal AI' },
+  title: { default: 'Terminal AI', template: '%s - Terminal AI' },
   description: 'AI-powered apps, built by creators.',
   metadataBase: new URL(APP_URL),
   openGraph: {

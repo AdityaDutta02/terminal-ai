@@ -26,6 +26,7 @@ interface TopUpClientProps {
   razorpayKeyId: string
   userEmail: string
   userName: string
+  showInsufficientMessage?: boolean
 }
 
 type RzpInput = {
@@ -57,7 +58,7 @@ function getPrice(amount: number): number {
 }
 
 export function TopUpClient(props: TopUpClientProps) {
-  const { razorpayKeyId, userEmail, userName } = props
+  const { razorpayKeyId, userEmail, userName, showInsufficientMessage } = props
   const [selected, setSelected] = useState(500)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -112,11 +113,18 @@ export function TopUpClient(props: TopUpClientProps) {
           Back
         </a>
 
+        {showInsufficientMessage && (
+          <div className="mb-8 rounded-2xl border border-[#FF6B00]/20 bg-[#FF6B00]/[0.06] px-5 py-4">
+            <p className="text-[13px] font-semibold text-[#FF6B00]">Not enough tokens</p>
+            <p className="text-[13px] text-[#1e1e1f]/50 mt-0.5">Your token balance was too low to open that app. Top up to continue.</p>
+          </div>
+        )}
+
         <h1 className="font-display text-[clamp(28px,4vw,38px)] text-[#1e1e1f] tracking-[-0.02em] mb-2">
           Top up tokens
         </h1>
         <p className="text-[14px] text-[#1e1e1f]/40 mb-10">
-          You&#39;re running low. Pick a token pack to continue using apps.
+          Pick a token pack to continue using apps.
         </p>
 
         {/* Amount selector */}

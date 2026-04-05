@@ -137,7 +137,7 @@ export function McpConnectionGuide() {
         number="01"
         title="Generate an API key"
         defaultOpen
-        body="Scroll up to the API Keys section and click Generate Key. Copy the key — it is only shown once."
+        body="Scroll up to the API Keys section and click Generate Key. Copy the key - it is only shown once."
       />
       <StepCard
         number="02"
@@ -168,7 +168,7 @@ export function McpConnectionGuide() {
               <p className="text-xs text-gray-500">
                 To install globally (available in all projects), add{' '}
                 <code className="rounded bg-gray-100 px-1">--scope global</code>{' '}
-                to the command above — e.g.{' '}
+                to the command above - e.g.{' '}
                 <code className="rounded bg-gray-100 px-1">
                   {'claude mcp add --scope global --transport sse terminal-ai ...'}
                 </code>

@@ -53,7 +53,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://terminalai.studioionique.com'
   const ogUrl = appOgUrl(appUrl, app.id)
   return {
-    title: `${app.name} — Terminal AI`,
+    title: `${app.name} - Terminal AI`,
     description: app.description ?? `An AI-powered app in ${channel.name}`,
     openGraph: {
       title: app.name,

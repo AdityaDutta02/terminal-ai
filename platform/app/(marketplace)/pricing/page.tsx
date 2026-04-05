@@ -5,13 +5,17 @@ import { PricingClient } from './pricing-client'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Pricing — Terminal AI',
+  title: 'Pricing - Terminal AI',
   description: 'Simple, transparent pricing for AI-powered apps. Start with free credits.',
 }
 
 type ActiveSub = { plan_id: string; status: string }
 
-export default async function PricingPage() {
+export default async function PricingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ reason?: string }>
+}) {
   const session = await auth.api.getSession({ headers: await headers() })
 
   let activeSub: ActiveSub | null = null
@@ -29,6 +33,7 @@ export default async function PricingPage() {
   const razorpayKeyId = process.env.RAZORPAY_KEY_ID ?? ''
   const userEmail = session?.user.email ?? ''
   const userName = session?.user.name ?? ''
+  const { reason } = await searchParams
 
   return (
     <PricingClient
@@ -37,6 +42,7 @@ export default async function PricingPage() {
       razorpayKeyId={razorpayKeyId}
       userEmail={userEmail}
       userName={userName}
+      showInsufficientMessage={reason === 'insufficient_credits'}
     />
   )
 }

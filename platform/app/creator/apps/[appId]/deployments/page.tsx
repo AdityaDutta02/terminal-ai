@@ -43,7 +43,7 @@ export default async function DeploymentsPage({
           {' › '}
           Deployments
         </p>
-        <h1 className="mt-1 text-2xl font-semibold">{app.name} — Deployments</h1>
+        <h1 className="mt-1 text-2xl font-semibold">{app.name} - Deployments</h1>
       </div>
       <DeploymentList
         appId={appId}

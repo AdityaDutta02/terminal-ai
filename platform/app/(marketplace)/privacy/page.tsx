@@ -1,7 +1,7 @@
 import { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy — Terminal AI',
+  title: 'Privacy Policy - Terminal AI',
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -103,15 +103,15 @@ export default function PrivacyPage() {
         </p>
         <ul className="list-disc pl-5 space-y-1">
           <li>
-            <strong>Razorpay</strong> — payment processing. Their privacy policy governs card
+            <strong>Razorpay</strong> -payment processing. Their privacy policy governs card
             data.
           </li>
           <li>
-            <strong>OpenRouter</strong> — AI model routing. Prompts and responses may be
+            <strong>OpenRouter</strong> -AI model routing. Prompts and responses may be
             transmitted to third-party AI model providers via OpenRouter.
           </li>
           <li>
-            <strong>Cloud infrastructure providers</strong> — hosting and database services.
+            <strong>Cloud infrastructure providers</strong> -hosting and database services.
           </li>
         </ul>
         <p>
@@ -135,12 +135,12 @@ export default function PrivacyPage() {
           personal data:
         </p>
         <ul className="list-disc pl-5 space-y-1">
-          <li>Right of access — obtain a copy of your data.</li>
-          <li>Right of rectification — correct inaccurate data.</li>
-          <li>Right of erasure — request deletion of your data.</li>
-          <li>Right to data portability — receive your data in a structured format.</li>
-          <li>Right to object — object to certain types of processing.</li>
-          <li>Right to restrict processing — limit how we use your data.</li>
+          <li>Right of access -obtain a copy of your data.</li>
+          <li>Right of rectification -correct inaccurate data.</li>
+          <li>Right of erasure -request deletion of your data.</li>
+          <li>Right to data portability -receive your data in a structured format.</li>
+          <li>Right to object -object to certain types of processing.</li>
+          <li>Right to restrict processing -limit how we use your data.</li>
         </ul>
         <p>
           To exercise any of these rights, email{' '}

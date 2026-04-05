@@ -56,7 +56,7 @@ const ENDPOINTS: Endpoint[] = [
   {
     method: 'POST',
     path: '/api/creator/apps',
-    description: 'Deploy a GitHub repo as an app — queues build',
+    description: 'Deploy a GitHub repo as an app - queues build',
     auth: 'Session cookie',
     body: '{ name, githubRepo, channelId, branch?, description? }',
     response: '202 { appId, deploymentId, subdomain }',
@@ -82,7 +82,7 @@ const ENDPOINTS: Endpoint[] = [
     description: 'Generate a new MCP API key',
     auth: 'Session cookie',
     body: '{ name: string }',
-    response: '{ id, token, prefix } — token shown once only',
+    response: '{ id, token, prefix } - token shown once only',
   },
   {
     method: 'DELETE',

@@ -28,6 +28,7 @@ export interface PricingClientProps {
   razorpayKeyId: string
   userEmail: string
   userName: string
+  showInsufficientMessage?: boolean
 }
 
 function getCreditPrice(amount: number): number {
@@ -73,7 +74,7 @@ async function extractApiError(res: Response): Promise<string> {
 }
 
 export function PricingClient(props: PricingClientProps) {
-  const { isLoggedIn, activeSubscription, razorpayKeyId, userEmail, userName } = props
+  const { isLoggedIn, activeSubscription, razorpayKeyId, userEmail, userName, showInsufficientMessage } = props
   const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly')
   const [creditAmount, setCreditAmount] = useState(500)
   const [subLoading, setSubLoading] = useState(false)
@@ -145,6 +146,13 @@ export function PricingClient(props: PricingClientProps) {
   return (
     <div className="min-h-screen bg-[#f5f5f0]">
       <div className="max-w-[960px] mx-auto px-6 py-16">
+        {showInsufficientMessage && (
+          <div className="mb-10 rounded-2xl border border-[#FF6B00]/20 bg-[#FF6B00]/[0.06] px-6 py-4 text-center">
+            <p className="text-[13px] font-semibold text-[#FF6B00]">Not enough tokens</p>
+            <p className="text-[13px] text-[#1e1e1f]/50 mt-0.5">Your token balance was too low to open that app. Subscribe or buy tokens to continue.</p>
+          </div>
+        )}
+
         {/* Header */}
         <div className="text-center mb-14">
           <h1 className="font-display text-[clamp(32px,5vw,50px)] text-[#1e1e1f] tracking-[-0.02em] mb-3">
