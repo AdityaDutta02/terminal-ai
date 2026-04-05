@@ -2,7 +2,7 @@ import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { redirect } from 'next/navigation'
-import { BarChart3, Zap, Star, Clock } from 'lucide-react'
+import { Clock } from 'lucide-react'
 
 type UsageRow = {
   app_name: string
@@ -44,9 +44,7 @@ async function getUsageData(userId: string): Promise<{
   const weekAgo = new Date()
   weekAgo.setDate(weekAgo.getDate() - 7)
 
-  const recentRows = rows.filter(
-    (r) => new Date(r.created_at) >= weekAgo,
-  )
+  const recentRows = rows.filter((r) => new Date(r.created_at) >= weekAgo)
 
   const appCounts: Record<string, number> = {}
   for (const row of rows) {
@@ -88,114 +86,67 @@ export default async function AccountUsagePage() {
         </p>
       </div>
 
-      {/* Summary stat cards */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard
-          icon={BarChart3}
-          label="Sessions this week"
-          value={String(stats.sessionsThisWeek)}
-        />
-        <StatCard
-          icon={Zap}
-          label="Credits used"
-          value={stats.creditsUsed.toLocaleString()}
-        />
-        <StatCard
-          icon={Star}
-          label="Most used app"
-          value={stats.topApp}
-          subtitle={
-            stats.topAppSessions > 0
-              ? `${stats.topAppSessions} session${stats.topAppSessions !== 1 ? 's' : ''}`
-              : undefined
-          }
-        />
+      {/* Summary stats — compact inline strip */}
+      <div className="flex flex-wrap items-center gap-x-8 gap-y-3 py-4 border-b border-[#1e1e1f]/[0.06]">
+        <div className="flex items-center gap-2">
+          <span className="text-[13px] text-[#1e1e1f]/40">Sessions this week</span>
+          <span className="text-[15px] font-semibold text-[#1e1e1f] font-mono tabular-nums">{stats.sessionsThisWeek}</span>
+        </div>
+        <div className="w-px h-4 bg-[#1e1e1f]/10 self-center hidden sm:block" aria-hidden="true" />
+        <div className="flex items-center gap-2">
+          <span className="text-[13px] text-[#1e1e1f]/40">Credits used</span>
+          <span className="text-[15px] font-semibold text-[#1e1e1f] font-mono tabular-nums">{stats.creditsUsed.toLocaleString()}</span>
+        </div>
+        <div className="w-px h-4 bg-[#1e1e1f]/10 self-center hidden sm:block" aria-hidden="true" />
+        <div className="flex items-center gap-2">
+          <span className="text-[13px] text-[#1e1e1f]/40">Top app</span>
+          <span className="text-[15px] font-semibold text-[#1e1e1f]">{stats.topApp}</span>
+          {stats.topAppSessions > 0 && (
+            <span className="text-[12px] text-[#1e1e1f]/35">
+              ({stats.topAppSessions} {stats.topAppSessions === 1 ? 'session' : 'sessions'})
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Usage table */}
-      <div className="bg-white rounded-2xl border border-[#1e1e1f]/[0.08] overflow-hidden">
-        {/* Header */}
-        <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-[#1e1e1f]/[0.02] border-b border-[#1e1e1f]/[0.05]">
-          <span className="col-span-3 text-[12px] font-semibold text-[#1e1e1f]/40 uppercase tracking-wider">
-            App
-          </span>
-          <span className="col-span-2 text-[12px] font-semibold text-[#1e1e1f]/40 uppercase tracking-wider">
-            Channel
-          </span>
-          <span className="col-span-3 text-[12px] font-semibold text-[#1e1e1f]/40 uppercase tracking-wider">
-            Date
-          </span>
-          <span className="col-span-2 text-[12px] font-semibold text-[#1e1e1f]/40 uppercase tracking-wider">
-            Duration
-          </span>
-          <span className="col-span-2 text-[12px] font-semibold text-[#1e1e1f]/40 uppercase tracking-wider text-right">
-            Credits
-          </span>
-        </div>
-
+      <div className="bg-white rounded-2xl border border-[#1e1e1f]/[0.08] overflow-x-auto">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
-            <Clock className="w-8 h-8 text-[#1e1e1f]/20 mx-auto mb-3" />
+            <Clock className="w-8 h-8 text-[#1e1e1f]/20 mx-auto mb-3" aria-hidden="true" />
             <p className="text-[14px] text-[#1e1e1f]/40">No usage data yet.</p>
           </div>
         ) : (
-          <div className="divide-y divide-[#1e1e1f]/[0.05]">
-            {rows.map((row, idx) => (
-              <div
-                key={`${row.created_at}-${idx}`}
-                className="grid grid-cols-12 gap-4 px-6 py-3.5 items-center"
-              >
-                <span className="col-span-3 text-[14px] font-medium text-[#1e1e1f] truncate">
-                  {row.app_name}
-                </span>
-                <span className="col-span-2 text-[13px] text-[#1e1e1f]/50 truncate">
-                  {row.channel_name || '\u2014'}
-                </span>
-                <span className="col-span-3 text-[13px] text-[#1e1e1f]/50">
-                  {new Date(row.created_at).toLocaleDateString('en-GB', {
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </span>
-                <span className="col-span-2 text-[13px] text-[#1e1e1f]/50">{'\u2014'}</span>
-                <span className="col-span-2 text-[14px] font-semibold text-[#1e1e1f] text-right">
-                  {row.delta}
-                </span>
-              </div>
-            ))}
-          </div>
+          <table className="w-full text-sm min-w-[400px]">
+            <thead>
+              <tr className="border-b border-[#1e1e1f]/[0.05] bg-[#1e1e1f]/[0.02]">
+                <th scope="col" className="text-left px-6 py-3 text-[12px] font-semibold text-[#1e1e1f]/40 uppercase tracking-wider">App</th>
+                <th scope="col" className="text-left px-6 py-3 text-[12px] font-semibold text-[#1e1e1f]/40 uppercase tracking-wider hidden sm:table-cell">Channel</th>
+                <th scope="col" className="text-left px-6 py-3 text-[12px] font-semibold text-[#1e1e1f]/40 uppercase tracking-wider">Date</th>
+                <th scope="col" className="text-right px-6 py-3 text-[12px] font-semibold text-[#1e1e1f]/40 uppercase tracking-wider">Credits</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#1e1e1f]/[0.05]">
+              {rows.map((row, idx) => (
+                <tr key={`${row.created_at}-${idx}`}>
+                  <td className="px-6 py-3.5 text-[14px] font-medium text-[#1e1e1f] max-w-[160px] truncate">{row.app_name}</td>
+                  <td className="px-6 py-3.5 text-[13px] text-[#1e1e1f]/50 hidden sm:table-cell">{row.channel_name || '-'}</td>
+                  <td className="px-6 py-3.5 text-[13px] text-[#1e1e1f]/50 whitespace-nowrap">
+                    {new Date(row.created_at).toLocaleDateString('en-GB', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </td>
+                  <td className="px-6 py-3.5 text-[14px] font-semibold text-[#1e1e1f] text-right font-mono tabular-nums">{row.delta}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
-    </div>
-  )
-}
-
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  subtitle,
-}: {
-  icon: typeof BarChart3
-  label: string
-  value: string
-  subtitle?: string
-}) {
-  return (
-    <div className="bg-white rounded-2xl border border-[#1e1e1f]/[0.08] p-5">
-      <div className="flex items-center gap-2 mb-3">
-        <Icon className="w-4 h-4 text-[#1e1e1f]/30" />
-        <span className="text-[12px] font-semibold text-[#1e1e1f]/40 uppercase tracking-wider">
-          {label}
-        </span>
-      </div>
-      <p className="text-[24px] font-extrabold text-[#1e1e1f] leading-none">{value}</p>
-      {subtitle && (
-        <p className="text-[12px] text-[#1e1e1f]/35 mt-1">{subtitle}</p>
-      )}
     </div>
   )
 }

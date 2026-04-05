@@ -79,7 +79,7 @@ export default async function AccountCreditsPage() {
         <p className="text-[52px] font-extrabold text-white font-mono leading-none tabular-nums">
           {balance.toLocaleString()}
         </p>
-        <p className="text-white/30 text-[13px] mt-2">tokens</p>
+        <p className="text-white/60 text-[13px] mt-2">tokens</p>
       </div>
 
       {/* Recent Transactions */}

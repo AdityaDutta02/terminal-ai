@@ -6,7 +6,7 @@ import { SocialAuthButtons } from '@/components/social-auth-buttons'
 import { safeRedirectPath } from '@/lib/utils'
 
 const inputClass =
-  'w-full h-[44px] px-4 rounded-xl border border-[#1e1e1f]/10 bg-white text-[14px] text-[#1e1e1f] placeholder-[#1e1e1f]/30 outline-none focus:border-[#FF6B00] focus:ring-2 focus:ring-orange-100 transition-all'
+  'w-full h-[44px] px-4 rounded-xl border border-[#1e1e1f]/10 bg-white text-[14px] text-[#1e1e1f] placeholder-[#1e1e1f]/30 outline-none focus:border-[#FF6B00] focus:ring-2 focus:ring-[#FF6B00]/30 transition-all'
 
 function LoginForm() {
   const router = useRouter()
@@ -120,7 +120,7 @@ function LoginForm() {
             </div>
 
             {error && (
-              <div className="rounded-xl border border-red-200/50 bg-red-50 px-4 py-3 text-[13px] text-red-600">
+              <div role="alert" className="rounded-xl border border-red-200/50 bg-red-50 px-4 py-3 text-[13px] text-red-600">
                 {error}
               </div>
             )}

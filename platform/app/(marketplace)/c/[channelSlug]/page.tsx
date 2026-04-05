@@ -204,47 +204,61 @@ export default async function ChannelPage({ params }: PageProps) {
               {apps.length} {apps.length === 1 ? 'App' : 'Apps'}
             </p>
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {apps.map((app, i) => (
-                <a
-                  key={app.id}
-                  href={app.status === 'coming_soon' ? '#' : `/c/${channel.slug}/${app.slug}`}
-                  className="group block transition-transform duration-300 ease-out hover:-translate-y-1"
-                >
-                  <div className={`relative h-[200px] rounded-[24px] overflow-hidden mb-4 bg-gradient-to-br ${getCardGradient(i)} transition-shadow duration-500 group-hover:shadow-xl group-hover:shadow-black/10`}>
-                    {/* Frosted glass shapes with rich hover motion */}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-20 h-20 rounded-3xl bg-white/20 backdrop-blur-sm rotate-12 transition-all duration-700 ease-out group-hover:rotate-[-6deg] group-hover:scale-110" />
-                      <div className="absolute w-12 h-12 rounded-2xl bg-white/30 backdrop-blur-sm -rotate-12 translate-x-8 translate-y-6 transition-all duration-700 ease-out group-hover:rotate-6 group-hover:translate-x-10 group-hover:translate-y-4" />
-                      <div className="absolute w-8 h-8 rounded-xl bg-white/15 backdrop-blur-sm rotate-45 -translate-x-10 -translate-y-4 opacity-0 transition-all duration-500 ease-out group-hover:opacity-100 group-hover:rotate-[20deg] group-hover:-translate-x-12" />
-                    </div>
-                    {/* Hover gradient overlay — subtle brightness shift */}
-                    <div className="absolute inset-0 bg-white/0 transition-colors duration-500 group-hover:bg-white/[0.06]" />
-                    {app.status === 'coming_soon' ? (
+              {apps.map((app, i) => {
+                const isComingSoon = app.status === 'coming_soon'
+                const thumbnail = (
+                  <div className={`relative h-[200px] rounded-[24px] overflow-hidden mb-4 bg-gradient-to-br ${getCardGradient(i)} ${!isComingSoon ? 'transition-shadow duration-500 group-hover:shadow-xl group-hover:shadow-black/10' : ''}`}>
+                    <div className="absolute inset-0 bg-black/0 transition-colors duration-300 group-hover:bg-black/[0.04]" aria-hidden="true" />
+                    {isComingSoon ? (
                       <div className="absolute top-3 right-3 flex items-center gap-1 bg-[#1e1e1f] rounded-full px-2.5 py-1">
                         <span className="text-[11px] font-medium text-white">Coming soon</span>
                       </div>
                     ) : (
-                      <div className="absolute top-3 right-3 flex items-center gap-1 bg-[#1e1e1f]/80 backdrop-blur-sm rounded-full px-2.5 py-1 opacity-0 translate-y-1 transition-all duration-300 ease-out group-hover:opacity-100 group-hover:translate-y-0">
+                      <div className="absolute top-3 right-3 flex items-center gap-1 bg-[#1e1e1f]/80 backdrop-blur-sm rounded-full px-2.5 py-1 opacity-0 translate-y-1 transition-all duration-300 ease-out group-hover:opacity-100 group-hover:translate-y-0" aria-hidden="true">
                         <span className="text-[11px] font-medium text-white">Open</span>
-                        <ArrowUpRight className="w-3 h-3 text-white transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                        <ArrowUpRight className="w-3 h-3 text-white" />
                       </div>
                     )}
                   </div>
-                  <h3 className="text-[16px] font-medium text-[#1e1e1f] mb-1 tracking-[-0.01em] transition-colors duration-300 group-hover:text-[#FF6B00]">{app.name}</h3>
-                  <p className="text-[13px] text-[#1e1e1f]/45 leading-relaxed line-clamp-2 mb-2">
-                    {app.description ?? 'An AI-powered micro-app'}
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[13px] font-medium text-[#1e1e1f]/55">{app.credits_per_session} credits</span>
-                    {app.status === 'live' && (
-                      <span className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-600">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        Live
-                      </span>
-                    )}
+                )
+                const cardMeta = (
+                  <>
+                    <h3 className="text-[16px] font-medium text-[#1e1e1f] mb-1 tracking-[-0.01em] transition-colors duration-300 group-hover:text-[#FF6B00]">{app.name}</h3>
+                    <p className="text-[13px] text-[#1e1e1f]/45 leading-relaxed line-clamp-2 mb-2">
+                      {app.description ?? 'An AI-powered micro-app'}
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[13px] font-medium text-[#1e1e1f]/55">{app.credits_per_session} credits</span>
+                      {app.status === 'live' && (
+                        <span className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-600" aria-label="Live">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+                          Live
+                        </span>
+                      )}
+                    </div>
+                  </>
+                )
+
+                return isComingSoon ? (
+                  <div
+                    key={app.id}
+                    aria-label={`${app.name} - coming soon`}
+                    className="group block opacity-60"
+                  >
+                    {thumbnail}
+                    {cardMeta}
                   </div>
-                </a>
-              ))}
+                ) : (
+                  <a
+                    key={app.id}
+                    href={`/c/${channel.slug}/${app.slug}`}
+                    className="group block transition-transform duration-300 ease-out hover:-translate-y-1"
+                  >
+                    {thumbnail}
+                    {cardMeta}
+                  </a>
+                )
+              })}
             </div>
           </>
         )}

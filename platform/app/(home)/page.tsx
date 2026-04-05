@@ -4,7 +4,6 @@ import { auth } from '@/lib/auth'
 import { HomepageClient } from './homepage-client'
 import type { AppCardData } from '@/components/app-card'
 import type { ChannelCardData } from '@/components/channel-card'
-/* ── Icon name + gradient maps ── */
 
 function getCategoryIcon(cat: string): string {
   return 'Finance,TrendingUp|Security,Shield|Developer,Cpu|Analytics,BarChart3|Productivity,Globe'
@@ -37,10 +36,8 @@ const channelColors = [
   'bg-amber-600',
 ]
 
-/* ── Category assignment (round-robin until a real column exists) ── */
 const FALLBACK_CATEGORIES = ['Productivity', 'Finance', 'Developer', 'Analytics', 'Security']
 
-/* ── Deterministic pseudo-random values seeded by app ID ── */
 function idHash(id: string, seed: number): number {
   let h = seed
   for (let i = 0; i < id.length; i++) h = (Math.imul(h, 31) + id.charCodeAt(i)) | 0
@@ -52,8 +49,6 @@ function deterministicRating(id: string): number {
 function deterministicReviewCount(id: string): number {
   return 10 + (idHash(id, 13) % 90)
 }
-
-/* ── Data fetching ── */
 
 type AppRow = {
   id: string
@@ -133,8 +128,6 @@ async function getChannels(): Promise<ChannelCardData[]> {
     letter: row.name.charAt(0).toUpperCase(),
   }))
 }
-
-/* ── Page ── */
 
 export default async function HomePage() {
   const [apps, channels, session] = await Promise.all([
