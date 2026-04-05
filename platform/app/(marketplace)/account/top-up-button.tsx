@@ -1,7 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+
+// Razorpay is blocked on terminalai.studioionique.com (not an approved domain).
+// Workaround: redirect to studioionique.com/pay (approved domain) which opens the
+// Razorpay checkout modal there, then redirects back here on success.
+const PAY_RELAY_URL = 'https://studioionique.com/pay'
 
 interface TopUpButtonProps {
   credits: number
@@ -13,27 +17,8 @@ interface TopUpButtonProps {
   userName: string
 }
 
-declare global {
-  interface Window {
-    Razorpay: new (opts: Record<string, unknown>) => { open(): void }
-  }
-}
-
-function loadRazorpayScript(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (document.getElementById('razorpay-script')) { resolve(); return }
-    const script = document.createElement('script')
-    script.id = 'razorpay-script'
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
-    script.onload = () => resolve()
-    script.onerror = () => reject(new Error('Failed to load Razorpay'))
-    document.body.appendChild(script)
-  })
-}
-
 export function TopUpButton(props: TopUpButtonProps) {
   const { credits, price, planCode, popular, razorpayKeyId, userEmail, userName } = props
-  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -41,7 +26,6 @@ export function TopUpButton(props: TopUpButtonProps) {
     setLoading(true)
     setError(null)
     try {
-      await loadRazorpayScript()
       const res = await fetch('/api/subscriptions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -51,15 +35,23 @@ export function TopUpButton(props: TopUpButtonProps) {
         const body = await res.json().catch(() => ({})) as { error?: string }
         throw new Error(body.error ?? 'Failed to create order')
       }
-      const { orderId } = await res.json() as { orderId: string; amount: number }
-      const rzpOpts: Record<string, unknown> = { key: razorpayKeyId, currency: 'INR', order_id: orderId }
-      rzpOpts.name = 'Terminal AI'
-      rzpOpts.description = `${credits.toLocaleString()} credits`
-      rzpOpts.prefill = { email: userEmail, name: userName }
-      rzpOpts.theme = { color: '#FF6B00' }
-      rzpOpts.handler = () => { router.refresh() }
-      const rzp = new window.Razorpay(rzpOpts)
-      rzp.open()
+      const { orderId, amount } = await res.json() as { orderId: string; amount: number }
+
+      // Redirect to approved domain to open Razorpay checkout
+      const callbackUrl = `${window.location.origin}/dashboard`
+      const params = new URLSearchParams({
+        order_id: orderId,
+        amount: String(amount),
+        currency: 'INR',
+        key_id: razorpayKeyId,
+        name: 'Terminal AI',
+        description: `${credits.toLocaleString()} credits`,
+        email: userEmail,
+        user_name: userName,
+        callback_url: callbackUrl,
+        theme_color: '#FF6B00',
+      })
+      window.location.href = `${PAY_RELAY_URL}?${params.toString()}`
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {

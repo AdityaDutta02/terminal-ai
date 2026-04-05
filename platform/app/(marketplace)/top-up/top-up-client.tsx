@@ -4,48 +4,17 @@ import { useState } from 'react'
 import { Loader2, ArrowLeft } from 'lucide-react'
 import { CREDIT_PACKS, type CreditPackId } from '@/lib/pricing'
 
-declare global {
-  interface Window {
-    Razorpay: new (opts: Record<string, unknown>) => { open(): void }
-  }
-}
-
-function loadRazorpayScript(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (document.getElementById('razorpay-script')) { resolve(); return }
-    const script = document.createElement('script')
-    script.id = 'razorpay-script'
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
-    script.onload = () => resolve()
-    script.onerror = () => reject(new Error('Failed to load Razorpay'))
-    document.body.appendChild(script)
-  })
-}
+// Razorpay is blocked on terminalai.studioionique.com (not an approved domain).
+// Workaround: redirect to studioionique.com/pay (approved domain) which opens the
+// Razorpay checkout modal there, then redirects back here on success.
+// The webhook handles credit awarding server-to-server regardless of domain.
+const PAY_RELAY_URL = 'https://studioionique.com/pay'
 
 interface TopUpClientProps {
   razorpayKeyId: string
   userEmail: string
   userName: string
   showInsufficientMessage?: boolean
-}
-
-type RzpInput = {
-  key: string; currency: string; orderId: string
-  amount: number; credits: number; email: string; name: string
-}
-
-function buildRzpOpts(input: RzpInput): Record<string, unknown> {
-  const opts: Record<string, unknown> = {}
-  opts['key'] = input.key
-  opts['currency'] = input.currency
-  opts['order_id'] = input.orderId
-  opts['amount'] = input.amount
-  opts['name'] = 'Terminal AI'
-  opts['description'] = `${input.credits.toLocaleString()} tokens top-up`
-  opts['prefill'] = { email: input.email, name: input.name }
-  opts['theme'] = { color: '#FF6B00' }
-  opts['handler'] = () => { window.location.href = '/' }
-  return opts
 }
 
 const AMOUNTS = [100, 500, 1000, 2000] as const
@@ -69,7 +38,6 @@ export function TopUpClient(props: TopUpClientProps) {
     setLoading(true)
     setError(null)
     try {
-      await loadRazorpayScript()
       const packIds = Object.keys(CREDIT_PACKS) as CreditPackId[]
       const packId = packIds.reduce((closest, pid) => {
         const diff = Math.abs(CREDIT_PACKS[pid].credits - selected)
@@ -90,11 +58,21 @@ export function TopUpClient(props: TopUpClientProps) {
         orderId: string; amount: number; currency: string; keyId: string
       }
 
-      const rzp = new window.Razorpay(buildRzpOpts({
-        key: keyId || razorpayKeyId, currency, orderId, amount,
-        credits: selected, email: userEmail, name: userName,
-      }))
-      rzp.open()
+      // Redirect to approved domain to open Razorpay checkout
+      const callbackUrl = `${window.location.origin}/`
+      const params = new URLSearchParams({
+        order_id: orderId,
+        amount: String(amount),
+        currency,
+        key_id: keyId || razorpayKeyId,
+        name: 'Terminal AI',
+        description: `${selected.toLocaleString()} tokens top-up`,
+        email: userEmail,
+        user_name: userName,
+        callback_url: callbackUrl,
+        theme_color: '#FF6B00',
+      })
+      window.location.href = `${PAY_RELAY_URL}?${params.toString()}`
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
