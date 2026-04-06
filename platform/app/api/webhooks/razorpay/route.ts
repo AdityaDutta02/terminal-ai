@@ -108,6 +108,7 @@ async function handlePaymentCaptured(payload: any): Promise<void> {
 interface SubscriptionRow {
   user_id: string
   plan_id: string
+  status: string
   credits_per_month: number
   credits_granted_at: string | null
 }
@@ -127,7 +128,7 @@ async function grantPeriodCredits(
   // Use transaction + FOR UPDATE to prevent double-crediting on concurrent delivery
   await withTransaction(async (client) => {
     const result = await client.query<SubscriptionRow>(
-      `SELECT us.user_id, us.plan_id, us.credits_granted_at, us.status, p.credits_per_month
+      `SELECT us.user_id, us.plan_id, us.status, us.credits_granted_at, p.credits_per_month
        FROM subscriptions.user_subscriptions us
        JOIN subscriptions.plans p ON p.id = us.plan_id
        WHERE us.razorpay_subscription_id = $1
