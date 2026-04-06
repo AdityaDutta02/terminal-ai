@@ -136,11 +136,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     : ''
 
   try {
-    // Idempotency: return existing pending/active subscription without creating a new one
+    // Idempotency: return existing pending/active subscription for the same plan only
     const existing = await db.query<{ razorpay_subscription_id: string; short_url: string | null }>(
       `SELECT razorpay_subscription_id FROM subscriptions.user_subscriptions
-       WHERE user_id = $1 AND status IN ('pending', 'active') LIMIT 1`,
-      [session.user.id],
+       WHERE user_id = $1 AND plan_id = $2 AND status IN ('pending', 'active') LIMIT 1`,
+      [session.user.id, planId],
     )
     if (existing.rows[0]) {
       const existingSubId = existing.rows[0].razorpay_subscription_id
