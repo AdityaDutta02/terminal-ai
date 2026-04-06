@@ -32,7 +32,7 @@ export interface PricingClientProps {
   defaultBilling?: 'monthly' | 'annual'
 }
 
-// Flat ₹1.25/credit — 25% more than subscription rate
+// Flat ₹1.25/credit -25% more than subscription rate
 function getCreditPrice(): number { return 1.25 }
 
 function Spinner() {
@@ -205,8 +205,8 @@ export function PricingClient(props: PricingClientProps) {
             </p>
             <p className="text-[14px] text-[#1e1e1f]/45 mb-5">
               {billing === 'annual'
-                ? 'Lock in a lower rate — same credits, less spend'
-                : 'Start at ₹99 — cancel any time'}
+                ? 'Lock in a lower rate -same credits, less spend'
+                : 'Start at ₹99 -cancel any time'}
             </p>
 
             <div className="mb-6">
@@ -224,12 +224,12 @@ export function PricingClient(props: PricingClientProps) {
                     <span className="text-[40px] font-display text-[#1e1e1f] tracking-[-0.02em]">&#8377;2,490</span>
                     <span className="text-[14px] text-[#1e1e1f]/35">/year</span>
                   </div>
-                  <p className="text-[13px] text-[#1e1e1f]/35 mt-0.5">Save &#8377;1,098 — over 3 months free</p>
+                  <p className="text-[13px] text-[#1e1e1f]/35 mt-0.5">Save &#8377;1,098 -over 3 months free</p>
                 </>
               )}
             </div>
 
-            {/* Payment method selector — only for monthly (offers differ per method) */}
+            {/* Payment method selector -only for monthly (offers differ per method) */}
             {billing === 'monthly' && !isSubscribed && (
               <div className="flex gap-2 mb-4">
                 {(['card', 'upi'] as const).map((method) => (
@@ -271,7 +271,7 @@ export function PricingClient(props: PricingClientProps) {
 
             <ul className="mt-6 space-y-2.5">
               {(billing === 'annual' ? [
-                '300 credits per month — 3,600 for the year',
+                '300 credits per month -3,600 for the year',
                 'Save ₹1,098 over monthly billing',
                 'Every app on the marketplace',
                 'Credits stay active all year',
@@ -294,7 +294,7 @@ export function PricingClient(props: PricingClientProps) {
           {/* Pay as you go */}
           <div className="bg-white rounded-[24px] border border-[#1e1e1f]/[0.06] p-8">
             <p className="text-[12px] font-semibold uppercase tracking-widest text-[#1e1e1f]/35 mb-1">Pay as you go</p>
-            <p className="text-[14px] text-[#1e1e1f]/45 mb-6">No commitment — buy only what you need</p>
+            <p className="text-[14px] text-[#1e1e1f]/45 mb-6">No commitment -buy only what you need</p>
 
             <div className="mb-4">
               <div className="flex items-baseline justify-between mb-2">

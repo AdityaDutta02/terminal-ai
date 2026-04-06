@@ -261,7 +261,7 @@ export function HomepageClient({
               </div>
               <p className="text-[12px] text-[#1e1e1f]/35 mb-6">then &#8377;299/month</p>
               <ul className="space-y-2 mb-7">
-                {['Monthly credit allowance', 'Access all apps', 'Credits never expire', 'Email support'].map((f) => (
+                {['300 credits per month', 'First month just ₹99', 'Every app on the marketplace', 'Cancel any time'].map((f) => (
                   <li key={f} className="flex items-center gap-2 text-[13px] text-[#1e1e1f]/55">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#1e1e1f]/30 flex-shrink-0" />
                     {f}
@@ -269,7 +269,7 @@ export function HomepageClient({
                 ))}
               </ul>
               <a href="/pricing?plan=monthly" className="block w-full py-2.5 rounded-full border border-[#1e1e1f]/15 hover:border-[#1e1e1f]/30 text-[#1e1e1f] text-center text-[13px] font-medium transition-colors">
-                Get started
+                Start for ₹99
               </a>
             </div>
 
@@ -283,9 +283,9 @@ export function HomepageClient({
                 <span className="text-[36px] font-display text-[#1e1e1f] tracking-[-0.02em]">&#8377;2,490</span>
                 <span className="text-[13px] text-[#1e1e1f]/35">/year</span>
               </div>
-              <p className="text-[12px] text-[#1e1e1f]/35 mb-6">Save &#8377;1,098 vs monthly</p>
+              <p className="text-[12px] text-[#1e1e1f]/35 mb-6">Over 3 months free vs monthly</p>
               <ul className="space-y-2 mb-7">
-                {['Everything in Monthly', 'Best per-month rate', 'Access all apps', 'Priority support'].map((f) => (
+                {['300 credits/month, 3,600/year', 'Save ₹1,098 on annual billing', 'Every app on the marketplace', 'Credits stay active all year'].map((f) => (
                   <li key={f} className="flex items-center gap-2 text-[13px] text-[#1e1e1f]/55">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B00] flex-shrink-0" />
                     {f}
@@ -293,7 +293,7 @@ export function HomepageClient({
                 ))}
               </ul>
               <a href="/pricing?plan=annual" className="block w-full py-2.5 rounded-full bg-[#FF6B00] hover:bg-[#E55D00] text-white text-center text-[13px] font-medium transition-colors">
-                Get started
+                Get the best deal
               </a>
             </div>
 
@@ -301,12 +301,12 @@ export function HomepageClient({
             <div className="bg-white rounded-[24px] border border-[#1e1e1f]/[0.06] p-7">
               <p className="text-[11px] font-semibold uppercase tracking-widest text-[#1e1e1f]/35 mb-3">Pay as you go</p>
               <div className="flex items-baseline gap-1 mb-1">
-                <span className="text-[36px] font-display text-[#1e1e1f] tracking-[-0.02em]">&#8377;0.45</span>
+                <span className="text-[36px] font-display text-[#1e1e1f] tracking-[-0.02em]">&#8377;1.25</span>
                 <span className="text-[13px] text-[#1e1e1f]/35">/credit</span>
               </div>
-              <p className="text-[12px] text-[#1e1e1f]/35 mb-6">No commitment needed</p>
+              <p className="text-[12px] text-[#1e1e1f]/35 mb-6">No subscription needed</p>
               <ul className="space-y-2 mb-7">
-                {['Buy credits anytime', 'Credits never expire', 'Access all apps', 'Scale as needed'].map((f) => (
+                {['Buy only what you need', 'Valid for 12 months', 'Every app on the marketplace', 'Top up any time'].map((f) => (
                   <li key={f} className="flex items-center gap-2 text-[13px] text-[#1e1e1f]/55">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#1e1e1f]/30 flex-shrink-0" />
                     {f}

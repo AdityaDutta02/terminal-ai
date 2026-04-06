@@ -51,7 +51,7 @@ async function createPlanSubscription(keys: RazorpayKeys, req: PlanSubscriptionR
     plan_id: req.razorpayPlanId,
     customer_notify: 1,
     quantity: 1,
-    total_count: 120, // 10 years max
+    total_count: req.planId === 'annual' ? 10 : 120, // annual: 10yr cap (Razorpay max 100); monthly: 120mo
     notes: { userId: req.userId, planId: req.planId },
   }
   if (req.razorpayOfferId) params.offer_id = req.razorpayOfferId
