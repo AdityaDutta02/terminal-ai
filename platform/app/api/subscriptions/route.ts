@@ -131,7 +131,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   // Resolve offer: monthly has separate card/UPI offers; annual has none
-  const razorpayOfferId = planId === 'monthly'
+  const razorpayOfferId = planId === 'monthly' && 'razorpayOfferIdCard' in plan
     ? (paymentMethod === 'upi' ? plan.razorpayOfferIdUpi : plan.razorpayOfferIdCard)
     : ''
 
