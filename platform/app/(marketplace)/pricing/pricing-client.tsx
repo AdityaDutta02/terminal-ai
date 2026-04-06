@@ -76,7 +76,8 @@ async function extractApiError(res: Response): Promise<string> {
 
 export function PricingClient(props: PricingClientProps) {
   const { isLoggedIn, activeSubscription, razorpayKeyId, userEmail, userName, showInsufficientMessage, defaultBilling } = props
-  const [billing, setBilling] = useState<'monthly' | 'annual'>(defaultBilling ?? 'annual')
+  const activePlanId = activeSubscription?.status === 'active' ? activeSubscription.plan_id as 'monthly' | 'annual' : null
+  const [billing, setBilling] = useState<'monthly' | 'annual'>(defaultBilling ?? activePlanId ?? 'annual')
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'upi'>('card')
   const [creditAmount, setCreditAmount] = useState(500)
   const [subLoading, setSubLoading] = useState(false)
@@ -84,7 +85,8 @@ export function PricingClient(props: PricingClientProps) {
   const [creditLoading, setCreditLoading] = useState(false)
   const [creditError, setCreditError] = useState<string | null>(null)
 
-  const isSubscribed = activeSubscription?.status === 'active'
+  // "Current plan" only shows when the selected tab matches the user's actual plan
+  const isSubscribed = activePlanId === billing
   const creditPrice = getCreditPrice(creditAmount)
   const totalCreditPrice = Math.round(creditAmount * creditPrice)
   const discountLabel = getDiscountLabel(creditAmount)

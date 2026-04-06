@@ -131,7 +131,7 @@ export default async function AccountCreditsPage() {
           </div>
           <div className="mt-4 pt-4 border-t border-[#1e1e1f]/[0.05] flex items-center justify-between">
             <p className="text-[12px] text-[#1e1e1f]/40">650 credits per period</p>
-            <a href="/pricing" className="text-[12px] font-medium text-[#FF6B00] hover:underline">Manage plan</a>
+            <a href={`/pricing?plan=${sub.plan_id}`} className="text-[12px] font-medium text-[#FF6B00] hover:underline">Manage plan</a>
           </div>
         </div>
       )}
