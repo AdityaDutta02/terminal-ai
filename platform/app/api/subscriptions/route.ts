@@ -74,6 +74,16 @@ function getRazorpayKeys(): RazorpayKeys | null {
   return { keyId, keySecret }
 }
 
+function buildSubscriptionResponse(
+  subscriptionId: string,
+  planId: string,
+  plan: typeof import('@/lib/pricing').PLANS[keyof typeof import('@/lib/pricing').PLANS],
+): { subscriptionId: string; offerIdCard: string; offerIdUpi: string } {
+  const offerIdCard = 'razorpayOfferIdCard' in plan ? plan.razorpayOfferIdCard : ''
+  const offerIdUpi  = 'razorpayOfferIdUpi'  in plan ? plan.razorpayOfferIdUpi  : ''
+  return { subscriptionId, offerIdCard, offerIdUpi }
+}
+
 const createSchema = z.object({
   planId: z.enum(['monthly', 'annual']),
   paymentMethod: z.enum(['card', 'upi']).optional(),
@@ -123,21 +133,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid plan', details: parsed.error.flatten() }, { status: 400 })
   }
-  const { planId, paymentMethod } = parsed.data
+  const { planId } = parsed.data
   const plan = PLANS[planId as PlanId]
 
   if (!plan.razorpayPlanId) {
     return NextResponse.json({ error: 'Subscription not configured' }, { status: 503 })
   }
 
-  // Resolve offer: monthly has separate card/UPI offers; annual has none
-  const razorpayOfferId = planId === 'monthly' && 'razorpayOfferIdCard' in plan
-    ? (paymentMethod === 'upi' ? plan.razorpayOfferIdUpi : plan.razorpayOfferIdCard)
-    : ''
-
   try {
     // Idempotency: return existing pending/active subscription for the same plan only
-    const existing = await db.query<{ razorpay_subscription_id: string; short_url: string | null }>(
+    const existing = await db.query<{ razorpay_subscription_id: string }>(
       `SELECT razorpay_subscription_id FROM subscriptions.user_subscriptions
        WHERE user_id = $1 AND plan_id = $2 AND status IN ('pending', 'active') LIMIT 1`,
       [session.user.id, planId],
@@ -145,19 +150,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (existing.rows[0]) {
       const existingSubId = existing.rows[0].razorpay_subscription_id
       logger.info({ msg: 'subscription_already_exists', userId: session.user.id, subscriptionId: existingSubId })
-      // Fetch the short_url from Razorpay for the existing subscription
-      const rzpRes = await fetch(`https://api.razorpay.com/v1/subscriptions/${existingSubId}`, {
-        headers: { Authorization: razorpayAuth(keys) },
-      })
-      if (rzpRes.ok) {
-        const rzpData = await rzpRes.json() as { id: string; short_url: string }
-        return NextResponse.json({ subscriptionId: rzpData.id, shortUrl: rzpData.short_url })
-      }
+      return NextResponse.json(buildSubscriptionResponse(existingSubId, planId, plan))
     }
 
     const rzpSub = await createPlanSubscription(
       keys,
-      { razorpayPlanId: plan.razorpayPlanId, razorpayOfferId, userId: session.user.id, planId },
+      { razorpayPlanId: plan.razorpayPlanId, razorpayOfferId: '', userId: session.user.id, planId },
     )
 
     await db.query(
@@ -170,10 +168,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     logger.info({ msg: 'subscription_created', userId: session.user.id, planId, subscriptionId: rzpSub.id })
 
-    return NextResponse.json({
-      subscriptionId: rzpSub.id,
-      shortUrl: rzpSub.short_url,
-    })
+    return NextResponse.json(buildSubscriptionResponse(rzpSub.id, planId, plan))
   } catch (err) {
     logger.error({ msg: 'subscription_create_failed', userId: session.user.id, planId, err: String(err) })
     return NextResponse.json({ error: 'Failed to create subscription' }, { status: 500 })

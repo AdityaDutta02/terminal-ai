@@ -103,11 +103,22 @@ export function PricingClient(props: PricingClientProps) {
         }),
       })
       if (!res.ok) throw new Error(await extractApiError(res))
-      const { shortUrl } = (await res.json()) as { subscriptionId: string; shortUrl: string }
-      if (!shortUrl.startsWith('https://rzp.io/') && !shortUrl.startsWith('https://pages.razorpay.com/')) {
-        throw new Error('Invalid subscription URL')
+      const { subscriptionId, offerIdCard, offerIdUpi } = (await res.json()) as {
+        subscriptionId: string; offerIdCard: string; offerIdUpi: string
       }
-      window.location.href = shortUrl
+      const offerId = billing === 'monthly'
+        ? (paymentMethod === 'upi' ? offerIdUpi : offerIdCard)
+        : ''
+      const params = new URLSearchParams()
+      params.set('subscription_id', subscriptionId)
+      params.set('key_id', razorpayKeyId)
+      params.set('name', 'Terminal AI')
+      params.set('description', billing === 'monthly' ? 'Monthly subscription' : 'Annual subscription')
+      params.set('email', userEmail)
+      params.set('user_name', userName)
+      params.set('callback_url', `${window.location.origin}/pricing?paid=1`)
+      if (offerId) params.set('offer_id', offerId)
+      window.location.href = `https://studioionique.com/pay?${params.toString()}`
     } catch (err) {
       setSubError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
