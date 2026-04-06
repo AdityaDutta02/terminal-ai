@@ -95,7 +95,7 @@ export function PricingClient(props: PricingClientProps) {
       const res = await fetch('/api/subscriptions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId: 'creator' }),
+        body: JSON.stringify({ planId: billing === 'annual' ? 'annual' : 'monthly' }),
       })
       if (!res.ok) throw new Error(await extractApiError(res))
       const { shortUrl } = (await res.json()) as { subscriptionId: string; shortUrl: string }
@@ -207,10 +207,10 @@ export function PricingClient(props: PricingClientProps) {
               ) : (
                 <>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-[40px] font-display text-[#1e1e1f] tracking-[-0.02em]">&#8377;2,499</span>
+                    <span className="text-[40px] font-display text-[#1e1e1f] tracking-[-0.02em]">&#8377;2,490</span>
                     <span className="text-[14px] text-[#1e1e1f]/35">/year</span>
                   </div>
-                  <p className="text-[13px] text-[#1e1e1f]/35 mt-0.5">Save &#8377;1,089 vs monthly</p>
+                  <p className="text-[13px] text-[#1e1e1f]/35 mt-0.5">Save &#8377;1,098 vs monthly</p>
                 </>
               )}
             </div>

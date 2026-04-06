@@ -11,9 +11,20 @@ export const MODEL_TIER_CREDITS: Record<ModelTier, number> = {
 
 // Price in rupees (display/checkout use). Note: DB subscriptions.plans.price_inr stores paise.
 export const PLANS = {
-  starter: { priceInr: 149, credits: 250, name: 'Starter', razorpayPlanId: process.env.RAZORPAY_PLAN_ID_STARTER ?? '' },
-  creator: { priceInr: 299, credits: 650, name: 'Creator', razorpayPlanId: process.env.RAZORPAY_PLAN_ID_CREATOR ?? '' },
-  pro:     { priceInr: 599, credits: 1400, name: 'Pro',     razorpayPlanId: process.env.RAZORPAY_PLAN_ID_PRO ?? '' },
+  monthly: {
+    priceInr: 299,
+    introInr: 99,
+    name: 'Monthly',
+    razorpayPlanId: process.env.RAZORPAY_PLAN_ID_MONTHLY ?? '',
+    // Razorpay offer that discounts ₹200 off the first billing cycle (net ₹99)
+    razorpayOfferId: process.env.RAZORPAY_OFFER_ID_MONTHLY ?? '',
+  },
+  annual: {
+    priceInr: 2490,
+    name: 'Annual',
+    razorpayPlanId: process.env.RAZORPAY_PLAN_ID_ANNUAL ?? '',
+    razorpayOfferId: '',
+  },
 } as const
 
 export type PlanId = keyof typeof PLANS

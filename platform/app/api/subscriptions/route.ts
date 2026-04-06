@@ -41,18 +41,21 @@ async function createSubscription(keys: RazorpayKeys, params: CreateSubscription
 
 interface PlanSubscriptionRequest {
   razorpayPlanId: string
+  razorpayOfferId: string
   userId: string
   planId: string
 }
 
 async function createPlanSubscription(keys: RazorpayKeys, req: PlanSubscriptionRequest): Promise<RazorpaySubscription> {
-  return createSubscription(keys, {
+  const params: CreateSubscriptionParams & { offer_id?: string } = {
     plan_id: req.razorpayPlanId,
     customer_notify: 1,
     quantity: 1,
     total_count: 120, // 10 years max
     notes: { userId: req.userId, planId: req.planId },
-  })
+  }
+  if (req.razorpayOfferId) params.offer_id = req.razorpayOfferId
+  return createSubscription(keys, params)
 }
 
 async function cancelSubscription(keys: RazorpayKeys, subscriptionId: string): Promise<void> {
@@ -72,7 +75,7 @@ function getRazorpayKeys(): RazorpayKeys | null {
 }
 
 const createSchema = z.object({
-  planId: z.enum(['starter', 'creator', 'pro']),
+  planId: z.enum(['monthly', 'annual']),
 })
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -148,7 +151,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const rzpSub = await createPlanSubscription(
       keys,
-      { razorpayPlanId: plan.razorpayPlanId, userId: session.user.id, planId },
+      { razorpayPlanId: plan.razorpayPlanId, razorpayOfferId: plan.razorpayOfferId, userId: session.user.id, planId },
     )
 
     await db.query(
