@@ -27,7 +27,9 @@ export const PLANS = {
   annual: {
     priceInr: 2490,
     name: 'Annual',
-    razorpayPlanId: rzpEnv('PLAN_ID_ANNUAL'),
+    razorpayPlanId:      rzpEnv('PLAN_ID_ANNUAL'),
+    razorpayOfferIdCard: rzpEnv('OFFER_ID_ANNUAL_CARD'),
+    razorpayOfferIdUpi:  rzpEnv('OFFER_ID_ANNUAL_UPI'),
   },
 } as const
 

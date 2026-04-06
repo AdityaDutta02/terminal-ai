@@ -98,9 +98,7 @@ export function PricingClient(props: PricingClientProps) {
       const { subscriptionId, offerIdCard, offerIdUpi } = (await res.json()) as {
         subscriptionId: string; offerIdCard: string; offerIdUpi: string
       }
-      const offerId = billing === 'monthly'
-        ? (paymentMethod === 'upi' ? offerIdUpi : offerIdCard)
-        : ''
+      const offerId = paymentMethod === 'upi' ? offerIdUpi : offerIdCard
       const params = new URLSearchParams()
       params.set('subscription_id', subscriptionId)
       params.set('key_id', razorpayKeyId)
