@@ -1,8 +1,18 @@
 export const CREDIT_REASON_LABELS: Record<string, string> = {
   welcome: 'Welcome bonus',
+  welcome_bonus: 'Welcome bonus',
   topup: 'Credit top-up',
   api_call: 'API usage',
   subscription_grant: 'Subscription grant',
   refund: 'Refund',
   demo: 'Demo credit',
+  subscription_activation_monthly: 'Monthly plan activated',
+  subscription_renewal_monthly: 'Monthly plan renewed',
+  subscription_activation_annual: 'Annual plan activated',
+  subscription_renewal_annual: 'Annual plan renewed',
+  credit_pack_pack_100: 'Credit pack (100)',
+  credit_pack_pack_500: 'Credit pack (500)',
+  credit_pack_pack_2000: 'Credit pack (2,000)',
+  admin_grant: 'Admin grant',
+  session_start_rollback: 'Session refund',
 }
