@@ -153,6 +153,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json(buildSubscriptionResponse(existingSubId, planId, plan))
     }
 
+    // Auto-upgrade: if user has an active subscription for a different plan, cancel it at period
+    // end before creating the new one. Credits already granted are kept (no delta subtraction).
+    const otherActive = await db.query<{ razorpay_subscription_id: string }>(
+      `SELECT razorpay_subscription_id FROM subscriptions.user_subscriptions
+       WHERE user_id = $1 AND status = 'active' AND plan_id != $2 LIMIT 1`,
+      [session.user.id, planId],
+    )
+    if (otherActive.rows[0]) {
+      const oldSubId = otherActive.rows[0].razorpay_subscription_id
+      await cancelSubscription(keys, oldSubId)
+      await db.query(
+        `UPDATE subscriptions.user_subscriptions SET status = 'cancelled', updated_at = NOW()
+         WHERE razorpay_subscription_id = $1`,
+        [oldSubId],
+      )
+      logger.info({ msg: 'subscription_upgraded', userId: session.user.id, from: oldSubId, to: planId })
+    }
+
     const rzpSub = await createPlanSubscription(
       keys,
       { razorpayPlanId: plan.razorpayPlanId, razorpayOfferId: '', userId: session.user.id, planId },
