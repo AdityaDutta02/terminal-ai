@@ -29,6 +29,7 @@ export interface PricingClientProps {
   userEmail: string
   userName: string
   showInsufficientMessage?: boolean
+  defaultBilling?: 'monthly' | 'annual'
 }
 
 function getCreditPrice(amount: number): number {
@@ -74,8 +75,8 @@ async function extractApiError(res: Response): Promise<string> {
 }
 
 export function PricingClient(props: PricingClientProps) {
-  const { isLoggedIn, activeSubscription, razorpayKeyId, userEmail, userName, showInsufficientMessage } = props
-  const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly')
+  const { isLoggedIn, activeSubscription, razorpayKeyId, userEmail, userName, showInsufficientMessage, defaultBilling } = props
+  const [billing, setBilling] = useState<'monthly' | 'annual'>(defaultBilling ?? 'annual')
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'upi'>('card')
   const [creditAmount, setCreditAmount] = useState(500)
   const [subLoading, setSubLoading] = useState(false)

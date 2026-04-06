@@ -14,7 +14,7 @@ type ActiveSub = { plan_id: string; status: string }
 export default async function PricingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ reason?: string }>
+  searchParams: Promise<{ reason?: string; plan?: string }>
 }) {
   const session = await auth.api.getSession({ headers: await headers() })
 
@@ -33,7 +33,8 @@ export default async function PricingPage({
   const razorpayKeyId = process.env.RAZORPAY_KEY_ID ?? ''
   const userEmail = session?.user.email ?? ''
   const userName = session?.user.name ?? ''
-  const { reason } = await searchParams
+  const { reason, plan } = await searchParams
+  const defaultBilling = plan === 'annual' ? 'annual' : plan === 'monthly' ? 'monthly' : undefined
 
   return (
     <PricingClient
@@ -43,6 +44,7 @@ export default async function PricingPage({
       userEmail={userEmail}
       userName={userName}
       showInsufficientMessage={reason === 'insufficient_credits'}
+      defaultBilling={defaultBilling}
     />
   )
 }

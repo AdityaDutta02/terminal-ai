@@ -253,11 +253,8 @@ export function HomepageClient({
 
           <div className="grid md:grid-cols-3 gap-5">
             {/* Monthly */}
-            <div className="relative bg-white rounded-[24px] border-2 border-[#FF6B00] p-7">
-              <div className="absolute -top-3 left-6">
-                <span className="bg-[#FF6B00] text-white text-[11px] font-semibold px-3 py-1 rounded-full">Recommended</span>
-              </div>
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-[#FF6B00] mb-3">Monthly</p>
+            <div className="bg-white rounded-[24px] border border-[#1e1e1f]/[0.06] p-7">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-[#1e1e1f]/35 mb-3">Monthly</p>
               <div className="flex items-baseline gap-1 mb-1">
                 <span className="text-[36px] font-display text-[#1e1e1f] tracking-[-0.02em]">&#8377;99</span>
                 <span className="text-[13px] text-[#1e1e1f]/35">/first month</span>
@@ -266,19 +263,22 @@ export function HomepageClient({
               <ul className="space-y-2 mb-7">
                 {['Monthly credit allowance', 'Access all apps', 'Credits never expire', 'Email support'].map((f) => (
                   <li key={f} className="flex items-center gap-2 text-[13px] text-[#1e1e1f]/55">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B00] flex-shrink-0" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#1e1e1f]/30 flex-shrink-0" />
                     {f}
                   </li>
                 ))}
               </ul>
-              <a href="/pricing" className="block w-full py-2.5 rounded-full bg-[#FF6B00] hover:bg-[#E55D00] text-white text-center text-[13px] font-medium transition-colors">
+              <a href="/pricing?plan=monthly" className="block w-full py-2.5 rounded-full border border-[#1e1e1f]/15 hover:border-[#1e1e1f]/30 text-[#1e1e1f] text-center text-[13px] font-medium transition-colors">
                 Get started
               </a>
             </div>
 
             {/* Annual */}
-            <div className="bg-white rounded-[24px] border border-[#1e1e1f]/[0.06] p-7">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-[#1e1e1f]/35 mb-3">Annual</p>
+            <div className="relative bg-white rounded-[24px] border-2 border-[#FF6B00] p-7">
+              <div className="absolute -top-3 left-6">
+                <span className="bg-[#FF6B00] text-white text-[11px] font-semibold px-3 py-1 rounded-full">Recommended</span>
+              </div>
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-[#FF6B00] mb-3">Annual</p>
               <div className="flex items-baseline gap-1 mb-1">
                 <span className="text-[36px] font-display text-[#1e1e1f] tracking-[-0.02em]">&#8377;2,490</span>
                 <span className="text-[13px] text-[#1e1e1f]/35">/year</span>
@@ -287,12 +287,12 @@ export function HomepageClient({
               <ul className="space-y-2 mb-7">
                 {['Everything in Monthly', 'Best per-month rate', 'Access all apps', 'Priority support'].map((f) => (
                   <li key={f} className="flex items-center gap-2 text-[13px] text-[#1e1e1f]/55">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#1e1e1f]/30 flex-shrink-0" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B00] flex-shrink-0" />
                     {f}
                   </li>
                 ))}
               </ul>
-              <a href="/pricing" className="block w-full py-2.5 rounded-full bg-[#1e1e1f] hover:bg-[#333] text-white text-center text-[13px] font-medium transition-colors">
+              <a href="/pricing?plan=annual" className="block w-full py-2.5 rounded-full bg-[#FF6B00] hover:bg-[#E55D00] text-white text-center text-[13px] font-medium transition-colors">
                 Get started
               </a>
             </div>
