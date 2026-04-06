@@ -32,19 +32,8 @@ export interface PricingClientProps {
   defaultBilling?: 'monthly' | 'annual'
 }
 
-function getCreditPrice(amount: number): number {
-  if (amount <= 500) return 0.45
-  if (amount <= 1500) return 0.38
-  if (amount <= 3000) return 0.30
-  return 0.24
-}
-
-function getDiscountLabel(amount: number): string | null {
-  if (amount <= 500) return null
-  if (amount <= 1500) return '15% off'
-  if (amount <= 3000) return '33% off'
-  return '47% off'
-}
+// Flat ₹1.25/credit — 25% more than subscription rate
+function getCreditPrice(): number { return 1.25 }
 
 function Spinner() {
   return <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
@@ -87,9 +76,8 @@ export function PricingClient(props: PricingClientProps) {
 
   // "Current plan" only shows when the selected tab matches the user's actual plan
   const isSubscribed = activePlanId === billing
-  const creditPrice = getCreditPrice(creditAmount)
+  const creditPrice = getCreditPrice()
   const totalCreditPrice = Math.round(creditAmount * creditPrice)
-  const discountLabel = getDiscountLabel(creditAmount)
 
   async function handleSubscribe(): Promise<void> {
     if (!isLoggedIn) { window.location.href = '/login?next=/pricing'; return }
@@ -208,10 +196,18 @@ export function PricingClient(props: PricingClientProps) {
           {/* Subscription */}
           <div className="relative bg-white rounded-[24px] border-2 border-[#FF6B00] p-8">
             <div className="absolute -top-3 left-6">
-              <span className="bg-[#FF6B00] text-white text-[11px] font-semibold px-3 py-1 rounded-full">Recommended</span>
+              <span className="bg-[#FF6B00] text-white text-[11px] font-semibold px-3 py-1 rounded-full">
+                {billing === 'annual' ? 'Best value' : 'Recommended'}
+              </span>
             </div>
-            <p className="text-[12px] font-semibold uppercase tracking-widest text-[#FF6B00] mb-1">Subscription</p>
-            <p className="text-[14px] text-[#1e1e1f]/45 mb-5">Best value for regular users</p>
+            <p className="text-[12px] font-semibold uppercase tracking-widest text-[#FF6B00] mb-1">
+              {billing === 'annual' ? 'Annual Plan' : 'Monthly Plan'}
+            </p>
+            <p className="text-[14px] text-[#1e1e1f]/45 mb-5">
+              {billing === 'annual'
+                ? 'Lock in a lower rate — same credits, less spend'
+                : 'Start at ₹99 — cancel any time'}
+            </p>
 
             <div className="mb-6">
               {billing === 'monthly' ? (
@@ -228,7 +224,7 @@ export function PricingClient(props: PricingClientProps) {
                     <span className="text-[40px] font-display text-[#1e1e1f] tracking-[-0.02em]">&#8377;2,490</span>
                     <span className="text-[14px] text-[#1e1e1f]/35">/year</span>
                   </div>
-                  <p className="text-[13px] text-[#1e1e1f]/35 mt-0.5">Save &#8377;1,098 vs monthly</p>
+                  <p className="text-[13px] text-[#1e1e1f]/35 mt-0.5">Save &#8377;1,098 — over 3 months free</p>
                 </>
               )}
             </div>
@@ -266,13 +262,27 @@ export function PricingClient(props: PricingClientProps) {
                 onClick={handleSubscribe} disabled={subLoading}
                 className="w-full py-3 rounded-full bg-[#FF6B00] hover:bg-[#E55D00] text-white font-medium text-[14px] transition-all duration-200 hover:shadow-lg hover:shadow-orange-200/50 active:scale-[0.98] disabled:opacity-60"
               >
-                {subLoading ? <><Spinner />Processing...</> : (isLoggedIn ? 'Subscribe now' : 'Sign in to subscribe')}
+                {subLoading ? <><Spinner />Processing...</> : (isLoggedIn
+                  ? (billing === 'annual' ? 'Get the best deal' : 'Start for ₹99')
+                  : 'Sign in to subscribe')}
               </button>
             )}
             {subError && <p className="mt-2 text-[12px] text-red-500">{subError}</p>}
 
             <ul className="mt-6 space-y-2.5">
-              {['Monthly credit allowance', 'Session-based billing', 'Access all marketplace apps', 'Email support', 'Usage analytics dashboard'].map((f) => (
+              {(billing === 'annual' ? [
+                '300 credits per month — 3,600 for the year',
+                'Save ₹1,098 over monthly billing',
+                'Every app on the marketplace',
+                'Credits stay active all year',
+                'Switch or cancel any time',
+              ] : [
+                '300 AI credits every month',
+                'First month just ₹99',
+                'Every app on the marketplace',
+                'Credits valid for your billing period',
+                'Cancel any time',
+              ]).map((f) => (
                 <li key={f} className="flex items-start gap-2 text-[13px] text-[#1e1e1f]/55">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B00] mt-1.5 flex-shrink-0" />
                   {f}
@@ -284,7 +294,7 @@ export function PricingClient(props: PricingClientProps) {
           {/* Pay as you go */}
           <div className="bg-white rounded-[24px] border border-[#1e1e1f]/[0.06] p-8">
             <p className="text-[12px] font-semibold uppercase tracking-widest text-[#1e1e1f]/35 mb-1">Pay as you go</p>
-            <p className="text-[14px] text-[#1e1e1f]/45 mb-6">Buy credits when you need them</p>
+            <p className="text-[14px] text-[#1e1e1f]/45 mb-6">No commitment — buy only what you need</p>
 
             <div className="mb-4">
               <div className="flex items-baseline justify-between mb-2">
@@ -294,12 +304,12 @@ export function PricingClient(props: PricingClientProps) {
                 <span className="text-[13px] text-[#1e1e1f]/35">credits</span>
               </div>
               <input
-                type="range" min={100} max={5000} step={100}
+                type="range" min={100} max={2000} step={100}
                 value={creditAmount} onChange={(e) => setCreditAmount(Number(e.target.value))}
                 className="w-full h-1.5 bg-[#1e1e1f]/10 rounded-full appearance-none cursor-pointer accent-[#1e1e1f]"
               />
               <div className="flex justify-between text-[11px] text-[#1e1e1f]/25 mt-1">
-                <span>100</span><span>5,000</span>
+                <span>100</span><span>2,000</span>
               </div>
             </div>
 
@@ -311,11 +321,7 @@ export function PricingClient(props: PricingClientProps) {
                 </div>
                 <span className="text-[12px] text-[#1e1e1f]/35">&#8377;{creditPrice.toFixed(2)}/credit</span>
               </div>
-              {discountLabel && (
-                <span className="inline-block mt-2 text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-                  {discountLabel}
-                </span>
-              )}
+              <p className="text-[11px] text-[#1e1e1f]/35 mt-2">Subscribe to pay 20% less per credit</p>
             </div>
 
             <button
@@ -326,7 +332,7 @@ export function PricingClient(props: PricingClientProps) {
             </button>
             {creditError && <p className="mt-2 text-[12px] text-red-500">{creditError}</p>}
 
-            <p className="mt-4 text-[11px] text-[#1e1e1f]/25 text-center">Credits never expire. Powered by Razorpay.</p>
+            <p className="mt-4 text-[11px] text-[#1e1e1f]/25 text-center">Credits valid for 12 months from purchase. Powered by Razorpay.</p>
           </div>
         </div>
       </div>

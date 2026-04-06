@@ -33,10 +33,11 @@ export const PLANS = {
 
 export type PlanId = keyof typeof PLANS
 
+// ₹1.25/credit flat — 25% more than the subscription rate of ₹1/credit
 export const CREDIT_PACKS = {
-  pack_100:  { credits: 100,  priceInr: 89   },
-  pack_500:  { credits: 500,  priceInr: 399  },
-  pack_2000: { credits: 2000, priceInr: 1499 },
+  pack_100:  { credits: 100,  priceInr: 125  },
+  pack_500:  { credits: 500,  priceInr: 625  },
+  pack_2000: { credits: 2000, priceInr: 2500 },
 } as const
 
 export type CreditPackId = keyof typeof CREDIT_PACKS

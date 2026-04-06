@@ -6,7 +6,7 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Pricing - Terminal AI',
-  description: 'Simple, transparent pricing for AI-powered apps. Start with free credits.',
+  description: 'Run AI apps for ₹1 per credit. Subscribe from ₹299/month or ₹2,490/year — over 3 months free. No hidden fees.',
 }
 
 type ActiveSub = { plan_id: string; status: string }
