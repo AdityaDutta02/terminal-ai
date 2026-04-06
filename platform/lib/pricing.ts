@@ -10,20 +10,24 @@ export const MODEL_TIER_CREDITS: Record<ModelTier, number> = {
 }
 
 // Price in rupees (display/checkout use). Note: DB subscriptions.plans.price_inr stores paise.
+// Auto-detect Razorpay mode from key prefix — selects test or live plan/offer IDs accordingly
+const rzpMode = (process.env.RAZORPAY_KEY_ID ?? '').startsWith('rzp_live_') ? 'LIVE' : 'TEST'
+const rzpEnv = (suffix: string): string => process.env[`RAZORPAY_${rzpMode}_${suffix}`] ?? ''
+
 export const PLANS = {
   monthly: {
     priceInr: 299,
     introInr: 99,
     name: 'Monthly',
-    razorpayPlanId: process.env.RAZORPAY_PLAN_ID_MONTHLY ?? '',
+    razorpayPlanId:      rzpEnv('PLAN_ID_MONTHLY'),
     // Separate offers per payment method — both discount ₹200 off cycle 1 (net ₹99)
-    razorpayOfferIdCard: process.env.RAZORPAY_OFFER_ID_MONTHLY_CARD ?? '',
-    razorpayOfferIdUpi:  process.env.RAZORPAY_OFFER_ID_MONTHLY_UPI  ?? '',
+    razorpayOfferIdCard: rzpEnv('OFFER_ID_MONTHLY_CARD'),
+    razorpayOfferIdUpi:  rzpEnv('OFFER_ID_MONTHLY_UPI'),
   },
   annual: {
     priceInr: 2490,
     name: 'Annual',
-    razorpayPlanId: process.env.RAZORPAY_PLAN_ID_ANNUAL ?? '',
+    razorpayPlanId: rzpEnv('PLAN_ID_ANNUAL'),
   },
 } as const
 
