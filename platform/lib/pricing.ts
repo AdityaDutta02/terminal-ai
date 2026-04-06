@@ -16,14 +16,14 @@ export const PLANS = {
     introInr: 99,
     name: 'Monthly',
     razorpayPlanId: process.env.RAZORPAY_PLAN_ID_MONTHLY ?? '',
-    // Razorpay offer that discounts ₹200 off the first billing cycle (net ₹99)
-    razorpayOfferId: process.env.RAZORPAY_OFFER_ID_MONTHLY ?? '',
+    // Separate offers per payment method — both discount ₹200 off cycle 1 (net ₹99)
+    razorpayOfferIdCard: process.env.RAZORPAY_OFFER_ID_MONTHLY_CARD ?? '',
+    razorpayOfferIdUpi:  process.env.RAZORPAY_OFFER_ID_MONTHLY_UPI  ?? '',
   },
   annual: {
     priceInr: 2490,
     name: 'Annual',
     razorpayPlanId: process.env.RAZORPAY_PLAN_ID_ANNUAL ?? '',
-    razorpayOfferId: '',
   },
 } as const
 

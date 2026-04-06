@@ -76,6 +76,7 @@ async function extractApiError(res: Response): Promise<string> {
 export function PricingClient(props: PricingClientProps) {
   const { isLoggedIn, activeSubscription, razorpayKeyId, userEmail, userName, showInsufficientMessage } = props
   const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly')
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'upi'>('card')
   const [creditAmount, setCreditAmount] = useState(500)
   const [subLoading, setSubLoading] = useState(false)
   const [subError, setSubError] = useState<string | null>(null)
@@ -95,7 +96,10 @@ export function PricingClient(props: PricingClientProps) {
       const res = await fetch('/api/subscriptions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId: billing === 'annual' ? 'annual' : 'monthly' }),
+        body: JSON.stringify({
+          planId: billing === 'annual' ? 'annual' : 'monthly',
+          paymentMethod: billing === 'monthly' ? paymentMethod : undefined,
+        }),
       })
       if (!res.ok) throw new Error(await extractApiError(res))
       const { shortUrl } = (await res.json()) as { subscriptionId: string; shortUrl: string }
@@ -214,6 +218,30 @@ export function PricingClient(props: PricingClientProps) {
                 </>
               )}
             </div>
+
+            {/* Payment method selector — only for monthly (offers differ per method) */}
+            {billing === 'monthly' && !isSubscribed && (
+              <div className="flex gap-2 mb-4">
+                {(['card', 'upi'] as const).map((method) => (
+                  <button
+                    key={method}
+                    onClick={() => setPaymentMethod(method)}
+                    aria-pressed={paymentMethod === method}
+                    className={`flex-1 py-2 rounded-xl text-[13px] font-medium border transition-all duration-150 ${
+                      paymentMethod === method
+                        ? 'bg-[#FF6B00]/10 border-[#FF6B00] text-[#FF6B00]'
+                        : 'bg-white border-[#1e1e1f]/10 text-[#1e1e1f]/45 hover:border-[#1e1e1f]/25'
+                    }`}
+                  >
+                    {method === 'card' ? 'Card' : 'UPI'}
+                    {method === 'card'
+                      ? <span className="block text-[10px] font-normal opacity-70">Visa / Mastercard</span>
+                      : <span className="block text-[10px] font-normal opacity-70">GPay / PhonePe</span>
+                    }
+                  </button>
+                ))}
+              </div>
+            )}
 
             {isSubscribed ? (
               <button disabled className="w-full py-3 rounded-full bg-[#1e1e1f]/10 text-[#1e1e1f]/40 font-medium text-[14px] cursor-not-allowed">

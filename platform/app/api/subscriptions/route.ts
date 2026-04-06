@@ -41,7 +41,7 @@ async function createSubscription(keys: RazorpayKeys, params: CreateSubscription
 
 interface PlanSubscriptionRequest {
   razorpayPlanId: string
-  razorpayOfferId: string
+  razorpayOfferId: string  // pre-resolved to card or UPI offer
   userId: string
   planId: string
 }
@@ -76,6 +76,7 @@ function getRazorpayKeys(): RazorpayKeys | null {
 
 const createSchema = z.object({
   planId: z.enum(['monthly', 'annual']),
+  paymentMethod: z.enum(['card', 'upi']).optional(),
 })
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -122,12 +123,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid plan', details: parsed.error.flatten() }, { status: 400 })
   }
-  const { planId } = parsed.data
+  const { planId, paymentMethod } = parsed.data
   const plan = PLANS[planId as PlanId]
 
   if (!plan.razorpayPlanId) {
     return NextResponse.json({ error: 'Subscription not configured' }, { status: 503 })
   }
+
+  // Resolve offer: monthly has separate card/UPI offers; annual has none
+  const razorpayOfferId = planId === 'monthly'
+    ? (paymentMethod === 'upi' ? plan.razorpayOfferIdUpi : plan.razorpayOfferIdCard)
+    : ''
 
   try {
     // Idempotency: return existing pending/active subscription without creating a new one
@@ -151,7 +157,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const rzpSub = await createPlanSubscription(
       keys,
-      { razorpayPlanId: plan.razorpayPlanId, razorpayOfferId: plan.razorpayOfferId, userId: session.user.id, planId },
+      { razorpayPlanId: plan.razorpayPlanId, razorpayOfferId, userId: session.user.id, planId },
     )
 
     await db.query(
