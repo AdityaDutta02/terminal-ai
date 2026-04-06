@@ -243,17 +243,83 @@ export function HomepageClient({
         </div>
       </section>
 
-      {/* ── Pricing CTA ── */}
-      <section className="bg-[#f5f5f0] py-16 border-t border-[#1e1e1f]/[0.06]">
-        <div className="max-w-[600px] mx-auto px-6 text-center">
-          <p className="text-[15px] text-[#1e1e1f]/50 mb-4">Session-based pricing. Credits never expire.</p>
-          <a
-            href="/pricing"
-            className="inline-flex items-center gap-2 text-[14px] font-medium text-[#FF6B00] hover:text-[#E55D00] transition-colors"
-          >
-            View pricing
-            <ArrowRight className="w-4 h-4" aria-hidden="true" />
-          </a>
+      {/* ── Pricing ── */}
+      <section className="bg-[#f5f5f0] py-20 border-t border-[#1e1e1f]/[0.06]">
+        <div className="max-w-[960px] mx-auto px-6">
+          <div className="text-center mb-12">
+            <h2 className="font-display text-[clamp(28px,4vw,42px)] text-[#1e1e1f] tracking-[-0.02em] mb-3">Simple pricing</h2>
+            <p className="text-[15px] text-[#1e1e1f]/45">Subscribe for monthly credits or buy as you go. No hidden fees.</p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-5">
+            {/* Monthly */}
+            <div className="relative bg-white rounded-[24px] border-2 border-[#FF6B00] p-7">
+              <div className="absolute -top-3 left-6">
+                <span className="bg-[#FF6B00] text-white text-[11px] font-semibold px-3 py-1 rounded-full">Recommended</span>
+              </div>
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-[#FF6B00] mb-3">Monthly</p>
+              <div className="flex items-baseline gap-1 mb-1">
+                <span className="text-[36px] font-display text-[#1e1e1f] tracking-[-0.02em]">&#8377;99</span>
+                <span className="text-[13px] text-[#1e1e1f]/35">/first month</span>
+              </div>
+              <p className="text-[12px] text-[#1e1e1f]/35 mb-6">then &#8377;299/month</p>
+              <ul className="space-y-2 mb-7">
+                {['Monthly credit allowance', 'Access all apps', 'Credits never expire', 'Email support'].map((f) => (
+                  <li key={f} className="flex items-center gap-2 text-[13px] text-[#1e1e1f]/55">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B00] flex-shrink-0" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <a href="/pricing" className="block w-full py-2.5 rounded-full bg-[#FF6B00] hover:bg-[#E55D00] text-white text-center text-[13px] font-medium transition-colors">
+                Get started
+              </a>
+            </div>
+
+            {/* Annual */}
+            <div className="bg-white rounded-[24px] border border-[#1e1e1f]/[0.06] p-7">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-[#1e1e1f]/35 mb-3">Annual</p>
+              <div className="flex items-baseline gap-1 mb-1">
+                <span className="text-[36px] font-display text-[#1e1e1f] tracking-[-0.02em]">&#8377;2,490</span>
+                <span className="text-[13px] text-[#1e1e1f]/35">/year</span>
+              </div>
+              <p className="text-[12px] text-[#1e1e1f]/35 mb-6">Save &#8377;1,098 vs monthly</p>
+              <ul className="space-y-2 mb-7">
+                {['Everything in Monthly', 'Best per-month rate', 'Access all apps', 'Priority support'].map((f) => (
+                  <li key={f} className="flex items-center gap-2 text-[13px] text-[#1e1e1f]/55">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#1e1e1f]/30 flex-shrink-0" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <a href="/pricing" className="block w-full py-2.5 rounded-full bg-[#1e1e1f] hover:bg-[#333] text-white text-center text-[13px] font-medium transition-colors">
+                Get started
+              </a>
+            </div>
+
+            {/* Pay as you go */}
+            <div className="bg-white rounded-[24px] border border-[#1e1e1f]/[0.06] p-7">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-[#1e1e1f]/35 mb-3">Pay as you go</p>
+              <div className="flex items-baseline gap-1 mb-1">
+                <span className="text-[36px] font-display text-[#1e1e1f] tracking-[-0.02em]">&#8377;0.45</span>
+                <span className="text-[13px] text-[#1e1e1f]/35">/credit</span>
+              </div>
+              <p className="text-[12px] text-[#1e1e1f]/35 mb-6">No commitment needed</p>
+              <ul className="space-y-2 mb-7">
+                {['Buy credits anytime', 'Credits never expire', 'Access all apps', 'Scale as needed'].map((f) => (
+                  <li key={f} className="flex items-center gap-2 text-[13px] text-[#1e1e1f]/55">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#1e1e1f]/30 flex-shrink-0" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <a href="/pricing" className="block w-full py-2.5 rounded-full border border-[#1e1e1f]/15 hover:border-[#1e1e1f]/30 text-[#1e1e1f] text-center text-[13px] font-medium transition-colors">
+                Buy credits
+              </a>
+            </div>
+          </div>
+
+          <p className="text-center text-[12px] text-[#1e1e1f]/25 mt-8">All plans include access to every app on the marketplace.</p>
         </div>
       </section>
 
