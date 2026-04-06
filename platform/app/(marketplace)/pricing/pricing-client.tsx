@@ -30,6 +30,7 @@ export interface PricingClientProps {
   userName: string
   showInsufficientMessage?: boolean
   defaultBilling?: 'monthly' | 'annual'
+  paymentCancelled?: boolean
 }
 
 // Flat ₹1.25/credit -25% more than subscription rate
@@ -54,7 +55,7 @@ function buildRazorpayOpts(input: RzpInput): Record<string, unknown> {
   opts['description'] = `${input.credits.toLocaleString()} credits`
   opts['prefill'] = { email: input.email, name: input.name }
   opts['theme'] = { color: '#FF6B00' }
-  opts['handler'] = () => { window.location.reload() }
+  opts['handler'] = () => { window.location.href = '/?paid=1' }
   return opts
 }
 
@@ -64,7 +65,7 @@ async function extractApiError(res: Response): Promise<string> {
 }
 
 export function PricingClient(props: PricingClientProps) {
-  const { isLoggedIn, activeSubscription, razorpayKeyId, userEmail, userName, showInsufficientMessage, defaultBilling } = props
+  const { isLoggedIn, activeSubscription, razorpayKeyId, userEmail, userName, showInsufficientMessage, defaultBilling, paymentCancelled } = props
   const activePlanId = activeSubscription?.status === 'active' ? activeSubscription.plan_id as 'monthly' | 'annual' : null
   const [billing, setBilling] = useState<'monthly' | 'annual'>(defaultBilling ?? activePlanId ?? 'annual')
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'upi'>('card')
@@ -73,6 +74,7 @@ export function PricingClient(props: PricingClientProps) {
   const [subError, setSubError] = useState<string | null>(null)
   const [creditLoading, setCreditLoading] = useState(false)
   const [creditError, setCreditError] = useState<string | null>(null)
+  const [showCancelledModal, setShowCancelledModal] = useState(paymentCancelled ?? false)
 
   // "Current plan" only shows when the selected tab matches the user's actual plan
   const isSubscribed = activePlanId === billing
@@ -106,7 +108,8 @@ export function PricingClient(props: PricingClientProps) {
       params.set('description', billing === 'monthly' ? 'Monthly subscription' : 'Annual subscription')
       params.set('email', userEmail)
       params.set('user_name', userName)
-      params.set('callback_url', `${window.location.origin}/pricing?paid=1`)
+      params.set('callback_url', `${window.location.origin}/`)
+      params.set('cancel_url', `${window.location.origin}/pricing?payment=cancelled&plan=${billing}`)
       if (offerId) params.set('offer_id', offerId)
       window.location.href = `https://studioionique.com/pay?${params.toString()}`
     } catch (err) {
@@ -151,6 +154,27 @@ export function PricingClient(props: PricingClientProps) {
 
   return (
     <div className="min-h-screen bg-[#f5f5f0]">
+      {/* Payment cancelled modal */}
+      {showCancelledModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+          <div className="bg-white rounded-[24px] p-8 max-w-[400px] w-full text-center shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-[#1e1e1f]/08 flex items-center justify-center mx-auto mb-5">
+              <span className="text-2xl">&#9888;</span>
+            </div>
+            <h2 className="font-display text-[22px] text-[#1e1e1f] tracking-tight mb-2">Payment not completed</h2>
+            <p className="text-[14px] text-[#1e1e1f]/50 mb-6">
+              Your payment was cancelled or not completed. No charges were made. You can try again whenever you&apos;re ready.
+            </p>
+            <button
+              onClick={() => setShowCancelledModal(false)}
+              className="w-full py-3 rounded-full bg-[#1e1e1f] text-white font-medium text-[14px] hover:bg-[#333] transition-colors"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-[960px] mx-auto px-6 py-16">
         {showInsufficientMessage && (
           <div className="mb-10 rounded-2xl border border-[#FF6B00]/20 bg-[#FF6B00]/[0.06] px-6 py-4 text-center">

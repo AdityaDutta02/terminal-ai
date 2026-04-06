@@ -15,15 +15,18 @@ export function HomepageClient({
   apps,
   isLoggedIn = false,
   credits = null,
+  paymentSuccess = false,
 }: {
   apps: AppCardData[]
   channels: unknown[]
   categories: string[]
   isLoggedIn?: boolean
   credits?: number | null
+  paymentSuccess?: boolean
 }) {
   const carouselRef = useRef<HTMLDivElement>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [showSuccessModal, setShowSuccessModal] = useState(paymentSuccess)
   const signOut = useSignOut()
 
   const scrollCarousel = useCallback((direction: -1 | 1) => {
@@ -37,6 +40,30 @@ export function HomepageClient({
 
   return (
     <>
+      {/* Payment success modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+          <div className="bg-white rounded-[28px] p-8 max-w-[420px] w-full text-center shadow-2xl">
+            <div className="w-16 h-16 rounded-full bg-[#FF6B00]/10 flex items-center justify-center mx-auto mb-5">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#FF6B00" fillOpacity="0.12"/><path d="M10 16.5l4.5 4.5 7.5-9" stroke="#FF6B00" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+            <h2 className="font-display text-[24px] text-[#1e1e1f] tracking-tight mb-2">You&apos;re all set</h2>
+            <p className="text-[14px] text-[#1e1e1f]/50 mb-7">
+              Your credits have been added to your account. Start exploring apps on the marketplace.
+            </p>
+            <button
+              onClick={() => {
+                setShowSuccessModal(false)
+                window.history.replaceState(null, '', '/')
+              }}
+              className="w-full py-3 rounded-full bg-[#FF6B00] hover:bg-[#E55D00] text-white font-medium text-[14px] transition-colors"
+            >
+              Explore apps
+            </button>
+          </div>
+        </div>
+      )}
+
       <style>{`
         @keyframes grain { 0%,100%{transform:translate(0,0)} 10%{transform:translate(-5%,-10%)} 20%{transform:translate(-15%,5%)} 30%{transform:translate(7%,-25%)} 40%{transform:translate(-5%,25%)} 50%{transform:translate(-15%,10%)} 60%{transform:translate(15%,0%)} 70%{transform:translate(0%,15%)} 80%{transform:translate(3%,35%)} 90%{transform:translate(-10%,10%)} }
         .noise::before { content:''; position:absolute; inset:-50%; width:200%; height:200%; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); opacity:0.04; pointer-events:none; animation:grain 8s steps(10) infinite; }

@@ -127,7 +127,7 @@ async function grantPeriodCredits(
   // Use transaction + FOR UPDATE to prevent double-crediting on concurrent delivery
   await withTransaction(async (client) => {
     const result = await client.query<SubscriptionRow>(
-      `SELECT us.user_id, us.plan_id, us.credits_granted_at, p.credits_per_month
+      `SELECT us.user_id, us.plan_id, us.credits_granted_at, us.status, p.credits_per_month
        FROM subscriptions.user_subscriptions us
        JOIN subscriptions.plans p ON p.id = us.plan_id
        WHERE us.razorpay_subscription_id = $1
@@ -137,37 +137,44 @@ async function grantPeriodCredits(
     const row = result.rows[0]
     if (!row) return
 
-    // Idempotency: skip if credits already granted for this period
-    if (row.credits_granted_at && sub.current_start) {
-      const grantedMs = new Date(row.credits_granted_at).getTime()
-      const periodStartMs = sub.current_start * 1000
-      if (grantedMs >= periodStartMs) return
-    }
-
     const { user_id, plan_id, credits_per_month } = row
 
-    // Always update period timestamps
-    await client.query(
-      `UPDATE subscriptions.user_subscriptions
-       SET current_period_start = TO_TIMESTAMP($2),
-           current_period_end = TO_TIMESTAMP($3),
-           credits_granted_at = NOW(),
-           updated_at = NOW()
-       WHERE razorpay_subscription_id = $1`,
-      [sub.id, sub.current_start, sub.current_end],
-    )
+    // Idempotency: skip credit grant if credits already granted for this period.
+    // But always activate the subscription on activation events — subscription.charged
+    // can fire before subscription.activated, setting credits_granted_at first, which
+    // would cause the activation handler to return early without setting status='active'.
+    const alreadyGranted = (() => {
+      if (!row.credits_granted_at || !sub.current_start) return false
+      const grantedMs = new Date(row.credits_granted_at).getTime()
+      const periodStartMs = sub.current_start * 1000
+      return grantedMs >= periodStartMs
+    })()
 
-    // Set status to active only on activation
-    if (setActive) {
+    if (!alreadyGranted) {
+      // Update period timestamps and grant credits for this period
+      await client.query(
+        `UPDATE subscriptions.user_subscriptions
+         SET current_period_start = TO_TIMESTAMP($2),
+             current_period_end = TO_TIMESTAMP($3),
+             credits_granted_at = NOW(),
+             updated_at = NOW()
+         WHERE razorpay_subscription_id = $1`,
+        [sub.id, sub.current_start, sub.current_end],
+      )
+
+      await grantCredits(user_id, credits_per_month, `${creditReasonPrefix}_${plan_id}`, client)
+    }
+
+    // Always activate on activation events regardless of whether credits were already granted
+    if (setActive && row.status !== 'active') {
       await client.query(
         `UPDATE subscriptions.user_subscriptions
          SET status = 'active', updated_at = NOW()
          WHERE razorpay_subscription_id = $1`,
         [sub.id],
       )
+      logger.info({ msg: 'subscription_activated', userId: user_id, planId: plan_id, subscriptionId: sub.id })
     }
-
-    await grantCredits(user_id, credits_per_month, `${creditReasonPrefix}_${plan_id}`, client)
   })
 }
 

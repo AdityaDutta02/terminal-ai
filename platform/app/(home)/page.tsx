@@ -28,15 +28,9 @@ async function getCreditBalance(userId: string): Promise<number> {
   return result?.rows[0]?.credits ?? 0
 }
 
-const channelColors = [
-  'bg-orange-600',
-  'bg-blue-600',
-  'bg-rose-600',
-  'bg-teal-600',
-  'bg-amber-600',
-]
+const channelColors = 'bg-orange-600|bg-blue-600|bg-rose-600|bg-teal-600|bg-amber-600'.split('|')
 
-const FALLBACK_CATEGORIES = ['Productivity', 'Finance', 'Developer', 'Analytics', 'Security']
+const FALLBACK_CATEGORIES = 'Productivity|Finance|Developer|Analytics|Security'.split('|')
 
 function idHash(id: string, seed: number): number {
   let h = seed
@@ -129,11 +123,16 @@ async function getChannels(): Promise<ChannelCardData[]> {
   }))
 }
 
-export default async function HomePage() {
-  const [apps, channels, session] = await Promise.all([
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ paid?: string }>
+}) {
+  const [apps, channels, session, params] = await Promise.all([
     getApps(),
     getChannels(),
     auth.api.getSession({ headers: await headers() }),
+    searchParams,
   ])
   const credits = session ? await getCreditBalance(session.user.id) : null
 
@@ -146,6 +145,7 @@ export default async function HomePage() {
       categories={categories}
       isLoggedIn={!!session}
       credits={credits}
+      paymentSuccess={params?.paid === '1'}
     />
   )
 }
