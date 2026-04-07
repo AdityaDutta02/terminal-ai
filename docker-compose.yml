@@ -133,10 +133,7 @@ services:
       - traefik.http.routers.gateway.tls.certresolver=letsencrypt
       - traefik.http.routers.gateway.middlewares=secure-headers@file,rate-limit@file
       - traefik.http.services.gateway.loadbalancer.server.port=3001
-    deploy:
-      resources:
-        limits:
-          memory: 512M
+    mem_limit: 512m
 
   meilisearch:
     image: getmeili/meilisearch:v1.7
