@@ -112,7 +112,7 @@ services:
     build:
       context: ./gateway
       dockerfile: Dockerfile
-    restart: unless-stopped
+    restart: always
     ports:
       - '3001:3001'
     environment:
@@ -133,6 +133,10 @@ services:
       - traefik.http.routers.gateway.tls.certresolver=letsencrypt
       - traefik.http.routers.gateway.middlewares=secure-headers@file,rate-limit@file
       - traefik.http.services.gateway.loadbalancer.server.port=3001
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   meilisearch:
     image: getmeili/meilisearch:v1.7
