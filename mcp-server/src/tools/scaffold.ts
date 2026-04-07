@@ -23,12 +23,27 @@ import config from './validate-config'
 
 const GATEWAY_URL = process.env.TERMINAL_AI_GATEWAY_URL!
 
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  maxRetries = 3,
+): Promise<Response> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const res = await fetch(url, options)
+    if (res.status !== 429) return res
+    const retryAfter = parseInt(res.headers.get('Retry-After') ?? '2', 10)
+    const delayMs = retryAfter * 1000 * Math.pow(2, attempt)
+    await new Promise<void>((r) => setTimeout(r, delayMs))
+  }
+  throw new Error('Gateway is busy. Please try again in a moment.')
+}
+
 export async function callGateway(
   messages: { role: string; content: string }[],
   embedToken: string,
 ): Promise<Response> {
   if (!embedToken) throw new Error('Missing embed token')
-  const res = await fetch(\`\${GATEWAY_URL}/v1/chat/completions\`, {
+  const res = await fetchWithRetry(\`\${GATEWAY_URL}/v1/chat/completions\`, {
     method: 'POST',
     headers: {
       Authorization: \`Bearer \${embedToken}\`,
@@ -37,8 +52,12 @@ export async function callGateway(
     body: JSON.stringify({ model: config.model_tier, messages, stream: true }),
   })
   if (res.status === 401) {
-    throw Object.assign(new Error('Session expired. The viewer will deliver a fresh token automatically — retry your request in a moment.'), { code: 'TOKEN_EXPIRED', retryable: true })
+    throw Object.assign(
+      new Error('Session expired. The viewer will deliver a fresh token automatically — retry your request in a moment.'),
+      { code: 'TOKEN_EXPIRED', retryable: true },
+    )
   }
+  if (!res.ok) throw new Error(\`Gateway error: \${res.status}\`)
   return res
 }
 
@@ -47,7 +66,6 @@ export async function* streamChat(
   embedToken: string,
 ) {
   const res = await callGateway(messages, embedToken)
-  if (!res.ok) throw new Error(\`Gateway error: \${res.status}\`)
   const reader = res.body!.getReader()
   const decoder = new TextDecoder()
   while (true) {
