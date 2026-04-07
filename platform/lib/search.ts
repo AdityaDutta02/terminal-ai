@@ -47,11 +47,12 @@ export async function searchApps(query: string, limit = 20): Promise<SearchResul
 export async function ensureIndex(): Promise<void> {
   const res = await fetch(`${MEILI_URL}/indexes/${INDEX}`, { headers: meiliHeaders() })
   if (res.status === 404) {
-    await fetch(`${MEILI_URL}/indexes`, {
+    const createRes = await fetch(`${MEILI_URL}/indexes`, {
       method: 'POST',
       headers: meiliHeaders(),
       body: JSON.stringify({ uid: INDEX, primaryKey: 'id' }),
     })
+    if (!createRes.ok) throw new Error(`Meilisearch create index error: ${await createRes.text()}`)
     await configureIndex()
   }
 }
