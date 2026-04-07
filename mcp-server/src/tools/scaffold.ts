@@ -31,8 +31,8 @@ async function fetchWithRetry(
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     const res = await fetch(url, options)
     if (res.status !== 429) return res
-    const retryAfter = parseInt(res.headers.get('Retry-After') ?? '2', 10)
-    const delayMs = retryAfter * 1000 * Math.pow(2, attempt)
+    const retryAfter = parseInt(res.headers.get('Retry-After') ?? '0', 10)
+    const delayMs = retryAfter > 0 ? retryAfter * 1000 : Math.pow(2, attempt + 1) * 1000
     await new Promise<void>((r) => setTimeout(r, delayMs))
   }
   throw new Error('Gateway is busy. Please try again in a moment.')

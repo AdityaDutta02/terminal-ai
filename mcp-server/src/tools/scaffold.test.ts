@@ -19,4 +19,21 @@ describe('scaffoldApp', () => {
     expect(config.health_check_path).toBe('/api/health')
     expect(result.required_env_vars).toContain('TERMINAL_AI_GATEWAY_URL')
   })
+
+  it('includes fetchWithRetry with 429 retry logic in nextjs+ai scaffold', () => {
+    const result = scaffoldApp({
+      framework: 'nextjs',
+      app_name: 'Test App',
+      description: 'test',
+      category: 'test',
+      uses_ai: true,
+      uses_file_upload: false,
+      generates_artifacts: false,
+    })
+    const sdk = result.files['lib/terminal-ai.ts']
+    expect(sdk).toBeDefined()
+    expect(sdk).toContain('fetchWithRetry')
+    expect(sdk).toContain("throw new Error('Gateway is busy. Please try again in a moment.')")
+    expect(sdk).toContain('Retry-After')
+  })
 })
