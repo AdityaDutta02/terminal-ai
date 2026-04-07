@@ -1,13 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// Mock global fetch
 const mockFetch = vi.fn()
-vi.stubGlobal('fetch', mockFetch)
 
 describe('ensureIndex', () => {
   beforeEach(() => {
     vi.resetAllMocks()
     vi.resetModules()
+    vi.stubGlobal('fetch', mockFetch)  // after resetModules
     process.env.MEILISEARCH_URL = 'http://localhost:7700'
     process.env.MEILI_MASTER_KEY = 'test-key'
   })
@@ -39,5 +38,15 @@ describe('ensureIndex', () => {
 
     const { ensureIndex } = await import('./search')
     await expect(ensureIndex()).rejects.toThrow('Meilisearch create index error: Unauthorized')
+  })
+
+  it('throws when settings configuration PATCH fails', async () => {
+    mockFetch
+      .mockResolvedValueOnce({ status: 404, ok: false })                        // GET check
+      .mockResolvedValueOnce({ ok: true, text: async () => '' })                // POST create ok
+      .mockResolvedValueOnce({ ok: false, text: async () => 'Bad Request' })   // PATCH fails
+
+    const { ensureIndex } = await import('./search')
+    await expect(ensureIndex()).rejects.toThrow('Meilisearch settings error: Bad Request')
   })
 })

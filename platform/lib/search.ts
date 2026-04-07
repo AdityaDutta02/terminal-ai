@@ -46,6 +46,9 @@ export async function searchApps(query: string, limit = 20): Promise<SearchResul
 
 export async function ensureIndex(): Promise<void> {
   const res = await fetch(`${MEILI_URL}/indexes/${INDEX}`, { headers: meiliHeaders() })
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`Meilisearch check index error: ${await res.text()}`)
+  }
   if (res.status === 404) {
     const createRes = await fetch(`${MEILI_URL}/indexes`, {
       method: 'POST',
