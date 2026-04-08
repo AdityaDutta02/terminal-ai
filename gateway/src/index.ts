@@ -4,6 +4,8 @@ import { logger } from 'hono/logger'
 import { proxy } from './routes/proxy.js'
 import { uploadRouter } from './routes/upload.js'
 import { handleGenerate } from './routes/generate.js'
+import { dbRouter } from './routes/db.js'
+import { storageRouter } from './routes/storage.js'
 import { gatewayRateLimit } from './middleware/rate-limit.js'
 import { embedTokenAuth } from './middleware/auth.js'
 
@@ -18,11 +20,11 @@ app.use(
       if (!origin) return null
       if (origin === 'https://terminalai.studioionique.com') return origin
       if (/^https:\/\/[a-z0-9-]+\.apps\.terminalai\.app$/.test(origin)) return origin
-      // Allow localhost only in development
+      if (/^https:\/\/[a-z0-9-]+\.apps\.terminalai\.studioionique\.com$/.test(origin)) return origin
       if (process.env.NODE_ENV !== 'production' && origin.startsWith('http://localhost')) return origin
       return null
     },
-    allowMethods: ['POST', 'OPTIONS'],
+    allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
     maxAge: 86400,
   }),
@@ -31,9 +33,13 @@ app.use(
 app.get('/health', (c) => c.json({ status: 'ok', version: '1.0.0', ts: Date.now() }))
 
 app.use('/v1/*', gatewayRateLimit())
+app.use('/db/*', gatewayRateLimit())
+app.use('/storage/*', gatewayRateLimit())
 
 app.route('/upload', uploadRouter)
 app.post('/v1/generate', embedTokenAuth, handleGenerate)
+app.route('/db', dbRouter)
+app.route('/storage', storageRouter)
 app.route('/', proxy)
 
 const port = parseInt(process.env.PORT ?? '3001', 10)

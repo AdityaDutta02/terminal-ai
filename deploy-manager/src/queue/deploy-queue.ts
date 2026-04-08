@@ -1,5 +1,7 @@
 import { Queue, Worker } from 'bullmq'
 import { readFile, rm } from 'fs/promises'
+import { randomBytes } from 'crypto'
+import pg from 'pg'
 import { scanForSecrets } from '../services/gitleaks'
 import { createApp, triggerDeploy, getAppDetails, waitForHealthy } from '../services/coolify'
 import { createSubdomain } from '../services/dns'
@@ -58,6 +60,79 @@ async function failDeployment(deploymentId: string, errorCode: string): Promise<
   await updateDeployment(deploymentId, { status: 'failed', error_message: message, error_code: errorCode, completed_at: new Date() })
     .catch((err: unknown) => logger.error({ msg: 'failed_to_update_deployment_status', deploymentId, err: String(err) }))
   await emitEvent(deploymentId, 'failed', message, { error_code: errorCode })
+}
+
+/** Provision a Postgres schema and role for an app. Idempotent — skips if already provisioned. */
+async function provisionAppDb(appId: string): Promise<{ schemaName: string; roleName: string }> {
+  const shortId = appId.replaceAll('-', '_')
+  const schemaName = `app_data_${shortId}`
+  const roleName = `app_${shortId}`
+
+  const { rows } = await db.query<{ app_id: string }>(
+    `SELECT app_id FROM deployments.app_db_provisions WHERE app_id = $1`,
+    [appId],
+  )
+  if (rows[0]) {
+    logger.info({ msg: 'app_db_already_provisioned', appId, schemaName })
+    return { schemaName, roleName }
+  }
+
+  const password = randomBytes(24).toString('base64url')
+  const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL! })
+  const client = await pool.connect()
+  try {
+    await client.query(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`)
+    await client.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '${roleName}') THEN
+          CREATE ROLE "${roleName}" LOGIN PASSWORD '${password}';
+        END IF;
+      END
+      $$;
+    `)
+    await client.query(`GRANT USAGE ON SCHEMA "${schemaName}" TO "${roleName}"`)
+    await client.query(`
+      ALTER DEFAULT PRIVILEGES IN SCHEMA "${schemaName}"
+      GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "${roleName}"
+    `)
+    await client.query(
+      `INSERT INTO deployments.app_db_provisions (app_id, schema_name, role_name)
+       VALUES ($1, $2, $3) ON CONFLICT (app_id) DO NOTHING`,
+      [appId, schemaName, roleName],
+    )
+  } finally {
+    client.release()
+    await pool.end()
+  }
+
+  logger.info({ msg: 'app_db_provisioned', appId, schemaName, roleName })
+  return { schemaName, roleName }
+}
+
+/** Run db-migrations.sql from the cloned repo against the app's schema. No-op if file absent. */
+async function runMigrations(repoPath: string, schemaName: string): Promise<void> {
+  let sql: string
+  try {
+    sql = await readFile(`${repoPath}/db-migrations.sql`, 'utf-8')
+  } catch {
+    // File absent — nothing to migrate
+    return
+  }
+
+  const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL! })
+  const client = await pool.connect()
+  try {
+    await client.query(`SET search_path TO "${schemaName}"`)
+    await client.query(sql)
+    logger.info({ msg: 'migrations_applied', schemaName })
+  } catch (err) {
+    logger.error({ msg: 'migration_failed', schemaName, err: String(err) })
+    throw Object.assign(new Error('MIGRATION_FAILED'), { code: 'MIGRATION_FAILED' })
+  } finally {
+    client.release()
+    await pool.end()
+  }
 }
 
 function resolveUrl(subdomain: string | undefined, fqdn: string | null): string {
@@ -221,6 +296,20 @@ export function startDeployWorker(): Worker {
         throw new Error('Secrets detected in repository')
       }
 
+      // Provision app DB schema and run migrations
+      await emitEvent(deploymentId, 'provisioning', 'Setting up app database...')
+      const { schemaName } = await provisionAppDb(appId).catch(async (err) => {
+        logger.error({ msg: 'provision_failed', deploymentId, err: String(err) })
+        await failDeployment(deploymentId, 'PROVISION_FAILED')
+        throw err
+      })
+
+      await emitEvent(deploymentId, 'migrating', 'Running database migrations...')
+      await runMigrations(tmpPath, schemaName).catch(async (err) => {
+        await failDeployment(deploymentId, 'MIGRATION_FAILED')
+        throw err
+      })
+
       // Read port from the app's own config (3000 for Next.js, 8000 for Python/Streamlit)
       const appPort = await readAppPort(tmpPath)
 
@@ -245,6 +334,8 @@ export function startDeployWorker(): Worker {
         envVars: {
           TERMINAL_AI_GATEWAY_URL: process.env.GATEWAY_URL!,
           TERMINAL_AI_APP_ID: appId,
+          APP_DB_SCHEMA: schemaName,
+          TERMINAL_AI_STORAGE_PREFIX: `apps/${appId}/`,
         },
         resourceClass: 'micro',
       })

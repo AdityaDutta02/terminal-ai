@@ -6,4 +6,6 @@ export const ERROR_MESSAGES: Record<string, string> = {
   COOLIFY_ERROR: 'Coolify returned an error during deployment',
   TIMEOUT: 'Deployment timed out before completing',
   SECRETS_DETECTED: 'Potential secrets detected in deployment payload',
+  PROVISION_FAILED: 'Failed to provision app database. Contact support if this persists.',
+  MIGRATION_FAILED: 'Database migration failed. Check db-migrations.sql for syntax errors.',
 }
