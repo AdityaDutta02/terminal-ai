@@ -232,6 +232,8 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/terminalai
       INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
+      EMBED_TOKEN_SECRET: ${EMBED_TOKEN_SECRET}
+      TERMINAL_AI_GATEWAY_URL: http://gateway:3001
       DEPLOY_MANAGER_URL: http://deploy-manager:3002
       PORT: '3003'
     depends_on:
