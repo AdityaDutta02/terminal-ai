@@ -29,16 +29,38 @@ export const embedTokenAuth = createMiddleware(async (c, next) => {
   const token = authHeader.slice(7)
 
   let payload: EmbedTokenPayload
+  let jwtPayload: Record<string, unknown>
   try {
     const { payload: p } = await jwtVerify(token, SECRET)
-    payload = p as unknown as EmbedTokenPayload
+    jwtPayload = p as Record<string, unknown>
   } catch {
     return c.json({ error: 'Invalid or expired token' }, 401)
   }
 
+  // Task execution tokens: skip embed_tokens DB lookup, still check suspension
+  if (jwtPayload.type === 'task_execution') {
+    payload = jwtPayload as unknown as EmbedTokenPayload
+    c.set('embedToken', payload)
+
+    const suspension = await db.query<{ id: string }>(
+      `SELECT cs.id FROM platform.channel_suspensions cs
+       JOIN marketplace.apps a ON a.channel_id = cs.channel_id
+       WHERE a.id = $1 AND cs.is_active = true`,
+      [payload.appId],
+    )
+    if (suspension.rows[0]) {
+      return c.json({ error: 'This channel has been suspended' }, 403)
+    }
+
+    await next()
+    return
+  }
+
+  // Regular embed tokens: verify in DB
+  payload = jwtPayload as unknown as EmbedTokenPayload
+
   const tokenHash = createHash('sha256').update(token).digest('hex')
 
-  // Verify token exists in DB and has not expired (guards against revoked tokens)
   const { rows } = await db.query<{ id: string }>(
     `SELECT id FROM gateway.embed_tokens
      WHERE token_hash = $1 AND expires_at > NOW()`,
@@ -50,7 +72,6 @@ export const embedTokenAuth = createMiddleware(async (c, next) => {
 
   c.set('embedToken', payload)
 
-  // Check if app's channel is suspended
   const suspension = await db.query<{ id: string }>(
     `SELECT cs.id FROM platform.channel_suspensions cs
      JOIN marketplace.apps a ON a.channel_id = cs.channel_id
