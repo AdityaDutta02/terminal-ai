@@ -13,6 +13,8 @@ const createAppSchema = z.object({
   description: z.string().max(500).optional(),
   iframeUrl: z.string().url(),
   creditsPerSession: z.number().int().min(0).optional(),
+  api_category: z.enum(['chat', 'coding', 'image', 'web_search', 'web_scrape']).default('chat'),
+  api_tier: z.enum(['fast', 'good', 'quality']).default('good'),
 })
 async function getOwnedChannel(channelSlug: string, userId: string) {
   const result = await db.query<ChannelRow>(
@@ -36,13 +38,13 @@ export async function POST(
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
   }
-  const { name, slug, description, iframeUrl, creditsPerSession } = parsed.data
+  const { name, slug, description, iframeUrl, creditsPerSession, api_category, api_tier } = parsed.data
   const credits = Math.max(1, Math.min(10000, creditsPerSession ?? 1))
   try {
     await db.query(
-      `INSERT INTO marketplace.apps (channel_id, slug, name, description, iframe_url, credits_per_session, status)
-       VALUES ($1, $2, $3, $4, $5, $6, 'draft')`,
-      [channel.id, slug, name, description ?? null, iframeUrl, credits],
+      `INSERT INTO marketplace.apps (channel_id, slug, name, description, iframe_url, credits_per_session, status, api_category, api_tier)
+       VALUES ($1, $2, $3, $4, $5, $6, 'draft', $7, $8)`,
+      [channel.id, slug, name, description ?? null, iframeUrl, credits, api_category, api_tier],
     )
     return NextResponse.json({ ok: true })
   } catch (err) {

@@ -19,6 +19,8 @@ export default function NewAppPage() {
       description: fd.get('description') as string,
       iframeUrl: fd.get('iframeUrl') as string,
       creditsPerSession: Number(fd.get('creditsPerSession')),
+      api_category: fd.get('api_category') as string,
+      api_tier: fd.get('api_tier') as string,
     }
     try {
       const res = await fetch(`/api/creator/channels/${channelSlug}/apps`, {
@@ -108,6 +110,34 @@ export default function NewAppPage() {
             defaultValue={50}
             className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#FF6B00]/30 focus:ring-2 focus:ring-[#FF6B00]/10"
           />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-gray-700" htmlFor="api_category">Category</label>
+          <select
+            id="api_category"
+            name="api_category"
+            defaultValue="chat"
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none bg-white focus:border-[#FF6B00]/30 focus:ring-2 focus:ring-[#FF6B00]/10"
+          >
+            <option value="chat">Chat — conversational AI, Q&A</option>
+            <option value="coding">Coding — code generation, review, debugging</option>
+            <option value="image">Image — generate images from prompts</option>
+            <option value="web_search">Web Search — real-time web lookup</option>
+            <option value="web_scrape">Web Scrape — extract data from URLs</option>
+          </select>
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-gray-700" htmlFor="api_tier">Quality Tier</label>
+          <select
+            id="api_tier"
+            name="api_tier"
+            defaultValue="good"
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none bg-white focus:border-[#FF6B00]/30 focus:ring-2 focus:ring-[#FF6B00]/10"
+          >
+            <option value="fast">Fast — &lt;1s, good quality, lowest cost</option>
+            <option value="good">Good — 2-5s, better quality, balanced cost (recommended)</option>
+            <option value="quality">Quality — 5-15s, best output, premium cost</option>
+          </select>
         </div>
         <div className="flex items-center justify-end gap-3 pt-2">
           <a href={`/creator/channels/${channelSlug}`} className="rounded-lg px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">
