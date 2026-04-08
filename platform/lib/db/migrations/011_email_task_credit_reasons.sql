@@ -9,5 +9,5 @@ ALTER TABLE subscriptions.credit_ledger
   ADD CONSTRAINT credit_ledger_reason_check
   CHECK (reason IN (
     'subscription_grant', 'api_call', 'topup', 'demo', 'welcome', 'refund',
-    'email_send', 'task_execution'
+    'email_send', 'task_execution', 'session_start', 'admin_grant'
   ));
