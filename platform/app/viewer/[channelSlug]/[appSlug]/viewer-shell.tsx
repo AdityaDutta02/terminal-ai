@@ -376,7 +376,7 @@ export function ViewerShell(props: Props) {
             src={iframeUrl}
             onLoad={handleIframeLoad}
             className="h-full w-full border-0"
-            sandbox="allow-scripts allow-forms allow-popups-to-escape-sandbox"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups-to-escape-sandbox"
             title={appName}
           />
         )}
