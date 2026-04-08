@@ -82,7 +82,7 @@ export async function* streamChat(
 const DB_MIGRATIONS_TEMPLATE = `-- db-migrations.sql
 -- This file runs once at deploy time against your app's isolated Postgres schema.
 -- Do not use schema-qualified names — the schema is set automatically.
--- Add your CREATE TABLE statements here.
+-- PostgreSQL 16: gen_random_uuid() and JSONB are available out of the box.
 
 CREATE TABLE IF NOT EXISTS items (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -3,6 +3,7 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import { Hono } from 'hono'
 import { z } from 'zod'
 import crypto from 'crypto'
+import { SignJWT } from 'jose'
 import { scaffoldApp } from './tools/scaffold'
 import { getProvidersJson } from './tools/providers'
 import { db } from './lib/db'
@@ -12,6 +13,8 @@ if (!process.env.INTERNAL_SERVICE_TOKEN) {
   logger.error({ msg: 'missing_env_var', var: 'INTERNAL_SERVICE_TOKEN' })
   process.exit(1)
 }
+
+const EMBED_TOKEN_SECRET = new TextEncoder().encode(process.env.EMBED_TOKEN_SECRET ?? '')
 
 const app = new Hono()
 
@@ -66,7 +69,12 @@ async function callDeployManager<T>(
   const deployManagerUrl = process.env.DEPLOY_MANAGER_URL ?? 'http://deploy-manager:3002'
   let res: Response
   try {
-    res = await fetch(`${deployManagerUrl}${path}`, { method })
+    res = await fetch(`${deployManagerUrl}${path}`, {
+      method,
+      headers: {
+        'Authorization': `Bearer ${process.env.INTERNAL_SERVICE_TOKEN ?? ''}`,
+      },
+    })
   } catch (err) {
     logger.error({ msg: 'deploy_manager_fetch_failed', path, err })
     return { ok: false, error: 'Failed to reach deploy-manager: network error', status: 0 }
@@ -243,6 +251,35 @@ app.all('/mcp', async (c) => {
   )
 
   server.tool(
+    'delete_channel',
+    'Delete an empty channel. Fails if the channel still has apps — delete all apps first.',
+    {
+      channel_id: z.string().uuid().describe('Channel ID to delete'),
+      confirm: z.literal(true).describe('Must be true to confirm deletion'),
+    },
+    async ({ channel_id }) => {
+      const check = await db.query(
+        `SELECT c.id, COUNT(a.id)::int AS app_count
+         FROM marketplace.channels c
+         LEFT JOIN marketplace.apps a ON a.channel_id = c.id
+         WHERE c.id = $1 AND c.creator_id = $2
+         GROUP BY c.id`,
+        [channel_id, creatorId]
+      )
+      if (!check.rows[0]) {
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ error: 'Channel not found or not owned by you' }) }], isError: true }
+      }
+      const row = check.rows[0] as { id: string; app_count: number }
+      if (row.app_count > 0) {
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ error: `Channel has ${row.app_count} app(s). Delete all apps first.` }) }], isError: true }
+      }
+      await db.query(`DELETE FROM marketplace.channels WHERE id = $1 AND creator_id = $2`, [channel_id, creatorId])
+      logger.info({ msg: 'delete_channel_success', channelId: channel_id, creatorId })
+      return { content: [{ type: 'text' as const, text: JSON.stringify({ deleted: true, channelId: channel_id }) }] }
+    }
+  )
+
+  server.tool(
     'deploy_app',
     'Register a GitHub repo as an app on Terminal AI and trigger deployment. The app will be built and deployed to *.apps.terminalai.studioionique.com.',
     DeployAppSchema,
@@ -368,22 +405,24 @@ app.all('/mcp', async (c) => {
 
       const gatewayUrl = process.env.TERMINAL_AI_GATEWAY_URL ?? 'http://gateway:3001'
 
-      // Get creator's embed token for this app
-      const tokenResult = await db.query<{ token: string }>(
-        `SELECT et.token FROM gateway.embed_tokens et
-         WHERE et.app_id = $1 AND et.expires_at > NOW()
-         ORDER BY et.created_at DESC LIMIT 1`,
-        [app_id],
-      )
-      if (!tokenResult.rows[0]) {
-        return { content: [{ type: 'text' as const, text: JSON.stringify({ error: 'No valid embed token found for app. Deploy the app first.' }) }] }
-      }
+      const taskToken = await new SignJWT({
+        appId: app_id,
+        userId: creatorId,
+        type: 'task_execution',
+        isFree: false,
+        creditsPerCall: 0,
+        sessionId: `mcp-task-${crypto.randomUUID()}`,
+        isAnon: false,
+      })
+        .setProtectedHeader({ alg: 'HS256' })
+        .setExpirationTime('2m')
+        .sign(EMBED_TOKEN_SECRET)
 
       const res = await fetch(`${gatewayUrl}/tasks`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${tokenResult.rows[0].token}`,
+          Authorization: `Bearer ${taskToken}`,
         },
         body: JSON.stringify({ name, schedule, callbackPath: callback_path, payload: payload ?? {}, timezone: timezone ?? 'UTC' }),
       })

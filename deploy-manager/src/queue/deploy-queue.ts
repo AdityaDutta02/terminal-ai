@@ -55,8 +55,8 @@ async function updateDeployment(deploymentId: string, fields: Record<string, unk
   )
 }
 
-async function failDeployment(deploymentId: string, errorCode: string): Promise<void> {
-  const message = ERROR_MESSAGES[errorCode] ?? errorCode
+async function failDeployment(deploymentId: string, errorCode: string, messageOverride?: string): Promise<void> {
+  const message = messageOverride ?? ERROR_MESSAGES[errorCode] ?? errorCode
   await updateDeployment(deploymentId, { status: 'failed', error_message: message, error_code: errorCode, completed_at: new Date() })
     .catch((err: unknown) => logger.error({ msg: 'failed_to_update_deployment_status', deploymentId, err: String(err) }))
   await emitEvent(deploymentId, 'failed', message, { error_code: errorCode })
@@ -77,6 +77,17 @@ async function provisionAppDb(appId: string): Promise<{ schemaName: string; role
     // role_password may be NULL for provisions created before migration 016.
     // In that case generate and persist a new password so migrations can use the scoped role.
     if (rows[0].role_password) {
+      // Ensure CREATE privilege exists (backfill for provisions created before this fix)
+      const fixPool = new pg.Pool({ connectionString: process.env.DATABASE_URL! })
+      const fixClient = await fixPool.connect()
+      try {
+        await fixClient.query(`GRANT CREATE ON SCHEMA "${schemaName}" TO "${roleName}"`)
+      } catch (grantErr) {
+        logger.warn({ msg: 'grant_create_backfill_failed', schemaName, roleName, err: String(grantErr) })
+      } finally {
+        fixClient.release()
+        await fixPool.end()
+      }
       return { schemaName, roleName, rolePassword: rows[0].role_password }
     }
     const freshPassword = randomBytes(24).toString('base64url')
@@ -84,6 +95,8 @@ async function provisionAppDb(appId: string): Promise<{ schemaName: string; role
     const client = await pool.connect()
     try {
       await client.query(`ALTER ROLE "${roleName}" PASSWORD '${freshPassword}'`)
+      // Ensure CREATE privilege exists (backfill for provisions created before this fix)
+      await client.query(`GRANT CREATE ON SCHEMA "${schemaName}" TO "${roleName}"`)
       await db.query(
         `UPDATE deployments.app_db_provisions SET role_password = $2 WHERE app_id = $1`,
         [appId, freshPassword],
@@ -111,6 +124,7 @@ async function provisionAppDb(appId: string): Promise<{ schemaName: string; role
       $$;
     `)
     await client.query(`GRANT USAGE ON SCHEMA "${schemaName}" TO "${roleName}"`)
+    await client.query(`GRANT CREATE ON SCHEMA "${schemaName}" TO "${roleName}"`)
     await client.query(`
       ALTER DEFAULT PRIVILEGES IN SCHEMA "${schemaName}"
       GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "${roleName}"
@@ -175,7 +189,8 @@ async function runMigrations(
       logger.warn({ msg: 'migration_rollback_failed', schemaName, err: String(rollbackErr) })
     )
     logger.error({ msg: 'migration_failed', schemaName, err: String(err) })
-    throw Object.assign(new Error('MIGRATION_FAILED'), { code: 'MIGRATION_FAILED' })
+    const detail = err instanceof Error ? err.message : String(err)
+    throw Object.assign(new Error(`MIGRATION_FAILED: ${detail}`), { code: 'MIGRATION_FAILED', detail })
   } finally {
     client.release()
     await pool.end()
@@ -353,7 +368,10 @@ export function startDeployWorker(): Worker {
 
       await emitEvent(deploymentId, 'migrating', 'Running database migrations...')
       await runMigrations(tmpPath, schemaName, roleName, rolePassword).catch(async (err) => {
-        await failDeployment(deploymentId, 'MIGRATION_FAILED')
+        const detail = (err as { detail?: string }).detail
+        const baseMessage = ERROR_MESSAGES['MIGRATION_FAILED'] ?? 'Database migration failed.'
+        const message = detail ? `${baseMessage} ${detail}` : baseMessage
+        await failDeployment(deploymentId, 'MIGRATION_FAILED', message)
         throw err
       })
 
