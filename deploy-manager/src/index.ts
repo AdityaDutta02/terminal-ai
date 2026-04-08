@@ -1,7 +1,9 @@
 import { Hono } from 'hono'
 import { logger as honoLogger } from 'hono/logger'
+import pg from 'pg'
 import { deployQueue, startDeployWorker, startPollWorker, JOB_OPTIONS } from './queue/deploy-queue'
 import { getAppDetails, deleteApp, getDeploymentLogs, triggerDeploy } from './services/coolify'
+import { storageDeletePrefix } from './services/storage-cleanup'
 import { db } from './lib/db'
 import { logger } from './lib/logger'
 import { ERROR_MESSAGES } from './lib/deployment-events'
@@ -248,6 +250,32 @@ app.delete('/apps/:appId', async (c) => {
     logger.error({ msg: 'app_db_delete_failed', appId, err: String(dbErr) })
     return c.json({ error: `Database cleanup failed: ${dbErr instanceof Error ? dbErr.message : String(dbErr)}` }, 500)
   }
+
+  // Drop app DB schema and role
+  const provResult = await db.query<{ schema_name: string; role_name: string }>(
+    `SELECT schema_name, role_name FROM deployments.app_db_provisions WHERE app_id = $1`,
+    [appId],
+  )
+  if (provResult.rows[0]) {
+    const { schema_name: schemaName, role_name: roleName } = provResult.rows[0]
+    const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL! })
+    const client = await pool.connect()
+    try {
+      await client.query(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`)
+      await client.query(`DROP ROLE IF EXISTS "${roleName}"`)
+    } finally {
+      client.release()
+      await pool.end()
+    }
+    await db.query(`DELETE FROM deployments.app_db_provisions WHERE app_id = $1`, [appId])
+    logger.info({ msg: 'app_db_dropped', appId, schemaName })
+  }
+
+  // Delete storage prefix
+  await storageDeletePrefix(appId).catch((err: unknown) => {
+    logger.warn({ msg: 'storage_prefix_delete_failed', appId, err: String(err) })
+  })
+
   logger.info({ msg: 'app_deleted', appId, coolifyAppsDeleted: coolifyIds.length })
   return c.json({ deleted: true, coolifyAppsDeleted: coolifyIds.length, warnings: errors })
 })
