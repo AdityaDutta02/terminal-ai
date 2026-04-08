@@ -1,0 +1,6 @@
+{
+  "category": "chat",
+  "tier": "good",
+  "gateway_url": "${TERMINAL_AI_GATEWAY_URL}",
+  "app_id": "${TERMINAL_AI_APP_ID}"
+}

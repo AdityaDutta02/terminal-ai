@@ -3,7 +3,9 @@ import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import { proxy } from './routes/proxy.js'
 import { uploadRouter } from './routes/upload.js'
+import { handleGenerate } from './routes/generate.js'
 import { gatewayRateLimit } from './middleware/rate-limit.js'
+import { embedTokenAuth } from './middleware/auth.js'
 
 const app = new Hono()
 
@@ -31,6 +33,7 @@ app.get('/health', (c) => c.json({ status: 'ok', version: '1.0.0', ts: Date.now(
 app.use('/v1/*', gatewayRateLimit())
 
 app.route('/upload', uploadRouter)
+app.post('/v1/generate', embedTokenAuth, handleGenerate)
 app.route('/', proxy)
 
 const port = parseInt(process.env.PORT ?? '3001', 10)

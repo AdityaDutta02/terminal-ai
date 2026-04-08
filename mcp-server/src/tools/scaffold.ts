@@ -6,6 +6,10 @@ interface ScaffoldInput {
   uses_ai: boolean
   uses_file_upload: boolean
   generates_artifacts: boolean
+  /** v2 API category — defaults to 'chat' */
+  api_category?: 'chat' | 'coding' | 'image' | 'web_search' | 'web_scrape'
+  /** v2 API tier — defaults to 'good' */
+  api_tier?: 'fast' | 'good' | 'quality'
 }
 interface ScaffoldOutput {
   files: Record<string, string>
@@ -204,12 +208,14 @@ export function scaffoldApp(input: ScaffoldInput): ScaffoldOutput {
   const config = {
     app_name: input.app_name,
     framework: input.framework,
-    gateway_version: '1',
+    gateway_version: '2',
     health_check_path: isPython(input.framework) ? '/health' : '/api/health',
     port: isPython(input.framework) ? 8000 : 3000,
     requires_file_upload: input.uses_file_upload,
     generates_artifacts: input.generates_artifacts,
     model_tier: 'standard',
+    category: input.api_category ?? 'chat',
+    tier: input.api_tier ?? 'good',
   }
   const frameworkFiles = input.framework === 'nextjs' ? buildNextjsFiles(input) : buildPythonFiles(input)
   const files: Record<string, string> = {
