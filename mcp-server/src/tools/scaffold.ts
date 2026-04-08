@@ -291,6 +291,80 @@ export default config
   files['lib/db.ts'] = DB_SDK
   files['lib/storage.ts'] = STORAGE_SDK
   files['db-migrations.sql'] = DB_MIGRATIONS_TEMPLATE
+  files['lib/email-sdk.ts'] = `const GATEWAY = process.env.TERMINAL_AI_GATEWAY_URL!;
+
+export async function sendEmail(
+  to: string,
+  subject: string,
+  html: string,
+  embedToken: string,
+): Promise<{ sent: boolean; messageId: string }> {
+  const res = await fetch(\`\${GATEWAY}/email/send\`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: \`Bearer \${embedToken}\`,
+    },
+    body: JSON.stringify({ to, subject, html }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(\`Email send failed (\${res.status}): \${(err as Record<string, string>).error ?? res.statusText}\`);
+  }
+  return res.json();
+}
+`
+  files['lib/task-sdk.ts'] = `const GATEWAY = process.env.TERMINAL_AI_GATEWAY_URL!;
+
+interface CreateTaskParams {
+  name: string;
+  schedule: string;
+  callbackPath: string;
+  payload?: Record<string, unknown>;
+  timezone?: string;
+}
+
+export async function createTask(
+  params: CreateTaskParams,
+  embedToken: string,
+): Promise<{ id: string; nextRunAt: string }> {
+  const res = await fetch(\`\${GATEWAY}/tasks\`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: \`Bearer \${embedToken}\`,
+    },
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(\`Task creation failed (\${res.status}): \${(err as Record<string, string>).error ?? res.statusText}\`);
+  }
+  return res.json();
+}
+
+export async function listTasks(
+  embedToken: string,
+): Promise<Array<{ id: string; name: string; schedule: string; enabled: boolean; nextRunAt: string | null }>> {
+  const res = await fetch(\`\${GATEWAY}/tasks\`, {
+    headers: { Authorization: \`Bearer \${embedToken}\` },
+  });
+  if (!res.ok) throw new Error(\`Task list failed: \${res.status}\`);
+  return res.json();
+}
+
+export async function deleteTask(
+  taskId: string,
+  embedToken: string,
+): Promise<{ deleted: boolean }> {
+  const res = await fetch(\`\${GATEWAY}/tasks/\${taskId}\`, {
+    method: 'DELETE',
+    headers: { Authorization: \`Bearer \${embedToken}\` },
+  });
+  if (!res.ok) throw new Error(\`Task delete failed: \${res.status}\`);
+  return res.json();
+}
+`
   return files
 }
 function buildPythonFiles(input: ScaffoldInput): Record<string, string> {
@@ -336,6 +410,9 @@ export function scaffoldApp(input: ScaffoldInput): ScaffoldOutput {
       'Health endpoint is required and must return 200',
       'Never store the embed token in localStorage or cookies',
       'The token expires after 15 minutes — the viewer shell auto-refreshes it via postMessage',
+      'Use lib/email-sdk.ts to send emails to the authenticated user via the gateway',
+      'Use lib/task-sdk.ts to register cron schedules — the gateway will POST to your callback path on schedule',
+      'Task callbacks receive a short-lived token in the Authorization header — use it for AI and email calls',
     ],
   }
 }

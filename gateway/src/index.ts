@@ -6,8 +6,12 @@ import { uploadRouter } from './routes/upload.js'
 import { handleGenerate } from './routes/generate.js'
 import { dbRouter } from './routes/db.js'
 import { storageRouter } from './routes/storage.js'
+import { emailRouter } from './routes/email.js'
+import { taskRouter } from './routes/tasks.js'
 import { gatewayRateLimit } from './middleware/rate-limit.js'
 import { embedTokenAuth } from './middleware/auth.js'
+import { executeDueTasks } from './workers/task-runner.js'
+import { logger as appLogger } from './lib/logger.js'
 
 const app = new Hono()
 
@@ -41,6 +45,29 @@ app.post('/v1/generate', embedTokenAuth, handleGenerate)
 app.route('/db', dbRouter)
 app.route('/storage', storageRouter)
 app.route('/', proxy)
+
+// Email & tasks routes — protected by embedTokenAuth
+app.use('/email/*', embedTokenAuth)
+app.route('/email', emailRouter)
+
+app.use('/tasks/*', embedTokenAuth)
+app.route('/tasks', taskRouter)
+
+// Task runner — ticks every 60 seconds
+const TASK_RUNNER_INTERVAL_MS = 60_000
+
+function startTaskRunner(): void {
+  setInterval(async () => {
+    try {
+      await executeDueTasks()
+    } catch (err) {
+      appLogger.error({ msg: 'task_runner_error', err: String(err) })
+    }
+  }, TASK_RUNNER_INTERVAL_MS)
+  appLogger.info({ msg: 'task_runner_started', intervalMs: TASK_RUNNER_INTERVAL_MS })
+}
+
+startTaskRunner()
 
 const port = parseInt(process.env.PORT ?? '3001', 10)
 

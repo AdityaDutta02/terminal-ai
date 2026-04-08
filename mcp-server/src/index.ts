@@ -341,6 +341,77 @@ app.all('/mcp', async (c) => {
     }
   )
 
+  server.tool(
+    'create_scheduled_task',
+    'Create a scheduled task (cron job) for a deployed app. The gateway will POST to the callback path on the given schedule.',
+    {
+      app_id: z.string().uuid().describe('UUID of the deployed app'),
+      name: z.string().max(100).describe('Human-readable task name (max 100 chars, unique per app)'),
+      schedule: z.string().describe('Cron expression (5 fields, minimum 1-hour interval). Example: "0 8 * * *" for daily 8am'),
+      callback_path: z.string().describe('Path on the app to POST to. Must start with /. Example: "/api/cron/report"'),
+      payload: z.record(z.unknown()).optional().describe('JSON payload sent as POST body on each execution (max 10KB)'),
+      timezone: z.string().optional().describe('IANA timezone. Default: UTC. Example: "Asia/Kolkata"'),
+    },
+    async ({ app_id, name, schedule, callback_path, payload, timezone }) => {
+      const gatewayUrl = process.env.TERMINAL_AI_GATEWAY_URL ?? 'http://gateway:3001'
+
+      // Get creator's embed token for this app
+      const tokenResult = await db.query<{ token: string }>(
+        `SELECT et.token FROM gateway.embed_tokens et
+         WHERE et.app_id = $1 AND et.expires_at > NOW()
+         ORDER BY et.created_at DESC LIMIT 1`,
+        [app_id],
+      )
+      if (!tokenResult.rows[0]) {
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ error: 'No valid embed token found for app. Deploy the app first.' }) }] }
+      }
+
+      const res = await fetch(`${gatewayUrl}/tasks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${tokenResult.rows[0].token}`,
+        },
+        body: JSON.stringify({ name, schedule, callbackPath: callback_path, payload: payload ?? {}, timezone: timezone ?? 'UTC' }),
+      })
+      const data = await res.json()
+      return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] }
+    }
+  )
+
+  server.tool(
+    'list_scheduled_tasks',
+    'List all scheduled tasks for a deployed app',
+    {
+      app_id: z.string().uuid().describe('UUID of the deployed app'),
+    },
+    async ({ app_id }) => {
+      const result = await db.query(
+        `SELECT id, name, schedule, callback_path, timezone, enabled, next_run_at, last_run_at, last_run_status
+         FROM gateway.scheduled_tasks WHERE app_id = $1 ORDER BY created_at`,
+        [app_id],
+      )
+      return { content: [{ type: 'text' as const, text: JSON.stringify(result.rows, null, 2) }] }
+    }
+  )
+
+  server.tool(
+    'delete_scheduled_task',
+    'Delete a scheduled task',
+    {
+      app_id: z.string().uuid().describe('UUID of the deployed app'),
+      task_id: z.string().uuid().describe('UUID of the task to delete'),
+    },
+    async ({ app_id, task_id }) => {
+      const result = await db.query(
+        `DELETE FROM gateway.scheduled_tasks WHERE id = $1 AND app_id = $2`,
+        [task_id, app_id],
+      )
+      const deleted = (result.rowCount ?? 0) > 0
+      return { content: [{ type: 'text' as const, text: JSON.stringify({ deleted, taskId: task_id }) }] }
+    }
+  )
+
   const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined })
   await server.connect(transport)
   logger.info({ msg: 'mcp_connection', creatorId })
