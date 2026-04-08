@@ -56,6 +56,22 @@ export async function getAppDetails(coolifyAppId: string): Promise<{ status: str
   return { status: data.status, fqdn: data.fqdn ?? null }
 }
 
+/** Update the FQDN (domain) for a Coolify app. Required so Traefik routes to the correct domain. */
+export async function updateAppFqdn(coolifyAppId: string, fqdn: string): Promise<void> {
+  const { url, token } = coolifyConfig()
+  const res = await fetch(`${url}/api/v1/applications/${coolifyAppId}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ domains: fqdn }),
+  })
+  if (!res.ok) {
+    const body = await res.text()
+    logger.warn({ msg: 'coolify_update_fqdn_failed', coolifyAppId, fqdn, status: res.status, body })
+  } else {
+    logger.info({ msg: 'coolify_fqdn_updated', coolifyAppId, fqdn })
+  }
+}
+
 /** Set a single environment variable on a Coolify app. */
 async function setEnvVar(coolifyAppId: string, key: string, value: string): Promise<void> {
   const { url, token } = coolifyConfig()

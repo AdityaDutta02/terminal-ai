@@ -3,7 +3,7 @@ import { readFile, rm } from 'fs/promises'
 import { randomBytes } from 'crypto'
 import pg from 'pg'
 import { scanForSecrets } from '../services/gitleaks'
-import { createApp, triggerDeploy, getAppDetails, waitForHealthy } from '../services/coolify'
+import { createApp, triggerDeploy, getAppDetails, waitForHealthy, updateAppFqdn } from '../services/coolify'
 import { createSubdomain } from '../services/dns'
 import { db } from '../lib/db'
 import { logger } from '../lib/logger'
@@ -198,8 +198,9 @@ async function runMigrations(
 }
 
 function resolveUrl(subdomain: string | undefined, fqdn: string | null): string {
-  const cloudflareConfigured = !!(process.env.CLOUDFLARE_TOKEN && process.env.CLOUDFLARE_ZONE_ID && process.env.VPS2_IP)
-  if (cloudflareConfigured && subdomain) {
+  // Wildcard DNS *.apps.terminalai.studioionique.com is pre-configured in Cloudflare.
+  // We only need VPS2_IP to know the DNS target exists — no API token needed for URL resolution.
+  if (process.env.VPS2_IP && subdomain) {
     return `https://${subdomain}.apps.terminalai.studioionique.com`
   }
   const rawFqdn = (fqdn ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '')
@@ -378,16 +379,17 @@ export function startDeployWorker(): Worker {
       // Read port from the app's own config (3000 for Next.js, 8000 for Python/Streamlit)
       const appPort = await readAppPort(tmpPath)
 
-      // DNS is optional — skip if Cloudflare is not configured
-      const cloudflareConfigured = !!(process.env.CLOUDFLARE_TOKEN && process.env.CLOUDFLARE_ZONE_ID && process.env.VPS2_IP)
-      if (cloudflareConfigured) {
+      // DNS record creation is optional — wildcard *.apps.terminalai.studioionique.com handles routing.
+      // Only create individual records if Cloudflare API is fully configured.
+      const cloudflareApiConfigured = !!(process.env.CLOUDFLARE_TOKEN && process.env.CLOUDFLARE_ZONE_ID && process.env.VPS2_IP)
+      if (cloudflareApiConfigured) {
         const dnsRecordId = await createSubdomain(subdomain)
         await db.query(
           `UPDATE deployments.deployments SET dns_record_id = $2, updated_at = NOW() WHERE id = $1`,
           [deploymentId, dnsRecordId]
         )
       } else {
-        logger.warn({ msg: 'dns_skipped', deploymentId, reason: 'Cloudflare not configured' })
+        logger.info({ msg: 'dns_record_skipped', deploymentId, reason: 'Wildcard DNS handles routing; Cloudflare API not configured for individual records' })
       }
 
       await emitEvent(deploymentId, 'creating_app', 'Creating app in Coolify')
@@ -405,25 +407,20 @@ export function startDeployWorker(): Worker {
         resourceClass: 'micro',
       })
 
-      // Prefer Cloudflare subdomain when DNS is configured; otherwise use the
-      // sslip.io domain Coolify auto-generated and returned.
-      let finalUrl: string
-      if (cloudflareConfigured) {
-        finalUrl = `https://${subdomain}.apps.terminalai.studioionique.com`
-      } else {
-        // Coolify returns fqdn as "http://..." — normalize to ensure it has a protocol
-        const rawDomain = coolifyDomain.replace(/^https?:\/\//, '').replace(/\/$/, '')
-        // sslip.io domains use HTTP by default (Coolify doesn't provision SSL for them)
-        finalUrl = rawDomain ? `http://${rawDomain}` : ''
-        if (!finalUrl) {
-          // Fetch the domain from Coolify API as a fallback
-          const details = await getAppDetails(coolifyId)
-          const fqdn = details.fqdn?.replace(/^https?:\/\//, '').replace(/\/$/, '')
-          finalUrl = fqdn ? `http://${fqdn}` : ''
-        }
-        if (!finalUrl) {
-          throw new Error('No domain returned by Coolify — cannot determine app URL')
-        }
+      // Always prefer the proper HTTPS subdomain when VPS2 is configured (wildcard DNS handles it).
+      // Fall back to sslip.io only if VPS2_IP is not set at all.
+      let finalUrl: string = resolveUrl(subdomain, coolifyDomain)
+      if (!finalUrl) {
+        const details = await getAppDetails(coolifyId)
+        finalUrl = resolveUrl(subdomain, details.fqdn)
+      }
+      if (!finalUrl) {
+        throw new Error('No domain returned by Coolify — cannot determine app URL')
+      }
+
+      // Update Coolify's FQDN so Traefik routes the proper domain to this container
+      if (process.env.VPS2_IP && subdomain) {
+        await updateAppFqdn(coolifyId, `https://${subdomain}.apps.terminalai.studioionique.com`)
       }
 
       // Store Coolify app ID immediately so status checks can reference it
