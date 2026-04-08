@@ -87,6 +87,8 @@ const ScaffoldSchema = {
   uses_ai: z.boolean(),
   uses_file_upload: z.boolean(),
   generates_artifacts: z.boolean(),
+  api_category: z.enum(['chat', 'coding', 'image', 'web_search', 'web_scrape']).optional().describe('V2 API category for model routing (default: chat)'),
+  api_tier: z.enum(['fast', 'good', 'quality']).optional().describe('V2 API tier for model routing (default: good)'),
 }
 
 const DeployAppSchema = {
@@ -174,7 +176,8 @@ app.all('/mcp', async (c) => {
   })
 
   server.tool('list_supported_providers', {}, async () => {
-    return { content: [{ type: 'text', text: getProvidersJson() }] }
+    const providersJson = await getProvidersJson()
+    return { content: [{ type: 'text', text: providersJson }] }
   })
 
   server.tool(

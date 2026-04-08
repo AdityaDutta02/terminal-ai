@@ -44,3 +44,17 @@ export function getCreditCost(category: string, tier: string): number | null {
 
 export const VALID_CATEGORIES = new Set(['chat', 'coding', 'image', 'web_search', 'web_scrape'])
 export const VALID_TIERS = new Set(['fast', 'good', 'quality'])
+
+/**
+ * Get credit cost for a direct model selection.
+ * Returns null if the model is not found or not available.
+ */
+export async function getDirectModelCost(modelId: string): Promise<{ creditCost: number; modelString: string } | null> {
+  const { rows } = await db.query(
+    `SELECT model_id, credit_cost FROM gateway.model_pricing WHERE model_id = $1 AND is_available = true`,
+    [modelId]
+  )
+  if (rows.length === 0) return null
+  const row = rows[0] as { model_id: string; credit_cost: number }
+  return { creditCost: row.credit_cost, modelString: row.model_id }
+}
