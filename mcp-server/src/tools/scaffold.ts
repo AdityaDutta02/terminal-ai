@@ -21,7 +21,8 @@ function isPython(framework: string): boolean {
   return framework === 'python' || framework === 'streamlit'
 }
 const GATEWAY_SDK = `// Terminal AI Gateway SDK — server-side only
-// The embed token is received from the viewer shell via postMessage,
+// The embed token is received from the viewer shell via postMessage.
+// It identifies the APP (not the user) — all users share the same DB and storage.
 // sent by the client to your API route, and used here as the Bearer token.
 import config from './validate-config'
 
@@ -93,7 +94,9 @@ CREATE TABLE IF NOT EXISTS items (
 
 const DB_SDK = `// lib/db.ts — Terminal AI Database SDK (server-side only)
 // Calls /db/* on the Terminal AI gateway using the embed token.
-// The embed token is received from the viewer shell via postMessage (see useEmbedToken hook).
+// IMPORTANT: The database is scoped per-APP, not per-user. All users of this app
+// share the same tables. The embed token identifies the app for schema routing.
+// If you need per-user data isolation, add a user_id column and filter on it.
 
 const GATEWAY_URL = process.env.TERMINAL_AI_GATEWAY_URL!
 
@@ -405,7 +408,7 @@ export function scaffoldApp(input: ScaffoldInput): ScaffoldOutput {
       'CRITICAL: Use the useEmbedToken() hook in your root client component to receive the auth token from the Terminal AI viewer shell via postMessage',
       'Pass the embed token from the client to your API routes, which forward it as Bearer token to the gateway',
       'Do NOT call OpenAI/Anthropic directly — all AI calls go through TERMINAL_AI_GATEWAY_URL',
-      'Your app has an isolated Postgres schema — edit db-migrations.sql to define your tables before first deploy. Tables are created automatically at deploy time.',
+      'Your app has an isolated Postgres schema (per-app, NOT per-user) — all users of your app share the same tables. The embed token identifies the app, not the user. If you need per-user data, add a user_id column and filter manually. Edit db-migrations.sql to define your tables before first deploy.',
       'Your app has an isolated storage prefix — use lib/storage.ts helpers to upload, download, list, and delete files via the gateway',
       'Health endpoint is required and must return 200',
       'Never store the embed token in localStorage or cookies',
