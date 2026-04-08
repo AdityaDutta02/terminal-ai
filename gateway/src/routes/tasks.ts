@@ -54,8 +54,8 @@ taskRouter.post('/', async (c) => {
   }
 
   // Resolve app's deployed URL
-  const deployResult = await db.query<{ subdomain: string }>(
-    `SELECT subdomain FROM deployments.deployments
+  const deployResult = await db.query<{ url: string }>(
+    `SELECT url FROM deployments.deployments
      WHERE app_id = $1 AND status = 'live'
      ORDER BY created_at DESC LIMIT 1`,
     [appId],
@@ -87,8 +87,7 @@ taskRouter.post('/', async (c) => {
   )
 
   const task = result.rows[0]
-  const subdomain = deployResult.rows[0].subdomain
-  const callbackUrl = `https://${subdomain}.apps.terminalai.app${task.callback_path}`
+  const callbackUrl = `${deployResult.rows[0].url}${task.callback_path}`
 
   return c.json({
     id: task.id,

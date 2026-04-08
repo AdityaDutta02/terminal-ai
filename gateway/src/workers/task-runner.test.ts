@@ -52,7 +52,7 @@ describe('executeDueTasks', () => {
     })
     // Mock: resolve deployment URL
     mockQuery.mockResolvedValueOnce({
-      rows: [{ subdomain: 'daily-market' }],
+      rows: [{ url: 'https://daily-market.apps.terminalai.studioionique.com' }],
     })
     // Mock: callback response
     mockFetch.mockResolvedValueOnce(new Response('OK', { status: 200 }))
@@ -66,7 +66,7 @@ describe('executeDueTasks', () => {
     // Verify callback was called
     expect(mockFetch).toHaveBeenCalledTimes(1)
     const [url, options] = mockFetch.mock.calls[0]
-    expect(url).toBe('https://daily-market.apps.terminalai.app/api/cron/report')
+    expect(url).toBe('https://daily-market.apps.terminalai.studioionique.com/api/cron/report')
     expect(options.method).toBe('POST')
     expect(options.headers.Authorization).toBe('Bearer mock-task-jwt')
     expect(JSON.parse(options.body)).toEqual({ market: 'NIFTY50' })
@@ -93,7 +93,7 @@ describe('executeDueTasks', () => {
       }],
     })
     mockQuery.mockResolvedValueOnce({
-      rows: [{ subdomain: 'daily-market' }],
+      rows: [{ url: 'https://daily-market.apps.terminalai.studioionique.com' }],
     })
     // Callback fails
     mockFetch.mockResolvedValueOnce(new Response('Internal Server Error', { status: 500 }))

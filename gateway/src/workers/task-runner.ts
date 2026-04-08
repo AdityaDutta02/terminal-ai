@@ -33,14 +33,14 @@ async function mintExecutionToken(task: DueTask): Promise<string> {
 }
 
 async function resolveCallbackUrl(task: DueTask): Promise<string | null> {
-  const result = await db.query<{ subdomain: string }>(
-    `SELECT subdomain FROM deployments.deployments
+  const result = await db.query<{ url: string }>(
+    `SELECT url FROM deployments.deployments
      WHERE app_id = $1 AND status = 'live'
      ORDER BY created_at DESC LIMIT 1`,
     [task.app_id],
   )
-  if (!result.rows[0]) return null
-  return `https://${result.rows[0].subdomain}.apps.terminalai.app${task.callback_path}`
+  if (!result.rows[0] || !result.rows[0].url) return null
+  return `${result.rows[0].url}${task.callback_path}`
 }
 
 async function executeTask(task: DueTask): Promise<void> {

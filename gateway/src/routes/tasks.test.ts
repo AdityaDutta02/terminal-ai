@@ -46,7 +46,7 @@ describe('POST /tasks', () => {
     // Mock: count existing tasks = 0
     mockQuery.mockResolvedValueOnce({ rows: [{ count: '0' }] })
     // Mock: resolve app URL
-    mockQuery.mockResolvedValueOnce({ rows: [{ subdomain: 'daily-market' }] })
+    mockQuery.mockResolvedValueOnce({ rows: [{ url: 'https://daily-market.apps.terminalai.studioionique.com' }] })
     // Mock: insert task
     mockQuery.mockResolvedValueOnce({
       rows: [{

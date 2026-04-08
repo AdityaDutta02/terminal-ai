@@ -63,18 +63,37 @@ async function failDeployment(deploymentId: string, errorCode: string): Promise<
 }
 
 /** Provision a Postgres schema and role for an app. Idempotent — skips if already provisioned. */
-async function provisionAppDb(appId: string): Promise<{ schemaName: string; roleName: string }> {
+async function provisionAppDb(appId: string): Promise<{ schemaName: string; roleName: string; rolePassword: string }> {
   const shortId = appId.replaceAll('-', '_')
   const schemaName = `app_data_${shortId}`
   const roleName = `app_${shortId}`
 
-  const { rows } = await db.query<{ app_id: string }>(
-    `SELECT app_id FROM deployments.app_db_provisions WHERE app_id = $1`,
+  const { rows } = await db.query<{ app_id: string; role_password: string | null }>(
+    `SELECT app_id, role_password FROM deployments.app_db_provisions WHERE app_id = $1`,
     [appId],
   )
   if (rows[0]) {
     logger.info({ msg: 'app_db_already_provisioned', appId, schemaName })
-    return { schemaName, roleName }
+    // role_password may be NULL for provisions created before migration 016.
+    // In that case generate and persist a new password so migrations can use the scoped role.
+    if (rows[0].role_password) {
+      return { schemaName, roleName, rolePassword: rows[0].role_password }
+    }
+    const freshPassword = randomBytes(24).toString('base64url')
+    const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL! })
+    const client = await pool.connect()
+    try {
+      await client.query(`ALTER ROLE "${roleName}" PASSWORD '${freshPassword}'`)
+      await db.query(
+        `UPDATE deployments.app_db_provisions SET role_password = $2 WHERE app_id = $1`,
+        [appId, freshPassword],
+      )
+    } finally {
+      client.release()
+      await pool.end()
+    }
+    logger.info({ msg: 'app_db_password_backfilled', appId, schemaName, roleName })
+    return { schemaName, roleName, rolePassword: freshPassword }
   }
 
   const password = randomBytes(24).toString('base64url')
@@ -97,9 +116,9 @@ async function provisionAppDb(appId: string): Promise<{ schemaName: string; role
       GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "${roleName}"
     `)
     await client.query(
-      `INSERT INTO deployments.app_db_provisions (app_id, schema_name, role_name)
-       VALUES ($1, $2, $3) ON CONFLICT (app_id) DO NOTHING`,
-      [appId, schemaName, roleName],
+      `INSERT INTO deployments.app_db_provisions (app_id, schema_name, role_name, role_password)
+       VALUES ($1, $2, $3, $4) ON CONFLICT (app_id) DO NOTHING`,
+      [appId, schemaName, roleName, password],
     )
   } finally {
     client.release()
@@ -107,11 +126,31 @@ async function provisionAppDb(appId: string): Promise<{ schemaName: string; role
   }
 
   logger.info({ msg: 'app_db_provisioned', appId, schemaName, roleName })
-  return { schemaName, roleName }
+  return { schemaName, roleName, rolePassword: password }
 }
 
-/** Run db-migrations.sql from the cloned repo against the app's schema. No-op if file absent. */
-async function runMigrations(repoPath: string, schemaName: string): Promise<void> {
+/**
+ * Build a connection string for the scoped app role by re-using the host/port/dbname
+ * from DATABASE_URL but substituting the app role credentials.
+ */
+function buildScopedConnectionString(roleName: string, rolePassword: string): string {
+  const base = new URL(process.env.DATABASE_URL!)
+  const scoped = new URL(base.href)
+  scoped.username = roleName
+  scoped.password = rolePassword
+  return scoped.toString()
+}
+
+/** Run db-migrations.sql from the cloned repo against the app's schema.
+ *  Connects as the scoped app role (not the privileged DATABASE_URL user).
+ *  The migration runs inside a single transaction — rolled back on any error.
+ *  No-op if db-migrations.sql is absent. */
+async function runMigrations(
+  repoPath: string,
+  schemaName: string,
+  roleName: string,
+  rolePassword: string,
+): Promise<void> {
   let sql: string
   try {
     sql = await readFile(`${repoPath}/db-migrations.sql`, 'utf-8')
@@ -120,13 +159,21 @@ async function runMigrations(repoPath: string, schemaName: string): Promise<void
     return
   }
 
-  const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL! })
+  const connectionString = buildScopedConnectionString(roleName, rolePassword)
+  const pool = new pg.Pool({ connectionString })
   const client = await pool.connect()
   try {
+    // Belt-and-suspenders: restrict search_path even though the role only has
+    // USAGE on its own schema. This prevents accidental cross-schema references.
     await client.query(`SET search_path TO "${schemaName}"`)
+    await client.query('BEGIN')
     await client.query(sql)
+    await client.query('COMMIT')
     logger.info({ msg: 'migrations_applied', schemaName })
   } catch (err) {
+    await client.query('ROLLBACK').catch((rollbackErr: unknown) =>
+      logger.warn({ msg: 'migration_rollback_failed', schemaName, err: String(rollbackErr) })
+    )
     logger.error({ msg: 'migration_failed', schemaName, err: String(err) })
     throw Object.assign(new Error('MIGRATION_FAILED'), { code: 'MIGRATION_FAILED' })
   } finally {
@@ -298,14 +345,14 @@ export function startDeployWorker(): Worker {
 
       // Provision app DB schema and run migrations
       await emitEvent(deploymentId, 'provisioning', 'Setting up app database...')
-      const { schemaName } = await provisionAppDb(appId).catch(async (err) => {
+      const { schemaName, roleName, rolePassword } = await provisionAppDb(appId).catch(async (err) => {
         logger.error({ msg: 'provision_failed', deploymentId, err: String(err) })
         await failDeployment(deploymentId, 'PROVISION_FAILED')
         throw err
       })
 
       await emitEvent(deploymentId, 'migrating', 'Running database migrations...')
-      await runMigrations(tmpPath, schemaName).catch(async (err) => {
+      await runMigrations(tmpPath, schemaName, roleName, rolePassword).catch(async (err) => {
         await failDeployment(deploymentId, 'MIGRATION_FAILED')
         throw err
       })

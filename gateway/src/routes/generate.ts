@@ -1,9 +1,10 @@
 // gateway/src/routes/generate.ts
 import type { Context } from 'hono'
-import { resolveModel, getCreditCost, VALID_CATEGORIES, VALID_TIERS } from '../lib/model-routing'
-import { callOpenRouter } from '../lib/openrouter'
-import { db } from '../db'
-import { logger } from '../lib/logger'
+import { resolveModel, getCreditCost, VALID_CATEGORIES, VALID_TIERS } from '../lib/model-routing.js'
+import { callOpenRouter } from '../lib/openrouter.js'
+import { db } from '../db.js'
+import { logger } from '../lib/logger.js'
+import type { EmbedTokenPayload } from '../middleware/auth.js'
 
 interface GenerateBody {
   category: string
@@ -15,8 +16,9 @@ interface GenerateBody {
 }
 
 export async function handleGenerate(c: Context): Promise<Response> {
-  const tokenData = c.get('tokenData') as { userId: string; appId: string; creditsCharged: number } | undefined
-  if (!tokenData) return c.json({ error: 'Unauthorized' }, 401)
+  const embedToken = c.get('embedToken') as EmbedTokenPayload | undefined
+  if (!embedToken) return c.json({ error: 'Unauthorized' }, 401)
+  if (embedToken.userId === null) return c.json({ error: 'Forbidden: anonymous users cannot use generate' }, 403)
 
   let body: GenerateBody
   try {
@@ -71,8 +73,8 @@ export async function handleGenerate(c: Context): Promise<Response> {
     `INSERT INTO gateway.api_calls (user_id, app_id, model, credits_used, input_tokens, output_tokens, latency_ms, api_version)
      VALUES ($1, $2, $3, $4, $5, $6, $7, 'v2')`,
     [
-      tokenData.userId,
-      tokenData.appId,
+      embedToken.userId,
+      embedToken.appId,
       modelString,
       creditCost,
       response.usage.prompt_tokens,

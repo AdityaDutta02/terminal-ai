@@ -353,6 +353,16 @@ app.all('/mcp', async (c) => {
       timezone: z.string().optional().describe('IANA timezone. Default: UTC. Example: "Asia/Kolkata"'),
     },
     async ({ app_id, name, schedule, callback_path, payload, timezone }) => {
+      const ownerCheck = await db.query(
+        `SELECT a.id FROM marketplace.apps a
+         JOIN marketplace.channels ch ON ch.id = a.channel_id
+         WHERE a.id = $1 AND ch.creator_id = $2`,
+        [app_id, creatorId]
+      )
+      if (!ownerCheck.rows[0]) {
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ error: 'App not found or not owned by you' }) }], isError: true }
+      }
+
       const gatewayUrl = process.env.TERMINAL_AI_GATEWAY_URL ?? 'http://gateway:3001'
 
       // Get creator's embed token for this app
@@ -386,6 +396,16 @@ app.all('/mcp', async (c) => {
       app_id: z.string().uuid().describe('UUID of the deployed app'),
     },
     async ({ app_id }) => {
+      const ownerCheck = await db.query(
+        `SELECT a.id FROM marketplace.apps a
+         JOIN marketplace.channels ch ON ch.id = a.channel_id
+         WHERE a.id = $1 AND ch.creator_id = $2`,
+        [app_id, creatorId]
+      )
+      if (!ownerCheck.rows[0]) {
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ error: 'App not found or not owned by you' }) }], isError: true }
+      }
+
       const result = await db.query(
         `SELECT id, name, schedule, callback_path, timezone, enabled, next_run_at, last_run_at, last_run_status
          FROM gateway.scheduled_tasks WHERE app_id = $1 ORDER BY created_at`,
@@ -403,6 +423,16 @@ app.all('/mcp', async (c) => {
       task_id: z.string().uuid().describe('UUID of the task to delete'),
     },
     async ({ app_id, task_id }) => {
+      const ownerCheck = await db.query(
+        `SELECT a.id FROM marketplace.apps a
+         JOIN marketplace.channels ch ON ch.id = a.channel_id
+         WHERE a.id = $1 AND ch.creator_id = $2`,
+        [app_id, creatorId]
+      )
+      if (!ownerCheck.rows[0]) {
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ error: 'App not found or not owned by you' }) }], isError: true }
+      }
+
       const result = await db.query(
         `DELETE FROM gateway.scheduled_tasks WHERE id = $1 AND app_id = $2`,
         [task_id, app_id],

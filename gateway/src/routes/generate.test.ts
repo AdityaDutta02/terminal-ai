@@ -1,4 +1,5 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { EmbedTokenPayload } from '../middleware/auth.js'
 
 vi.mock('../lib/model-routing', () => ({
   resolveModel: vi.fn().mockResolvedValue('anthropic/claude-haiku-4-5'),
@@ -19,12 +20,49 @@ vi.mock('../lib/openrouter', () => ({
 // Import after mocks
 const { handleGenerate } = await import('./generate')
 
+const validEmbedToken: EmbedTokenPayload = {
+  userId: 'user-1',
+  appId: 'app-1',
+  sessionId: 'sess-1',
+  creditsPerCall: 4,
+  isFree: false,
+  isAnon: false,
+}
+
 describe('handleGenerate', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('returns 401 when no embedToken is present', async () => {
+    const ctx = {
+      req: { json: () => Promise.resolve({ category: 'chat', tier: 'good', messages: [{ role: 'user', content: 'hi' }] }) },
+      json: vi.fn(),
+      get: vi.fn().mockReturnValue(undefined),
+    }
+    await handleGenerate(ctx as unknown as Parameters<typeof handleGenerate>[0])
+    expect(ctx.json).toHaveBeenCalledWith({ error: 'Unauthorized' }, 401)
+  })
+
+  it('returns 403 when userId is null (anonymous user)', async () => {
+    const anonToken: EmbedTokenPayload = { ...validEmbedToken, userId: null, isAnon: true }
+    const ctx = {
+      req: { json: () => Promise.resolve({ category: 'chat', tier: 'good', messages: [{ role: 'user', content: 'hi' }] }) },
+      json: vi.fn(),
+      get: vi.fn().mockReturnValue(anonToken),
+    }
+    await handleGenerate(ctx as unknown as Parameters<typeof handleGenerate>[0])
+    expect(ctx.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: expect.stringContaining('anonymous') }),
+      403
+    )
+  })
+
   it('returns 400 for missing category', async () => {
     const ctx = {
       req: { json: () => Promise.resolve({ tier: 'good', messages: [] }) },
       json: vi.fn(),
-      get: vi.fn().mockReturnValue({ userId: 'user-1', appId: 'app-1', creditsCharged: 4 }),
+      get: vi.fn().mockReturnValue(validEmbedToken),
     }
     await handleGenerate(ctx as unknown as Parameters<typeof handleGenerate>[0])
     expect(ctx.json).toHaveBeenCalledWith(
@@ -37,7 +75,7 @@ describe('handleGenerate', () => {
     const ctx = {
       req: { json: () => Promise.resolve({ category: 'chat', tier: 'good', messages: [{ role: 'user', content: 'hi' }] }) },
       json: vi.fn(),
-      get: vi.fn().mockReturnValue({ userId: 'user-1', appId: 'app-1', creditsCharged: 4 }),
+      get: vi.fn().mockReturnValue(validEmbedToken),
     }
     await handleGenerate(ctx as unknown as Parameters<typeof handleGenerate>[0])
     expect(ctx.json).toHaveBeenCalledWith(
