@@ -75,6 +75,103 @@ export async function* streamChat(
   }
 }`
 
+const DB_MIGRATIONS_TEMPLATE = `-- db-migrations.sql
+-- This file runs once at deploy time against your app's isolated Postgres schema.
+-- Do not use schema-qualified names — the schema is set automatically.
+-- Add your CREATE TABLE statements here.
+
+CREATE TABLE IF NOT EXISTS items (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  data       JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+`
+
+const DB_SDK = `// lib/db.ts — Terminal AI Database SDK (server-side only)
+// Calls /db/* on the Terminal AI gateway using the embed token.
+// The embed token is received from the viewer shell via postMessage (see useEmbedToken hook).
+
+const GATEWAY_URL = process.env.TERMINAL_AI_GATEWAY_URL!
+
+async function dbRequest(method: string, path: string, body?: unknown, embedToken: string = ''): Promise<Response> {
+  const res = await fetch(\`\${GATEWAY_URL}/db/\${path}\`, {
+    method,
+    headers: { Authorization: \`Bearer \${embedToken}\`, 'Content-Type': 'application/json' },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Unknown error' }))
+    throw new Error((err as { error: string }).error ?? \`DB error \${res.status}\`)
+  }
+  return res
+}
+
+export async function dbList<T = Record<string, unknown>>(table: string, filters: Record<string, string> = {}, embedToken: string): Promise<T[]> {
+  const params = new URLSearchParams(filters)
+  const res = await dbRequest('GET', \`\${table}?\${params}\`, undefined, embedToken)
+  return res.json() as Promise<T[]>
+}
+
+export async function dbGet<T = Record<string, unknown>>(table: string, id: string, embedToken: string): Promise<T> {
+  const res = await dbRequest('GET', \`\${table}/\${id}\`, undefined, embedToken)
+  return res.json() as Promise<T>
+}
+
+export async function dbInsert<T = Record<string, unknown>>(table: string, row: Record<string, unknown>, embedToken: string): Promise<T> {
+  const res = await dbRequest('POST', table, row, embedToken)
+  return res.json() as Promise<T>
+}
+
+export async function dbUpdate<T = Record<string, unknown>>(table: string, id: string, patch: Record<string, unknown>, embedToken: string): Promise<T> {
+  const res = await dbRequest('PATCH', \`\${table}/\${id}\`, patch, embedToken)
+  return res.json() as Promise<T>
+}
+
+export async function dbDelete(table: string, id: string, embedToken: string): Promise<void> {
+  await dbRequest('DELETE', \`\${table}/\${id}\`, undefined, embedToken)
+}
+`
+
+const STORAGE_SDK = `// lib/storage.ts — Terminal AI Storage SDK (server-side only)
+// Calls /storage/* on the Terminal AI gateway using the embed token.
+
+const GATEWAY_URL = process.env.TERMINAL_AI_GATEWAY_URL!
+
+export async function storageUpload(key: string, buffer: Buffer, contentType: string, embedToken: string): Promise<{ key: string }> {
+  const res = await fetch(\`\${GATEWAY_URL}/storage/\${key}\`, {
+    method: 'PUT',
+    headers: { Authorization: \`Bearer \${embedToken}\`, 'Content-Type': contentType },
+    body: buffer,
+  })
+  if (!res.ok) throw new Error(\`Storage upload failed: \${res.status}\`)
+  return res.json() as Promise<{ key: string }>
+}
+
+export async function storageGet(key: string, embedToken: string): Promise<Response> {
+  const res = await fetch(\`\${GATEWAY_URL}/storage/\${key}\`, {
+    headers: { Authorization: \`Bearer \${embedToken}\` },
+  })
+  if (!res.ok) throw new Error(\`Storage get failed: \${res.status}\`)
+  return res
+}
+
+export async function storageList(embedToken: string): Promise<Array<{ key: string; size: number; lastModified: string }>> {
+  const res = await fetch(\`\${GATEWAY_URL}/storage\`, {
+    headers: { Authorization: \`Bearer \${embedToken}\` },
+  })
+  if (!res.ok) throw new Error(\`Storage list failed: \${res.status}\`)
+  return res.json() as Promise<Array<{ key: string; size: number; lastModified: string }>>
+}
+
+export async function storageDelete(key: string, embedToken: string): Promise<void> {
+  const res = await fetch(\`\${GATEWAY_URL}/storage/\${key}\`, {
+    method: 'DELETE',
+    headers: { Authorization: \`Bearer \${embedToken}\` },
+  })
+  if (!res.ok) throw new Error(\`Storage delete failed: \${res.status}\`)
+}
+`
+
 // Client-side hook that listens for the embed token from the Terminal AI viewer shell.
 // The viewer shell sends the token via postMessage after the iframe loads.
 // This hook MUST be used in the root layout or page component.
@@ -186,6 +283,10 @@ export default config
     files['lib/terminal-ai.ts'] = GATEWAY_SDK
     files['app/api/ai/route.ts'] = EXAMPLE_API_ROUTE
   }
+  // Always inject DB and storage SDKs — every app has access to these
+  files['lib/db.ts'] = DB_SDK
+  files['lib/storage.ts'] = STORAGE_SDK
+  files['db-migrations.sql'] = DB_MIGRATIONS_TEMPLATE
   return files
 }
 function buildPythonFiles(input: ScaffoldInput): Record<string, string> {
@@ -218,12 +319,14 @@ export function scaffoldApp(input: ScaffoldInput): ScaffoldOutput {
   }
   return {
     files,
-    instructions: '1. Clone this scaffold\n2. Add your logic\n3. Ensure next.config.js has output: "standalone"\n4. Push to GitHub\n5. Deploy via Terminal AI: use create_channel then deploy_app',
+    instructions: '1. Clone this scaffold\n2. Add your logic\n3. Edit db-migrations.sql to define your tables\n4. Ensure next.config.js has output: "standalone"\n5. Push to GitHub\n6. Deploy via Terminal AI: use create_channel then deploy_app',
     required_env_vars: ['TERMINAL_AI_GATEWAY_URL', 'TERMINAL_AI_APP_ID'],
     notes: [
       'CRITICAL: Use the useEmbedToken() hook in your root client component to receive the auth token from the Terminal AI viewer shell via postMessage',
       'Pass the embed token from the client to your API routes, which forward it as Bearer token to the gateway',
       'Do NOT call OpenAI/Anthropic directly — all AI calls go through TERMINAL_AI_GATEWAY_URL',
+      'Your app has an isolated Postgres schema — edit db-migrations.sql to define your tables before first deploy. Tables are created automatically at deploy time.',
+      'Your app has an isolated storage prefix — use lib/storage.ts helpers to upload, download, list, and delete files via the gateway',
       'Health endpoint is required and must return 200',
       'Never store the embed token in localStorage or cookies',
       'The token expires after 15 minutes — the viewer shell auto-refreshes it via postMessage',
