@@ -7,6 +7,7 @@
     "start": "bun src/index.ts"
   },
   "dependencies": {
+    "cron-parser": "^5.5.0",
     "hono": "^4.6.0",
     "jose": "^5.9.3",
     "pg": "^8.13.0",
@@ -14,6 +15,7 @@
   },
   "devDependencies": {
     "@types/pg": "^8",
-    "bun-types": "latest"
+    "bun-types": "latest",
+    "vitest": "^4.1.3"
   }
 }
