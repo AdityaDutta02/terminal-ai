@@ -3,7 +3,12 @@ import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import { proxy } from './routes/proxy.js'
 import { uploadRouter } from './routes/upload.js'
+import { emailRouter } from './routes/email.js'
+import { taskRouter } from './routes/tasks.js'
 import { gatewayRateLimit } from './middleware/rate-limit.js'
+import { embedTokenAuth } from './middleware/auth.js'
+import { executeDueTasks } from './workers/task-runner.js'
+import { logger as appLogger } from './lib/logger.js'
 
 const app = new Hono()
 
@@ -20,7 +25,7 @@ app.use(
       if (process.env.NODE_ENV !== 'production' && origin.startsWith('http://localhost')) return origin
       return null
     },
-    allowMethods: ['POST', 'OPTIONS'],
+    allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
     maxAge: 86400,
   }),
@@ -32,6 +37,30 @@ app.use('/v1/*', gatewayRateLimit())
 
 app.route('/upload', uploadRouter)
 app.route('/', proxy)
+
+// New routes — protected by embedTokenAuth
+app.use('/email/*', embedTokenAuth)
+app.route('/email', emailRouter)
+
+app.use('/tasks/*', embedTokenAuth)
+app.route('/tasks', taskRouter)
+
+// Task runner — ticks every 60 seconds
+const TASK_RUNNER_INTERVAL_MS = 60_000
+let taskRunnerTimer: ReturnType<typeof setInterval> | null = null
+
+function startTaskRunner(): void {
+  taskRunnerTimer = setInterval(async () => {
+    try {
+      await executeDueTasks()
+    } catch (err) {
+      appLogger.error({ msg: 'task_runner_error', err: String(err) })
+    }
+  }, TASK_RUNNER_INTERVAL_MS)
+  appLogger.info({ msg: 'task_runner_started', intervalMs: TASK_RUNNER_INTERVAL_MS })
+}
+
+startTaskRunner()
 
 const port = parseInt(process.env.PORT ?? '3001', 10)
 

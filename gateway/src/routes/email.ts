@@ -7,7 +7,7 @@ import type { EmbedTokenPayload } from '../middleware/auth.js'
 
 const FROM_EMAIL = process.env.FROM_EMAIL ?? 'Terminal AI <noreply@terminalai.studioionique.com>'
 
-const emailProvider = new ResendEmailProvider(process.env.RESEND_API_KEY ?? '')
+const emailProvider = new ResendEmailProvider(process.env.RESEND_API_KEY || 're_placeholder_key')
 
 export const emailRouter = new Hono()
 
