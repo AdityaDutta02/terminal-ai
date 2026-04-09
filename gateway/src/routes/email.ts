@@ -7,11 +7,18 @@ import type { EmbedTokenPayload } from '../middleware/auth.js'
 
 const FROM_EMAIL = process.env.FROM_EMAIL ?? 'Terminal AI <noreply@terminalai.studioionique.com>'
 
-const emailProvider = new ResendEmailProvider(process.env.RESEND_API_KEY || 're_placeholder_key')
+const emailProvider = process.env.RESEND_API_KEY
+  ? new ResendEmailProvider(process.env.RESEND_API_KEY)
+  : null
 
 export const emailRouter = new Hono()
 
 emailRouter.post('/send', async (c) => {
+  if (!emailProvider) {
+    logger.error({ msg: 'email_not_configured', detail: 'RESEND_API_KEY is not set' })
+    return c.json({ error: 'Email service is not configured' }, 503)
+  }
+
   const token: EmbedTokenPayload = c.get('embedToken')
   const { userId, appId, isFree } = token
 

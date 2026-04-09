@@ -321,12 +321,13 @@ app.post('/apps/:appId/redeploy', async (c) => {
   if (prev.coolify_app_id) {
     try {
       await triggerDeploy(prev.coolify_app_id)
-      // Create a new deployment record for tracking
+      // Update the existing deployment record (subdomain is unique, so reuse it)
       const depResult = await db.query<{ id: string }>(
-        `INSERT INTO deployments.deployments (app_id, subdomain, github_repo, github_branch, coolify_app_id, status)
-         VALUES ($1, $2, $3, $4, $5, 'building')
+        `UPDATE deployments.deployments
+         SET status = 'building', updated_at = NOW(), completed_at = NULL, error_message = NULL
+         WHERE id = $1
          RETURNING id`,
-        [appId, prev.subdomain, prev.github_repo, prev.github_branch, prev.coolify_app_id]
+        [prev.id]
       )
       const newDeploymentId = depResult.rows[0].id
       // Queue the polling/health-check phase (reuses existing Coolify app)
@@ -343,11 +344,13 @@ app.post('/apps/:appId/redeploy', async (c) => {
     }
   }
 
-  // No Coolify app — fall back to full deploy
+  // No Coolify app — fall back to full deploy (reuse existing deployment row)
   const depResult = await db.query<{ id: string }>(
-    `INSERT INTO deployments.deployments (app_id, subdomain, github_repo, github_branch)
-     VALUES ($1, $2, $3, $4) RETURNING id`,
-    [appId, prev.subdomain, prev.github_repo, prev.github_branch]
+    `UPDATE deployments.deployments
+     SET status = 'pending', updated_at = NOW(), completed_at = NULL, error_message = NULL
+     WHERE id = $1
+     RETURNING id`,
+    [prev.id]
   )
   const newDeploymentId = depResult.rows[0].id
   await deployQueue.add('deploy', {

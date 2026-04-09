@@ -127,6 +127,8 @@ services:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/terminalai
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       EMBED_TOKEN_SECRET: ${EMBED_TOKEN_SECRET}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      FROM_EMAIL: ${FROM_EMAIL:-Terminal AI <noreply@terminalai.studioionique.com>}
       PORT: '3001'
     depends_on:
       postgres:
