@@ -139,7 +139,7 @@ app.all('/mcp', async (c) => {
        FROM deployments.deployments d
        JOIN marketplace.apps a ON a.id = d.app_id
        JOIN marketplace.channels ch ON ch.id = a.channel_id
-       WHERE a.id = $1 AND ch.creator_id = $2
+       WHERE a.id = $1 AND ch.creator_id = $2 AND a.deleted_at IS NULL AND ch.deleted_at IS NULL
        ORDER BY d.created_at DESC LIMIT 1`,
       [app_id, creatorId]
     )
@@ -196,8 +196,8 @@ app.all('/mcp', async (c) => {
       const result = await db.query(
         `SELECT c.id, c.name, c.slug, COUNT(a.id)::int AS app_count
          FROM marketplace.channels c
-         LEFT JOIN marketplace.apps a ON a.channel_id = c.id
-         WHERE c.creator_id = $1
+         LEFT JOIN marketplace.apps a ON a.channel_id = c.id AND a.deleted_at IS NULL
+         WHERE c.creator_id = $1 AND c.deleted_at IS NULL
          GROUP BY c.id, c.name, c.slug
          ORDER BY c.created_at DESC`,
         [creatorId]
@@ -215,6 +215,46 @@ app.all('/mcp', async (c) => {
           text: channels.length === 0
             ? 'No channels found. Use create_channel to create one.'
             : JSON.stringify(channels, null, 2),
+        }],
+      }
+    }
+  )
+
+  server.tool(
+    'list_apps',
+    'List all apps in a channel you own. Returns app IDs, names, slugs, and deployment status — useful for finding app IDs for redeploy_app or delete_app.',
+    {
+      channel_id: z.string().uuid().describe('Channel ID to list apps for'),
+    },
+    async ({ channel_id }) => {
+      const result = await db.query(
+        `SELECT a.id, a.name, a.slug, a.github_repo, a.github_branch,
+                d.status AS deploy_status, d.url AS deploy_url
+         FROM marketplace.apps a
+         JOIN marketplace.channels ch ON ch.id = a.channel_id
+         LEFT JOIN LATERAL (
+           SELECT status, url FROM deployments.deployments
+           WHERE app_id = a.id ORDER BY created_at DESC LIMIT 1
+         ) d ON true
+         WHERE a.channel_id = $1 AND ch.creator_id = $2 AND a.deleted_at IS NULL AND ch.deleted_at IS NULL
+         ORDER BY a.created_at DESC`,
+        [channel_id, creatorId]
+      )
+      const apps = (result.rows as { id: string; name: string; slug: string; github_repo: string; github_branch: string; deploy_status: string | null; deploy_url: string | null }[]).map((row) => ({
+        appId: row.id,
+        name: row.name,
+        slug: row.slug,
+        githubRepo: row.github_repo,
+        branch: row.github_branch,
+        deployStatus: row.deploy_status ?? 'unknown',
+        url: row.deploy_url ?? null,
+      }))
+      return {
+        content: [{
+          type: 'text' as const,
+          text: apps.length === 0
+            ? 'No apps found in this channel.'
+            : JSON.stringify(apps, null, 2),
         }],
       }
     }
@@ -261,8 +301,8 @@ app.all('/mcp', async (c) => {
       const check = await db.query(
         `SELECT c.id, COUNT(a.id)::int AS app_count
          FROM marketplace.channels c
-         LEFT JOIN marketplace.apps a ON a.channel_id = c.id
-         WHERE c.id = $1 AND c.creator_id = $2
+         LEFT JOIN marketplace.apps a ON a.channel_id = c.id AND a.deleted_at IS NULL
+         WHERE c.id = $1 AND c.creator_id = $2 AND c.deleted_at IS NULL
          GROUP BY c.id`,
         [channel_id, creatorId]
       )
@@ -328,7 +368,7 @@ app.all('/mcp', async (c) => {
       const check = await db.query(
         `SELECT a.id FROM marketplace.apps a
          JOIN marketplace.channels ch ON ch.id = a.channel_id
-         WHERE a.id = $1 AND ch.creator_id = $2`,
+         WHERE a.id = $1 AND ch.creator_id = $2 AND a.deleted_at IS NULL AND ch.deleted_at IS NULL`,
         [app_id, creatorId]
       )
       if (!check.rows[0]) return { content: [{ type: 'text', text: 'App not found or not owned by you' }], isError: true }
@@ -365,7 +405,7 @@ app.all('/mcp', async (c) => {
       const check = await db.query(
         `SELECT a.id FROM marketplace.apps a
          JOIN marketplace.channels ch ON ch.id = a.channel_id
-         WHERE a.id = $1 AND ch.creator_id = $2`,
+         WHERE a.id = $1 AND ch.creator_id = $2 AND a.deleted_at IS NULL AND ch.deleted_at IS NULL`,
         [app_id, creatorId]
       )
       if (!check.rows[0]) return { content: [{ type: 'text', text: 'App not found or not owned by you' }], isError: true }
@@ -396,7 +436,7 @@ app.all('/mcp', async (c) => {
       const ownerCheck = await db.query(
         `SELECT a.id FROM marketplace.apps a
          JOIN marketplace.channels ch ON ch.id = a.channel_id
-         WHERE a.id = $1 AND ch.creator_id = $2`,
+         WHERE a.id = $1 AND ch.creator_id = $2 AND a.deleted_at IS NULL AND ch.deleted_at IS NULL`,
         [app_id, creatorId]
       )
       if (!ownerCheck.rows[0]) {
@@ -441,7 +481,7 @@ app.all('/mcp', async (c) => {
       const ownerCheck = await db.query(
         `SELECT a.id FROM marketplace.apps a
          JOIN marketplace.channels ch ON ch.id = a.channel_id
-         WHERE a.id = $1 AND ch.creator_id = $2`,
+         WHERE a.id = $1 AND ch.creator_id = $2 AND a.deleted_at IS NULL AND ch.deleted_at IS NULL`,
         [app_id, creatorId]
       )
       if (!ownerCheck.rows[0]) {
@@ -468,7 +508,7 @@ app.all('/mcp', async (c) => {
       const ownerCheck = await db.query(
         `SELECT a.id FROM marketplace.apps a
          JOIN marketplace.channels ch ON ch.id = a.channel_id
-         WHERE a.id = $1 AND ch.creator_id = $2`,
+         WHERE a.id = $1 AND ch.creator_id = $2 AND a.deleted_at IS NULL AND ch.deleted_at IS NULL`,
         [app_id, creatorId]
       )
       if (!ownerCheck.rows[0]) {
