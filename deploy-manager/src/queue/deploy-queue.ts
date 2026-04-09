@@ -399,7 +399,7 @@ export function startDeployWorker(): Worker {
         branch,
         port: appPort,
         envVars: {
-          TERMINAL_AI_GATEWAY_URL: process.env.GATEWAY_URL!,
+          TERMINAL_AI_GATEWAY_URL: process.env.GATEWAY_PUBLIC_URL || process.env.GATEWAY_URL!,
           TERMINAL_AI_APP_ID: appId,
           APP_DB_SCHEMA: schemaName,
           TERMINAL_AI_STORAGE_PREFIX: `apps/${appId}/`,

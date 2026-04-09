@@ -211,6 +211,7 @@ services:
       CLOUDFLARE_ZONE_ID: ${CLOUDFLARE_ZONE_ID}
       VPS2_IP: ${VPS2_IP}
       GATEWAY_URL: http://gateway:3001
+      GATEWAY_PUBLIC_URL: https://api.terminalai.studioionique.com
       INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
       PORT: '3002'
     depends_on:
