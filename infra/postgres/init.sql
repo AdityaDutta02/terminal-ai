@@ -78,8 +78,11 @@ CREATE TABLE marketplace.apps (
   status              TEXT NOT NULL DEFAULT 'live' CHECK (status IN ('pending', 'live', 'suspended', 'draft', 'archived')),
   deleted_at          TIMESTAMPTZ,
   created_at          TIMESTAMPTZ DEFAULT now() NOT NULL,
-  UNIQUE(channel_id, slug)
+  CONSTRAINT apps_channel_id_slug_active UNIQUE (channel_id, slug) -- replaced by partial index below
 );
+-- Allow reuse of slugs after soft-delete
+ALTER TABLE marketplace.apps DROP CONSTRAINT IF EXISTS apps_channel_id_slug_active;
+CREATE UNIQUE INDEX apps_channel_id_slug_active ON marketplace.apps(channel_id, slug) WHERE deleted_at IS NULL;
 
 CREATE TABLE gateway.embed_tokens (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
