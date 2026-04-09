@@ -13,6 +13,7 @@ const patchSchema = z.object({
   status: z.enum(['live', 'draft', 'coming_soon']).optional(),
   is_free: z.boolean().optional(),
   model_tier: z.enum(MODEL_TIERS).optional(),
+  credits_per_session: z.number().int().min(1).max(1000).optional(),
 })
 
 async function verifyOwnership(appId: string, userId: string): Promise<NextResponse | null> {
@@ -44,7 +45,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid', details: parsed.error.flatten() }, { status: 400 })
   }
 
-  const { name, description, status, is_free, model_tier } = parsed.data
+  const { name, description, status, is_free, model_tier, credits_per_session } = parsed.data
 
   const updates: string[] = []
   const values: unknown[] = []
@@ -57,6 +58,12 @@ export async function PATCH(
   if (model_tier !== undefined) {
     updates.push(`model_tier = $${idx++}`)
     values.push(model_tier)
+  }
+  // credits_per_session: use explicit value if provided, else default from model_tier
+  if (credits_per_session !== undefined) {
+    updates.push(`credits_per_session = $${idx++}`)
+    values.push(credits_per_session)
+  } else if (model_tier !== undefined) {
     updates.push(`credits_per_session = $${idx++}`)
     values.push(MODEL_TIER_CREDITS[model_tier])
   }

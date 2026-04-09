@@ -32,7 +32,7 @@ export default async function CreatorAppSettingsPage({
 
   // Get app with ownership check (app must belong to any channel owned by this user)
   const appResult = await db.query<AppRow>(
-    `SELECT a.id, a.name, a.slug, a.description, a.status, a.model_tier, a.is_free, a.iframe_url, a.created_at
+    `SELECT a.id, a.name, a.slug, a.description, a.status, a.model_tier, a.is_free, a.credits_per_session, a.iframe_url, a.created_at
      FROM marketplace.apps a
      JOIN marketplace.channels c ON c.id = a.channel_id
      WHERE a.id = $1 AND c.creator_id = $2 AND a.deleted_at IS NULL`,
@@ -48,6 +48,7 @@ export default async function CreatorAppSettingsPage({
     status: app.status as 'live' | 'draft',
     model_tier: (app.model_tier ?? 'standard') as AppSettingsData['model_tier'],
     is_free: app.is_free,
+    credits_per_session: (app as Record<string, unknown>).credits_per_session as number ?? 1,
   }
 
   return (

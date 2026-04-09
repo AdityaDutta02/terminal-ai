@@ -14,6 +14,7 @@ export type AppSettingsData = {
   status: AppStatus
   model_tier: ModelTier
   is_free: boolean
+  credits_per_session: number
 }
 
 function getTierLabel(tier: ModelTier): string {
@@ -58,6 +59,7 @@ export function AppSettingsForm({ app }: { app: AppSettingsData }) {
   const [description, setDescription] = useState(app.description ?? '')
   const [status, setStatus] = useState<AppStatus>(app.status)
   const [modelTier, setModelTier] = useState<ModelTier>(app.model_tier)
+  const [creditsPerSession, setCreditsPerSession] = useState(app.credits_per_session)
   const [isFree, setIsFree] = useState(app.is_free)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<ToastState>(null)
@@ -85,6 +87,7 @@ export function AppSettingsForm({ app }: { app: AppSettingsData }) {
           description: description.trim() || undefined,
           status,
           model_tier: modelTier,
+          credits_per_session: creditsPerSession,
           is_free: isFree,
         }),
       })
@@ -173,7 +176,11 @@ export function AppSettingsForm({ app }: { app: AppSettingsData }) {
               id="model-tier"
               data-testid="model-tier-select"
               value={modelTier}
-              onChange={(e) => setModelTier(e.target.value as ModelTier)}
+              onChange={(e) => {
+                const tier = e.target.value as ModelTier
+                setModelTier(tier)
+                setCreditsPerSession(MODEL_TIER_CREDITS[tier])
+              }}
               className="w-full h-[44px] px-4 rounded-xl border border-slate-200 text-[14px] text-slate-700 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all bg-white appearance-none"
             >
               {MODEL_TIER_OPTIONS.map((tier) => (
@@ -182,6 +189,26 @@ export function AppSettingsForm({ app }: { app: AppSettingsData }) {
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Credits per session */}
+          <div>
+            <label className="block text-[13px] font-medium text-slate-700 mb-1.5" htmlFor="credits-per-session">
+              Credits per session
+            </label>
+            <input
+              id="credits-per-session"
+              data-testid="credits-per-session-input"
+              type="number"
+              min={1}
+              max={1000}
+              value={creditsPerSession}
+              onChange={(e) => setCreditsPerSession(Math.max(1, parseInt(e.target.value) || 1))}
+              className="w-full h-[44px] px-4 rounded-xl border border-slate-200 text-[14px] text-slate-700 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all"
+            />
+            <p className="text-[12px] text-slate-400 mt-1">
+              Credits deducted per user session. Auto-set by model tier, but can be overridden.
+            </p>
           </div>
 
           {/* Status toggle */}
