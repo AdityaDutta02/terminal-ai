@@ -36,4 +36,42 @@ describe('scaffoldApp', () => {
     expect(sdk).toContain("throw new Error('Gateway is busy. Please try again in a moment.')")
     expect(sdk).toContain('Retry-After')
   })
+
+  it('SDK uses /v1/generate with category+tier routing, not direct model names', () => {
+    const result = scaffoldApp({
+      framework: 'nextjs',
+      app_name: 'AI Chat',
+      description: 'chat app',
+      category: 'chat',
+      uses_ai: true,
+      uses_file_upload: false,
+      generates_artifacts: false,
+      api_category: 'web_search',
+      api_tier: 'good',
+    })
+    const sdk = result.files['lib/terminal-ai.ts']
+    expect(sdk).toContain('/v1/generate')
+    expect(sdk).not.toContain('/v1/chat/completions')
+    expect(sdk).toContain('config.category')
+    expect(sdk).toContain('config.tier')
+
+    const config = JSON.parse(result.files['terminal-ai.config.json']) as { category: string; tier: string }
+    expect(config.category).toBe('web_search')
+    expect(config.tier).toBe('good')
+  })
+
+  it('validate-config requires category and tier keys', () => {
+    const result = scaffoldApp({
+      framework: 'nextjs',
+      app_name: 'Test',
+      description: 'test',
+      category: 'test',
+      uses_ai: true,
+      uses_file_upload: false,
+      generates_artifacts: false,
+    })
+    const validator = result.files['lib/validate-config.ts']
+    expect(validator).toContain("'category'")
+    expect(validator).toContain("'tier'")
+  })
 })

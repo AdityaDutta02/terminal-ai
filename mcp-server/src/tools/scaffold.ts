@@ -43,18 +43,32 @@ async function fetchWithRetry(
   throw new Error('Gateway is busy. Please try again in a moment.')
 }
 
+interface GenerateResponse {
+  id: string
+  content: string
+  model_used: string
+  usage: { input_tokens: number; output_tokens: number }
+  credits_charged: number
+}
+
 export async function callGateway(
   messages: { role: string; content: string }[],
   embedToken: string,
-): Promise<Response> {
+  options?: { category?: string; tier?: string; system?: string },
+): Promise<GenerateResponse> {
   if (!embedToken) throw new Error('Missing embed token')
-  const res = await fetchWithRetry(\`\${GATEWAY_URL}/v1/chat/completions\`, {
+  const res = await fetchWithRetry(\`\${GATEWAY_URL}/v1/generate\`, {
     method: 'POST',
     headers: {
       Authorization: \`Bearer \${embedToken}\`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ model: config.model_tier, messages, stream: true }),
+    body: JSON.stringify({
+      category: options?.category ?? config.category,
+      tier: options?.tier ?? config.tier,
+      messages,
+      ...(options?.system ? { system: options.system } : {}),
+    }),
   })
   if (res.status === 401) {
     throw Object.assign(
@@ -62,22 +76,11 @@ export async function callGateway(
       { code: 'TOKEN_EXPIRED', retryable: true },
     )
   }
-  if (!res.ok) throw new Error(\`Gateway error: \${res.status}\`)
-  return res
-}
-
-export async function* streamChat(
-  messages: { role: string; content: string }[],
-  embedToken: string,
-) {
-  const res = await callGateway(messages, embedToken)
-  const reader = res.body!.getReader()
-  const decoder = new TextDecoder()
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    yield decoder.decode(value)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText })) as Record<string, string>
+    throw new Error(\`Gateway error (\${res.status}): \${err.error ?? res.statusText}\`)
   }
+  return res.json() as Promise<GenerateResponse>
 }`
 
 const DB_MIGRATIONS_TEMPLATE = `-- db-migrations.sql
@@ -232,15 +235,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Missing prompt' }, { status: 400 })
   }
 
-  const res = await callGateway(
+  const result = await callGateway(
     [{ role: 'user', content: prompt }],
     embedToken,
   )
 
-  // Stream the response back to the client
-  return new Response(res.body, {
-    headers: { 'Content-Type': 'text/event-stream' },
-  })
+  return NextResponse.json({ content: result.content })
 }
 `
 const NEXTJS_DOCKERFILE = `FROM node:20-alpine AS base
@@ -276,7 +276,7 @@ function buildNextjsFiles(input: ScaffoldInput): Record<string, string> {
   files['lib/validate-config.ts'] = `// Validates terminal-ai.config.json at import time
 import config from '../terminal-ai.config.json' assert { type: 'json' }
 
-const REQUIRED_KEYS = ['app_name', 'framework', 'health_check_path', 'model_tier'] as const
+const REQUIRED_KEYS = ['app_name', 'framework', 'health_check_path', 'category', 'tier'] as const
 
 for (const key of REQUIRED_KEYS) {
   if (!config[key as keyof typeof config]) {
