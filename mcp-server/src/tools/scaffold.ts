@@ -304,8 +304,9 @@ export default config
   files['db-migrations.sql'] = DB_MIGRATIONS_TEMPLATE
   files['lib/email-sdk.ts'] = `const GATEWAY = process.env.TERMINAL_AI_GATEWAY_URL!;
 
+/** Send an email to the authenticated user. The gateway resolves the recipient
+ *  email from the embed token — apps never see the user's email address. */
 export async function sendEmail(
-  to: string,
   subject: string,
   html: string,
   embedToken: string,
@@ -316,7 +317,7 @@ export async function sendEmail(
       'Content-Type': 'application/json',
       Authorization: \`Bearer \${embedToken}\`,
     },
-    body: JSON.stringify({ to, subject, html }),
+    body: JSON.stringify({ subject, html }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
@@ -421,7 +422,7 @@ export function scaffoldApp(input: ScaffoldInput): ScaffoldOutput {
       'Health endpoint is required and must return 200',
       'Never store the embed token in localStorage or cookies',
       'The token expires after 15 minutes — the viewer shell auto-refreshes it via postMessage',
-      'Use lib/email-sdk.ts to send emails to the authenticated user via the gateway',
+      'Use lib/email-sdk.ts to send emails to the authenticated user — the gateway resolves the email from the token, apps never see user emails',
       'Use lib/task-sdk.ts to register cron schedules — the gateway will POST to your callback path on schedule',
       'Task callbacks receive a short-lived token in the Authorization header — use it for AI and email calls',
     ],

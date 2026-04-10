@@ -62,6 +62,27 @@ describe('scaffoldApp', () => {
     expect(config.tier).toBe('good')
   })
 
+  it('email SDK does not expose user email — only takes subject and html', () => {
+    const result = scaffoldApp({
+      framework: 'nextjs',
+      app_name: 'Email Test',
+      description: 'test',
+      category: 'test',
+      uses_ai: false,
+      uses_file_upload: false,
+      generates_artifacts: false,
+    })
+    const emailSdk = result.files['lib/email-sdk.ts']
+    expect(emailSdk).toBeDefined()
+    expect(emailSdk).toContain('sendEmail')
+    // Should NOT have a `to` parameter — gateway resolves email from token
+    expect(emailSdk).not.toContain('to: string')
+    expect(emailSdk).toContain('subject: string')
+    expect(emailSdk).toContain('html: string')
+    expect(emailSdk).toContain('embedToken: string')
+    expect(emailSdk).not.toContain('to, subject')
+  })
+
   it('validate-config requires category and tier keys', () => {
     const result = scaffoldApp({
       framework: 'nextjs',

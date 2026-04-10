@@ -26,20 +26,19 @@ emailRouter.post('/send', async (c) => {
     return c.json({ error: 'Anonymous users cannot send emails' }, 403)
   }
 
-  const body = await c.req.json<{ to?: string; subject?: string; html?: string }>()
+  const body = await c.req.json<{ subject?: string; html?: string }>()
 
-  if (!body.to) return c.json({ error: 'Missing required field: to' }, 400)
   if (!body.subject) return c.json({ error: 'Missing required field: subject' }, 400)
   if (!body.html) return c.json({ error: 'Missing required field: html' }, 400)
 
-  // Validate recipient matches authenticated user's email
+  // Resolve recipient email from userId — apps never see the user's email
   const userResult = await db.query<{ email: string }>(
     `SELECT email FROM public."user" WHERE id = $1`,
     [userId],
   )
   const userEmail = userResult.rows[0]?.email
-  if (!userEmail || body.to.toLowerCase() !== userEmail.toLowerCase()) {
-    return c.json({ error: 'Can only send emails to the authenticated user' }, 403)
+  if (!userEmail) {
+    return c.json({ error: 'User email not found' }, 404)
   }
 
   // Rate limit: 10 emails/hour per app per user
@@ -60,7 +59,7 @@ emailRouter.post('/send', async (c) => {
     }
     await db.query(
       `INSERT INTO subscriptions.credit_ledger (user_id, delta, balance_after, reason, app_id)
-       VALUES ($1, -1, (SELECT COALESCE(SUM(delta), 0) - 1 FROM subscriptions.credit_ledger WHERE user_id = $1), 'email_send', $2)`,
+       VALUES ($1, -1, (SELECT COALESCE(SUM(delta), 0)::int - 1 FROM subscriptions.credit_ledger WHERE user_id = $1), 'email_send', $2)`,
       [userId, appId],
     )
   }
@@ -70,7 +69,7 @@ emailRouter.post('/send', async (c) => {
   try {
     const result = await emailProvider.send({
       from: FROM_EMAIL,
-      to: body.to,
+      to: userEmail,
       subject: body.subject,
       html: body.html,
     })
@@ -84,7 +83,7 @@ emailRouter.post('/send', async (c) => {
   await db.query(
     `INSERT INTO gateway.email_sends (app_id, user_id, recipient, subject, status, message_id, credits_charged)
      VALUES ($1, $2, $3, $4, 'sent', $5, $6)`,
-    [appId, userId, body.to, body.subject, messageId, isFree ? 0 : 1],
+    [appId, userId, userEmail, body.subject, messageId, isFree ? 0 : 1],
   )
 
   return c.json({ sent: true, messageId })
