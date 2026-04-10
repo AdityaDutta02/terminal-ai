@@ -25,7 +25,7 @@ proxy.post('/v1/chat/completions', embedTokenAuth, async (c) => {
       }
       await db.query(
         `INSERT INTO subscriptions.credit_ledger (user_id, delta, balance_after, reason, app_id)
-         VALUES ($1, $2, (SELECT COALESCE(SUM(delta), 0) + $2 FROM subscriptions.credit_ledger WHERE user_id = $1), 'api_call', $3)`,
+         VALUES ($1, $2, (SELECT COALESCE(SUM(delta), 0)::int + $2 FROM subscriptions.credit_ledger WHERE user_id = $1), 'api_call', $3)`,
         [userId, -creditsPerCall, appId],
       )
       creditsCharged = creditsPerCall

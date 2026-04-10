@@ -95,7 +95,7 @@ export async function handleGenerate(c: Context): Promise<Response> {
     }
     await db.query(
       `INSERT INTO subscriptions.credit_ledger (user_id, delta, balance_after, reason, app_id)
-       VALUES ($1, $2, (SELECT COALESCE(SUM(delta), 0) + $2 FROM subscriptions.credit_ledger WHERE user_id = $1), 'api_call', $3)`,
+       VALUES ($1, $2, (SELECT COALESCE(SUM(delta), 0)::int + $2 FROM subscriptions.credit_ledger WHERE user_id = $1), 'api_call', $3)`,
       [embedToken.userId, -creditCost, embedToken.appId],
     )
     creditsCharged = creditCost
@@ -113,15 +113,16 @@ export async function handleGenerate(c: Context): Promise<Response> {
 
   // Log the API call
   await db.query(
-    `INSERT INTO gateway.api_calls (user_id, app_id, model, credits_used, input_tokens, output_tokens, latency_ms, api_version)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, 'v2')`,
+    `INSERT INTO gateway.api_calls (user_id, app_id, session_id, provider, model, prompt_tokens, completion_tokens, credits_charged, latency_ms, status)
+     VALUES ($1, $2, $3, 'openrouter', $4, $5, $6, $7, $8, 'success')`,
     [
       embedToken.userId,
       embedToken.appId,
+      embedToken.sessionId,
       modelString,
-      creditsCharged,
       response.usage.prompt_tokens,
       response.usage.completion_tokens,
+      creditsCharged,
       latencyMs,
     ]
   ).catch((err: unknown) => logger.warn({ msg: 'api_call_log_failed', err: String(err) }))
