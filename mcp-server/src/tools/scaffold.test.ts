@@ -37,7 +37,7 @@ describe('scaffoldApp', () => {
     expect(sdk).toContain('Retry-After')
   })
 
-  it('SDK uses /v1/generate with category+tier routing, not direct model names', () => {
+  it('SDK uses /v1/generate with category+tier routing and supports direct model names', () => {
     const result = scaffoldApp({
       framework: 'nextjs',
       app_name: 'AI Chat',
@@ -54,6 +54,8 @@ describe('scaffoldApp', () => {
     expect(sdk).not.toContain('/v1/chat/completions')
     expect(sdk).toContain('config.category')
     expect(sdk).toContain('config.tier')
+    // Also supports direct model names
+    expect(sdk).toContain('options?.model')
 
     const config = JSON.parse(result.files['terminal-ai.config.json']) as { category: string; tier: string }
     expect(config.category).toBe('web_search')

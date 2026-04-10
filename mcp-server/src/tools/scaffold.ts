@@ -51,12 +51,21 @@ interface GenerateResponse {
   credits_charged: number
 }
 
+// Use category+tier for automatic model routing (recommended):
+//   callGateway(messages, token)
+//   callGateway(messages, token, { category: 'web_search', tier: 'good' })
+// Use a direct model name for specific model selection:
+//   callGateway(messages, token, { model: 'openai/gpt-4o-search-preview' })
+// See list_supported_providers for available models and categories.
 export async function callGateway(
   messages: { role: string; content: string }[],
   embedToken: string,
-  options?: { category?: string; tier?: string; system?: string },
+  options?: { category?: string; tier?: string; model?: string; system?: string },
 ): Promise<GenerateResponse> {
   if (!embedToken) throw new Error('Missing embed token')
+  const routing = options?.model
+    ? { model: options.model }
+    : { category: options?.category ?? config.category, tier: options?.tier ?? config.tier }
   const res = await fetchWithRetry(\`\${GATEWAY_URL}/v1/generate\`, {
     method: 'POST',
     headers: {
@@ -64,8 +73,7 @@ export async function callGateway(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      category: options?.category ?? config.category,
-      tier: options?.tier ?? config.tier,
+      ...routing,
       messages,
       ...(options?.system ? { system: options.system } : {}),
     }),
