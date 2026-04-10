@@ -1,6 +1,27 @@
 import { db } from '@/lib/db'
 import { SidebarNav } from '@/components/sidebar-nav'
 import { Users, Box, Layers, TrendingUp, Play, Sparkles, BadgeDollarSign, IndianRupee } from 'lucide-react'
+import { LaunchButton } from './launch-button'
+
+type PlatformStatus = {
+  waitlistMode: boolean
+  waitlistCount: number
+}
+
+async function getPlatformStatus(): Promise<PlatformStatus> {
+  const [configResult, countResult] = await Promise.all([
+    db.query<{ value: string }>(
+      `SELECT value FROM platform.config WHERE key = 'waitlist_mode' LIMIT 1`,
+    ),
+    db.query<{ count: string }>(
+      `SELECT COUNT(*)::TEXT AS count FROM platform.waitlist`,
+    ),
+  ])
+  return {
+    waitlistMode: configResult.rows[0]?.value !== 'false',
+    waitlistCount: parseInt(countResult.rows[0]?.count ?? '0', 10),
+  }
+}
 
 function getAdminTabs() {
   return [
@@ -76,7 +97,8 @@ async function getTopApps(): Promise<AppUsage[]> {
 }
 
 export default async function AdminOverview() {
-  const [stats, tierBreakdown, topApps] = await Promise.all([
+  const [platformStatus, stats, tierBreakdown, topApps] = await Promise.all([
+    getPlatformStatus(),
     getStats(),
     getTierBreakdown(),
     getTopApps(),
@@ -102,6 +124,28 @@ export default async function AdminOverview() {
       <div className="flex-1 min-w-0">
         <h1 className="text-[28px] font-extrabold text-slate-900 tracking-tight">Admin Overview</h1>
         <p className="text-[14px] text-slate-500 mt-1 mb-6">Platform health and key metrics at a glance.</p>
+
+        {/* Platform Status Card */}
+        <div className="mb-8 bg-white border border-[#F1F5F9] rounded-2xl p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-[#0F172A]">Platform Status</h2>
+            <span
+              className={`text-xs font-semibold tracking-widest uppercase px-3 py-1 rounded-full ${
+                platformStatus.waitlistMode
+                  ? 'bg-amber-100 text-amber-700'
+                  : 'bg-green-100 text-green-700'
+              }`}
+            >
+              {platformStatus.waitlistMode ? 'WAITLIST MODE' : 'LIVE'}
+            </span>
+          </div>
+          <p className="text-sm text-[#64748B] mb-4">
+            {platformStatus.waitlistCount.toLocaleString()} waitlist signup{platformStatus.waitlistCount !== 1 ? 's' : ''}
+          </p>
+          {platformStatus.waitlistMode && (
+            <LaunchButton waitlistCount={platformStatus.waitlistCount} />
+          )}
+        </div>
 
         {/* Alert banners */}
         <div className="space-y-3 mb-8">

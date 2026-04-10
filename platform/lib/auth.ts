@@ -62,6 +62,26 @@ export const auth = betterAuth({
       } catch (err) {
         logger.error({ msg: 'welcome_credits_grant_failed', userId: user.id, err })
       }
+      // Grant waitlist launch credits if this email was notified at launch
+      try {
+        const waitlistRow = await db.query<Record<string, never>>(
+          `SELECT 1 FROM platform.waitlist
+           WHERE email = $1 AND notified_at IS NOT NULL LIMIT 1`,
+          [user.email],
+        )
+        if (waitlistRow.rows.length > 0) {
+          const alreadyGranted = await db.query<Record<string, never>>(
+            `SELECT 1 FROM subscriptions.credit_ledger
+             WHERE user_id = $1 AND reason = 'waitlist_launch' LIMIT 1`,
+            [user.id],
+          )
+          if (alreadyGranted.rows.length === 0) {
+            await grantCredits(user.id, 10, 'waitlist_launch')
+          }
+        }
+      } catch (err) {
+        logger.error({ msg: 'waitlist_credits_grant_failed', userId: user.id, err })
+      }
     },
   },
   session: {
