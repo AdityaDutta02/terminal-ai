@@ -89,3 +89,52 @@ export async function sendPaymentFailedEmail(email: string): Promise<void> {
   })
   if (error) logger.error({ msg: 'payment_failed_email_failed', email, err: error.message })
 }
+
+export async function sendWaitlistConfirmationEmail(email: string): Promise<void> {
+  const { error } = await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: email,
+    subject: "You're on the list — Terminal AI",
+    html: `
+      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; background: #FAFAFA; padding: 40px 32px; border-radius: 16px;">
+        <p style="font-size: 13px; font-weight: 600; color: #FF6B00; text-transform: uppercase; letter-spacing: 0.1em; margin: 0 0 16px;">Terminal AI</p>
+        <h2 style="font-size: 28px; color: #0F172A; margin: 0 0 12px; font-weight: 700;">You're in the queue.</h2>
+        <p style="color: #64748B; font-size: 15px; line-height: 1.6; margin: 0 0 24px;">
+          We'll let you know the moment Terminal AI launches.<br/>
+          In the meantime, tell a friend.
+        </p>
+        <p style="color: #94A3B8; font-size: 13px; margin: 24px 0 0;">Terminal AI by Studio Ionique</p>
+      </div>
+    `,
+  })
+  if (error) logger.error({ msg: 'waitlist_confirmation_email_failed', email, err: error.message })
+}
+
+export async function sendWaitlistLaunchEmail(
+  email: string,
+  hasAccount: boolean,
+): Promise<void> {
+  const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://terminalai.studioionique.com'
+  const ctaHref = safeHref(hasAccount ? APP_URL : `${APP_URL}/signup`)
+  const ctaLabel = hasAccount ? 'Open Terminal AI →' : 'Create Your Account →'
+  const creditsLine = hasAccount
+    ? '10 credits have been added to your account. Start exploring.'
+    : 'Sign up now to claim your 10 free credits.'
+
+  const { error } = await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: email,
+    subject: 'Terminal AI is live — you\'re in',
+    html: `
+      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; background: #FAFAFA; padding: 40px 32px; border-radius: 16px;">
+        <p style="font-size: 13px; font-weight: 600; color: #FF6B00; text-transform: uppercase; letter-spacing: 0.1em; margin: 0 0 16px;">Terminal AI</p>
+        <h2 style="font-size: 28px; color: #0F172A; margin: 0 0 12px; font-weight: 700;">The wait is over.</h2>
+        <p style="color: #64748B; font-size: 15px; line-height: 1.6; margin: 0 0 8px;">Terminal AI is live.</p>
+        <p style="color: #64748B; font-size: 15px; line-height: 1.6; margin: 0 0 24px;">${creditsLine}</p>
+        <a href="${ctaHref}" style="display: inline-block; background: #FF6B00; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 15px; margin: 0 0 24px;">${ctaLabel}</a>
+        <p style="color: #94A3B8; font-size: 13px; margin: 0;">Terminal AI by Studio Ionique</p>
+      </div>
+    `,
+  })
+  if (error) logger.error({ msg: 'waitlist_launch_email_failed', email, hasAccount, err: error.message })
+}
