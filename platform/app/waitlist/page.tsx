@@ -44,7 +44,7 @@ export default function WaitlistPage() {
   return (
     <main>
       {/* ── HERO ── */}
-      <section className="relative min-h-screen flex flex-col overflow-hidden">
+      <section className="relative min-h-screen flex flex-col overflow-hidden bg-black">
         {/* Video background */}
         <video
           src={VIDEO_URL}
@@ -60,7 +60,7 @@ export default function WaitlistPage() {
           <div className="max-w-7xl mx-auto px-8 py-6 flex justify-between items-center">
             <span
               className="text-3xl text-white tracking-tight"
-              style={{ fontFamily: "'Instrument Serif', serif" }}
+              style={{ fontFamily: 'var(--font-display), serif' }}
             >
               Terminal AI
             </span>
@@ -87,25 +87,25 @@ export default function WaitlistPage() {
         </nav>
 
         {/* Hero body */}
-        <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-6 pt-8 pb-40">
+        <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-6 py-[90px]">
           <p className="text-[#FF6B00] text-sm tracking-widest uppercase mb-6 animate-fade-rise">
             PRIVATE BETA
           </p>
           <h1
-            className="text-5xl sm:text-7xl md:text-8xl text-white leading-[0.95] tracking-[-2.46px] mb-8 animate-fade-rise"
-            style={{ fontFamily: "'Instrument Serif', serif" }}
+            className="text-5xl sm:text-7xl md:text-8xl text-white leading-[0.95] tracking-[-2.46px] font-normal animate-fade-rise"
+            style={{ fontFamily: 'var(--font-display), serif' }}
           >
             AI-powered apps,
             <br />
             built for{' '}
             <em className="not-italic text-white/50">everyone.</em>
           </h1>
-          <p className="text-white/60 text-base sm:text-lg max-w-2xl leading-relaxed animate-fade-rise-delay">
+          <p className="text-white/60 text-base sm:text-lg max-w-2xl mt-8 leading-relaxed animate-fade-rise-delay">
             Creator-built AI apps that actually work. Join the waitlist and be first in.
           </p>
 
           {/* Email capture */}
-          <div className="animate-fade-rise-delay-2 mt-12">
+          <div className="animate-fade-rise-delay-2 mt-12 w-full flex flex-col items-center">
             {submitted ? (
               <div className="text-white text-lg font-medium">
                 You&apos;re on the list. We&apos;ll be in touch.
@@ -113,14 +113,14 @@ export default function WaitlistPage() {
             ) : (
               <form
                 onSubmit={handleSubmit}
-                className="flex gap-3 justify-center flex-wrap"
+                className="flex flex-wrap gap-3 items-center justify-center"
               >
                 <input
                   type="text"
                   placeholder="Your name (optional)"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="liquid-glass rounded-full px-6 py-3.5 text-white placeholder-white/40 text-sm w-56 outline-none"
+                  className="liquid-glass rounded-full px-6 py-3.5 text-white placeholder-white/40 text-sm w-56 outline-none bg-transparent"
                 />
                 <input
                   type="email"
@@ -128,7 +128,7 @@ export default function WaitlistPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="liquid-glass rounded-full px-6 py-3.5 text-white placeholder-white/40 text-sm w-72 outline-none"
+                  className="liquid-glass rounded-full px-6 py-3.5 text-white placeholder-white/40 text-sm w-72 outline-none bg-transparent"
                 />
                 <button
                   type="submit"
