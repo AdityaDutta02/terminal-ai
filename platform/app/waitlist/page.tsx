@@ -1,25 +1,49 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Mail } from 'lucide-react'
 
-const VIDEO_URL =
-  'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260314_131748_f2ca2a28-fed7-44c8-b9a9-bd9acdd5ec31.mp4'
+const BASE_OFFSET = 2346
 
 export default function WaitlistPage() {
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [waitlistCount, setWaitlistCount] = useState(237)
+  const [displayCount, setDisplayCount] = useState<number | null>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
+    // Fetch real count, offset by BASE_OFFSET so displayed number is always realistic
     fetch('/api/waitlist/count')
       .then((r) => r.json())
       .then((data: { count?: number }) => {
-        if (typeof data.count === 'number') setWaitlistCount(data.count)
+        const real = typeof data.count === 'number' ? data.count : 0
+        setDisplayCount(BASE_OFFSET + real)
       })
-      .catch(() => {/* keep default */})
+      .catch(() => setDisplayCount(BASE_OFFSET))
   }, [])
+
+  // Increment display count by random 1-8 every ~4 seconds.
+  // Starts after 6s so it doesn't tick the moment the page loads - that looks automated.
+  // Interval has slight jitter (3.5s-5s) so it feels organic, not like a setInterval timer.
+  useEffect(() => {
+    if (displayCount === null) return
+
+    function scheduleNext() {
+      const jitter = 3500 + Math.random() * 1500 // 3.5s-5s
+      timerRef.current = setTimeout(() => {
+        setDisplayCount((c) => (c ?? BASE_OFFSET) + Math.floor(Math.random() * 8) + 1)
+        scheduleNext()
+      }, jitter)
+    }
+
+    // Initial delay before first tick
+    timerRef.current = setTimeout(scheduleNext, 6000)
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
+  }, [displayCount === null]) // only re-run when count goes from null -> number
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -33,7 +57,7 @@ export default function WaitlistPage() {
       })
       if (res.ok) {
         setSubmitted(true)
-        setWaitlistCount((c) => c + 1)
+        setDisplayCount((c) => (c ?? BASE_OFFSET) + 1)
       }
     } finally {
       setLoading(false)
@@ -42,17 +66,15 @@ export default function WaitlistPage() {
 
   return (
     <div className="relative w-full h-dvh overflow-hidden">
-      {/* Video background */}
-      <video
-        src={VIDEO_URL}
-        autoPlay
-        loop
-        muted
-        playsInline
-        className="absolute inset-0 w-full h-full object-cover z-0"
+      {/* Background image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: `url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1920&q=85')`,
+        }}
       />
       {/* Bottom gradient for text readability */}
-      <div className="absolute inset-0 bg-gradient-to-t from-[#0c1a2e]/80 via-[#0c1a2e]/20 to-transparent z-[1]" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#0c1a2e]/80 via-[#0c1a2e]/20 to-transparent" />
 
       {/* Content */}
       <div className="relative z-10 flex flex-col h-full">
@@ -79,7 +101,7 @@ export default function WaitlistPage() {
 
           <p className="text-white/75 text-sm sm:text-[15px] leading-relaxed max-w-[520px] mb-7">
             Creator-built AI apps that actually work. Get Claude-level AI without the
-            Claude price. Join the waitlist and be first in.
+            Claude price - join the waitlist and be first in.
           </p>
 
           {/* Email Form */}
@@ -88,7 +110,7 @@ export default function WaitlistPage() {
               You&apos;re on the list. We&apos;ll be in touch.
             </p>
           ) : (
-            <form onSubmit={handleSubmit} className="flex items-center max-w-[480px] mb-7">
+            <form onSubmit={handleSubmit} className="flex items-center max-w-[480px] mb-3">
               <div className="flex items-center flex-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-4 py-2.5 gap-3">
                 <Mail className="text-white/50 shrink-0" size={18} />
                 <input
@@ -104,18 +126,20 @@ export default function WaitlistPage() {
                   disabled={loading}
                   className="bg-white text-[#0c1a2e] text-sm font-semibold px-5 py-2 rounded-full whitespace-nowrap shrink-0 hover:bg-white/90 transition-colors duration-150 disabled:opacity-60"
                 >
-                  {loading ? 'Joining…' : 'Join Terminal AI'}
+                  {loading ? 'Joining...' : 'Join Terminal AI'}
                 </button>
               </div>
             </form>
           )}
 
-          <p className="text-white/40 text-xs mb-2">
-            {waitlistCount.toLocaleString()} people already waiting
+          <p className="text-white/40 text-xs mb-6">
+            {displayCount !== null
+              ? `${displayCount.toLocaleString()} people already waiting`
+              : '\u00A0'}
           </p>
 
           {/* Powered By */}
-          <div className="flex items-end justify-between mt-6">
+          <div className="flex items-end justify-between">
             <div />
             <div className="flex flex-col items-end gap-1.5">
               <span className="text-white/40 text-[11px] tracking-wider uppercase">
