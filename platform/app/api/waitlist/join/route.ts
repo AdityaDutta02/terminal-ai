@@ -57,14 +57,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       [email, name ?? null],
     )
 
+    const alreadyJoined = result.rows.length === 0
+
     // Only send confirmation if this is a new signup
-    if (result.rows.length > 0) {
+    if (!alreadyJoined) {
       sendWaitlistConfirmationEmail(email).catch((err: unknown) =>
         logger.error({ msg: 'waitlist_confirmation_email_failed', email, err: String(err) }),
       )
     }
 
-    return NextResponse.json({ joined: true })
+    return NextResponse.json({ joined: true, alreadyJoined })
   } catch (err) {
     logger.error({ msg: 'waitlist_join_failed', email, err: String(err) })
     return NextResponse.json({ error: 'Failed to join waitlist' }, { status: 500 })

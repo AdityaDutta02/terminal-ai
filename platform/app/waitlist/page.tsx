@@ -2,8 +2,18 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Mail } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
 
 const BASE_OFFSET = 2346
+const STORAGE_KEY = 'tai_wl_floor'
+
+const DUPLICATE_MESSAGES = [
+  "Someone's eager...",
+  "You're already in! We haven't forgotten you.",
+  "Twice the enthusiasm, same spot in line.",
+  "Already saved! Your future self thanks you.",
+  "Bold move submitting twice. You're on the list.",
+]
 
 export default function WaitlistPage() {
   const [email, setEmail] = useState('')
@@ -11,39 +21,59 @@ export default function WaitlistPage() {
   const [loading, setLoading] = useState(false)
   const [displayCount, setDisplayCount] = useState<number | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const { toast } = useToast()
+
+  // Read stored floor from localStorage so count never goes backward across sessions
+  function getStoredFloor(): number {
+    try {
+      return parseInt(localStorage.getItem(STORAGE_KEY) ?? '0', 10) || 0
+    } catch {
+      return 0
+    }
+  }
+
+  function persistFloor(n: number) {
+    try {
+      const stored = getStoredFloor()
+      if (n > stored) localStorage.setItem(STORAGE_KEY, String(n))
+    } catch { /* localStorage unavailable */ }
+  }
 
   useEffect(() => {
-    // Fetch real count, offset by BASE_OFFSET so displayed number is always realistic
     fetch('/api/waitlist/count')
       .then((r) => r.json())
       .then((data: { count?: number }) => {
         const real = typeof data.count === 'number' ? data.count : 0
-        setDisplayCount(BASE_OFFSET + real)
+        const apiCount = BASE_OFFSET + real
+        const floor = Math.max(apiCount, getStoredFloor())
+        setDisplayCount(floor)
+        persistFloor(floor)
       })
-      .catch(() => setDisplayCount(BASE_OFFSET))
+      .catch(() => {
+        const floor = Math.max(BASE_OFFSET, getStoredFloor())
+        setDisplayCount(floor)
+      })
   }, [])
 
-  // Increment display count by random 1-8 every ~4 seconds.
-  // Starts after 6s so it doesn't tick the moment the page loads - that looks automated.
-  // Interval has slight jitter (3.5s-5s) so it feels organic, not like a setInterval timer.
+  // Auto-increment: jittered interval so it doesn't feel like a timer
   useEffect(() => {
     if (displayCount === null) return
 
     function scheduleNext() {
-      const jitter = 3500 + Math.random() * 1500 // 3.5s-5s
+      const jitter = 3500 + Math.random() * 1500 // 3.5-5s
       timerRef.current = setTimeout(() => {
-        setDisplayCount((c) => (c ?? BASE_OFFSET) + Math.floor(Math.random() * 8) + 1)
+        setDisplayCount((c) => {
+          const next = (c ?? BASE_OFFSET) + Math.floor(Math.random() * 8) + 1
+          persistFloor(next)
+          return next
+        })
         scheduleNext()
       }, jitter)
     }
 
-    // Initial delay before first tick
     timerRef.current = setTimeout(scheduleNext, 6000)
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-    }
-  }, [displayCount === null]) // only re-run when count goes from null -> number
+    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
+  }, [displayCount === null]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -56,8 +86,18 @@ export default function WaitlistPage() {
         body: JSON.stringify({ email }),
       })
       if (res.ok) {
-        setSubmitted(true)
-        setDisplayCount((c) => (c ?? BASE_OFFSET) + 1)
+        const data = (await res.json()) as { joined: boolean; alreadyJoined: boolean }
+        if (data.alreadyJoined) {
+          const msg = DUPLICATE_MESSAGES[Math.floor(Math.random() * DUPLICATE_MESSAGES.length)]
+          toast({ description: msg })
+        } else {
+          setSubmitted(true)
+          setDisplayCount((c) => {
+            const next = (c ?? BASE_OFFSET) + 1
+            persistFloor(next)
+            return next
+          })
+        }
       }
     } finally {
       setLoading(false)
@@ -88,7 +128,6 @@ export default function WaitlistPage() {
           </span>
         </div>
 
-        {/* Spacer */}
         <div className="flex-1" />
 
         {/* Hero Section */}
@@ -104,7 +143,6 @@ export default function WaitlistPage() {
             Claude price - join the waitlist and be first in.
           </p>
 
-          {/* Email Form */}
           {submitted ? (
             <p className="text-white text-base font-medium mb-7">
               You&apos;re on the list. We&apos;ll be in touch.
@@ -132,10 +170,18 @@ export default function WaitlistPage() {
             </form>
           )}
 
-          <p className="text-white/40 text-xs mb-6">
-            {displayCount !== null
-              ? `${displayCount.toLocaleString()} people already waiting`
-              : '\u00A0'}
+          <p className="text-white/50 text-xs mb-6">
+            {displayCount !== null ? (
+              <>
+                <span
+                  key={displayCount}
+                  className="animate-count-bump font-bold text-white"
+                >
+                  {displayCount.toLocaleString()}
+                </span>
+                {' '}people already waiting
+              </>
+            ) : '\u00A0'}
           </p>
 
           {/* Powered By */}
