@@ -6,6 +6,7 @@ import { SidebarNav } from '@/components/sidebar-nav'
 import { getCreatorTabs } from '@/lib/creator-tabs'
 import { AppSettingsForm } from './app-settings-form'
 import type { AppSettingsData } from './app-settings-form'
+import EnvVarsSection from './env-vars-section'
 
 interface AppRow {
   [key: string]: unknown
@@ -94,6 +95,9 @@ export default async function CreatorAppSettingsPage({
           </div>
 
           <AppSettingsForm app={appData} />
+          <div className="mt-6">
+            <EnvVarsSection appId={app.id} />
+          </div>
         </div>
       </div>
     </div>

@@ -524,6 +524,109 @@ app.all('/mcp', async (c) => {
     }
   )
 
+  server.tool(
+    'list_env_vars',
+    'List all environment variables for an app. Returns keys and their current values.',
+    {
+      app_id: z.string().uuid().describe('App ID'),
+    },
+    async ({ app_id }) => {
+      const platformUrl = process.env.PLATFORM_URL ?? 'http://platform:3000'
+      let res: Response
+      try {
+        res = await fetch(`${platformUrl}/api/internal/env-vars?appId=${app_id}`, {
+          headers: {
+            'X-Service-Token': process.env.INTERNAL_SERVICE_TOKEN ?? '',
+            'X-Creator-Id': creatorId,
+          },
+        })
+      } catch (err) {
+        logger.error({ msg: 'platform_fetch_failed', path: '/api/internal/env-vars', err, creatorId })
+        return { content: [{ type: 'text' as const, text: 'Failed to reach platform: network error' }], isError: true }
+      }
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({ error: 'unknown' })) as { error?: string }
+        logger.warn({ msg: 'platform_error_response', path: '/api/internal/env-vars', status: res.status, error: errBody.error, creatorId })
+        return { content: [{ type: 'text' as const, text: `Failed to list env vars: ${errBody.error ?? res.statusText}` }], isError: true }
+      }
+      const data = await res.json()
+      return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] }
+    }
+  )
+
+  server.tool(
+    'set_env_var',
+    'Set (create or update) an environment variable for an app. Values are encrypted at rest. Changes take effect on next redeploy.',
+    {
+      app_id: z.string().uuid(),
+      key: z.string().describe('Env var name — uppercase letters, numbers, underscores only (e.g. API_KEY)'),
+      value: z.string().describe('The value to set'),
+    },
+    async ({ app_id, key, value }) => {
+      const result = await callPlatform<{ key: string; value: string; updatedAt: string }>(
+        '/api/internal/env-vars',
+        { appId: app_id, key, value },
+        creatorId,
+      )
+      if (!result.ok) {
+        return { content: [{ type: 'text' as const, text: `Failed to set env var: ${result.error}` }], isError: true }
+      }
+      logger.info({ msg: 'set_env_var_success', appId: app_id, key, creatorId })
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            ...result.data,
+            reminder: 'Call redeploy_app with this app_id to apply the new env vars.',
+          }, null, 2),
+        }],
+      }
+    }
+  )
+
+  server.tool(
+    'delete_env_var',
+    'Delete an environment variable from an app. Changes take effect on next redeploy.',
+    {
+      app_id: z.string().uuid(),
+      key: z.string(),
+    },
+    async ({ app_id, key }) => {
+      const platformUrl = process.env.PLATFORM_URL ?? 'http://platform:3000'
+      let res: Response
+      try {
+        res = await fetch(`${platformUrl}/api/internal/env-vars`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Service-Token': process.env.INTERNAL_SERVICE_TOKEN ?? '',
+            'X-Creator-Id': creatorId,
+          },
+          body: JSON.stringify({ appId: app_id, key }),
+        })
+      } catch (err) {
+        logger.error({ msg: 'platform_fetch_failed', path: '/api/internal/env-vars', err, creatorId })
+        return { content: [{ type: 'text' as const, text: 'Failed to reach platform: network error' }], isError: true }
+      }
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({ error: 'unknown' })) as { error?: string }
+        logger.warn({ msg: 'platform_error_response', path: '/api/internal/env-vars', status: res.status, error: errBody.error, creatorId })
+        return { content: [{ type: 'text' as const, text: `Failed to delete env var: ${errBody.error ?? res.statusText}` }], isError: true }
+      }
+      const data = await res.json() as { deleted: boolean }
+      logger.info({ msg: 'delete_env_var_success', appId: app_id, key, creatorId })
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            ...data,
+            reminder: 'Call redeploy_app with this app_id to apply changes.',
+          }, null, 2),
+        }],
+      }
+    }
+  )
+
   const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined })
   await server.connect(transport)
   logger.info({ msg: 'mcp_connection', creatorId })

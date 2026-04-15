@@ -8,6 +8,7 @@ import { createSubdomain } from '../services/dns'
 import { db } from '../lib/db'
 import { logger } from '../lib/logger'
 import { emitEvent, ERROR_MESSAGES } from '../lib/deployment-events'
+import { decryptValue } from '../lib/env-crypto'
 
 const redisConnection = {
   host: process.env.REDIS_HOST ?? 'redis',
@@ -153,6 +154,22 @@ function buildScopedConnectionString(roleName: string, rolePassword: string): st
   scoped.username = roleName
   scoped.password = rolePassword
   return scoped.toString()
+}
+
+async function fetchCreatorEnvVars(appId: string): Promise<Record<string, string>> {
+  const { rows } = await db.query<{ key: string; value_enc: string; iv: string }>(
+    `SELECT key, value_enc, iv FROM deployments.app_env_vars WHERE app_id = $1`,
+    [appId],
+  )
+  const result: Record<string, string> = {}
+  for (const row of rows) {
+    try {
+      result[row.key] = decryptValue(row.value_enc, row.iv)
+    } catch (err) {
+      logger.warn({ msg: 'env_var_decrypt_failed', appId, key: row.key, err: String(err) })
+    }
+  }
+  return result
 }
 
 /** Run db-migrations.sql from the cloned repo against the app's schema.
@@ -392,18 +409,27 @@ export function startDeployWorker(): Worker {
         logger.info({ msg: 'dns_record_skipped', deploymentId, reason: 'Wildcard DNS handles routing; Cloudflare API not configured for individual records' })
       }
 
+      // Fetch creator-defined env vars (system vars always win)
+      const creatorEnvVars = await fetchCreatorEnvVars(appId).catch((err: unknown) => {
+        logger.warn({ msg: 'creator_env_vars_fetch_failed', appId, err: String(err) })
+        return {}
+      })
+
+      const envVars = {
+        ...creatorEnvVars,  // creator vars first (lower priority)
+        TERMINAL_AI_GATEWAY_URL: process.env.GATEWAY_PUBLIC_URL || process.env.GATEWAY_URL!,
+        TERMINAL_AI_APP_ID: appId,
+        APP_DB_SCHEMA: schemaName,
+        TERMINAL_AI_STORAGE_PREFIX: `apps/${appId}/`,
+      }
+
       await emitEvent(deploymentId, 'creating_app', 'Creating app in Coolify')
       const { uuid: coolifyId, domain: coolifyDomain } = await createApp({
         name: subdomain,
         githubRepo,
         branch,
         port: appPort,
-        envVars: {
-          TERMINAL_AI_GATEWAY_URL: process.env.GATEWAY_PUBLIC_URL || process.env.GATEWAY_URL!,
-          TERMINAL_AI_APP_ID: appId,
-          APP_DB_SCHEMA: schemaName,
-          TERMINAL_AI_STORAGE_PREFIX: `apps/${appId}/`,
-        },
+        envVars,
         resourceClass: 'micro',
       })
 
