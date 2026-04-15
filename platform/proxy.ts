@@ -12,6 +12,7 @@ const WAITLIST_BYPASS = [
   '/waitlist',
   '/api/waitlist',
   '/api/auth',
+  '/api/internal',
   '/_next',
   '/favicon',
 ]
