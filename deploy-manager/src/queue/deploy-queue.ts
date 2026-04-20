@@ -17,6 +17,7 @@ const redisConnection = {
 }
 
 export const deployQueue = new Queue('deploys', { connection: redisConnection })
+export const pollQueue = new Queue('poll-existing', { connection: redisConnection })
 
 type JobOptions = { attempts: number; backoff: { type: 'exponential'; delay: number }; removeOnComplete: boolean; removeOnFail: boolean }
 export const JOB_OPTIONS: JobOptions = Object.freeze({ attempts: 3, backoff: { type: 'exponential' as const, delay: 10_000 }, removeOnComplete: false, removeOnFail: false })

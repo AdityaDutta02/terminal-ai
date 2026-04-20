@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { logger as honoLogger } from 'hono/logger'
 import pg from 'pg'
-import { deployQueue, startDeployWorker, startPollWorker, JOB_OPTIONS } from './queue/deploy-queue'
+import { deployQueue, pollQueue, startDeployWorker, startPollWorker, JOB_OPTIONS } from './queue/deploy-queue'
 import { getAppDetails, deleteApp, getDeploymentLogs, triggerDeploy } from './services/coolify'
 import { storageDeletePrefix } from './services/storage-cleanup'
 import { db } from './lib/db'
@@ -331,7 +331,7 @@ app.post('/apps/:appId/redeploy', async (c) => {
       )
       const newDeploymentId = depResult.rows[0].id
       // Queue the polling/health-check phase (reuses existing Coolify app)
-      await deployQueue.add('poll-existing', {
+      await pollQueue.add('poll-existing', {
         deploymentId: newDeploymentId,
         appId,
         coolifyId: prev.coolify_app_id,
