@@ -372,6 +372,12 @@ export function startDeployWorker(): Worker {
 
       const scan = await scanForSecrets(tmpPath)
       if (!scan.clean) {
+        const findingLines = scan.findings.slice(0, 15).join('\n') || 'No detail available'
+        await emitEvent(
+          deploymentId,
+          'secrets_scan_failed',
+          `Secrets detected in repository — remove committed credentials and redeploy.\n\nFindings:\n${findingLines}`,
+        )
         await failDeployment(deploymentId, 'SECRETS_DETECTED')
         throw new Error('Secrets detected in repository')
       }
