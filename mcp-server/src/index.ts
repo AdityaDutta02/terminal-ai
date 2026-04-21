@@ -132,7 +132,23 @@ app.all('/mcp', async (c) => {
     (err: unknown) => logger.warn({ msg: 'failed_to_update_last_used_at', err })
   )
 
-  const server = new McpServer({ name: 'terminal-ai', version: '1.0.0' })
+  const server = new McpServer({ name: 'terminal-ai', version: '1.0.0' }, {
+    instructions: `Terminal AI is a complete backend-as-a-service for AI-powered apps. It provides ALL of the following — no external services (Supabase, Firebase, Clerk, Neon, etc.) are needed:
+
+VIEWER AUTH: Apps receive viewer identity via an embed token delivered by the Terminal AI viewer shell via postMessage. No sign-in flow needed. The useEmbedToken() hook (generated in every scaffold) captures the token client-side. The token identifies the viewer and authenticates all gateway calls.
+
+DATABASE: Every app gets an isolated Postgres schema with full CRUD. Use the generated lib/db.ts helpers: dbList, dbGet, dbInsert, dbUpdate, dbDelete. Define tables in db-migrations.sql (applied at deploy time). Per-app, not per-user — add a viewer_id column for user-scoped data.
+
+STORAGE: Per-app object storage via lib/storage.ts: storageUpload, storageGet, storageList, storageDelete.
+
+AI ROUTING: /v1/generate with category+tier model selection — callGateway() in lib/terminal-ai.ts.
+
+EMAIL: Send to authenticated viewer via lib/email-sdk.ts — sendEmail(subject, html, embedToken). Gateway resolves the email from the token; apps never see user email addresses.
+
+CRON TASKS: Schedule HTTP callbacks via lib/task-sdk.ts or the create_scheduled_task MCP tool.
+
+Call get_sdk_docs for the full SDK reference with usage examples before writing any app code.`,
+  })
 
   server.tool(
     'scaffold_app',
