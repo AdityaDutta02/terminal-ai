@@ -8,8 +8,10 @@ import { dbRouter } from './routes/db.js'
 import { storageRouter } from './routes/storage.js'
 import { emailRouter } from './routes/email.js'
 import { taskRouter } from './routes/tasks.js'
+import { compatSupabaseRouter } from './routes/compat-supabase.js'
 import { gatewayRateLimit } from './middleware/rate-limit.js'
 import { embedTokenAuth } from './middleware/auth.js'
+import { compatShimCheck } from './middleware/compat-shim-check.js'
 import { executeDueTasks } from './workers/task-runner.js'
 import { logger as appLogger } from './lib/logger.js'
 
@@ -52,6 +54,11 @@ app.route('/email', emailRouter)
 
 app.use('/tasks/*', embedTokenAuth)
 app.route('/tasks', taskRouter)
+
+// Supabase compat shim — gated by compat_shim_enabled flag per app
+app.use('/compat/supabase/*', embedTokenAuth)
+app.use('/compat/supabase/*', compatShimCheck)
+app.route('/compat/supabase', compatSupabaseRouter)
 
 // Task runner — ticks every 60 seconds
 const TASK_RUNNER_INTERVAL_MS = 60_000
