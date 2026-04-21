@@ -4,7 +4,7 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import crypto from 'crypto'
 import { SignJWT } from 'jose'
-import { scaffoldApp } from './tools/scaffold'
+import { scaffoldApp, buildPortFromFiles } from './tools/scaffold'
 import { getProvidersJson } from './tools/providers'
 import { enableCompatShim, disableCompatShim } from './tools/compat-shim'
 import { analyzeRepo } from './tools/analyze-repo'
@@ -99,6 +99,10 @@ const ScaffoldSchema = {
   generates_artifacts: z.boolean(),
   api_category: z.enum(['chat', 'coding', 'image', 'web_search', 'web_scrape']).optional().describe('V2 API category for model routing (default: chat)'),
   api_tier: z.enum(['fast', 'good', 'quality']).optional().describe('V2 API tier for model routing (default: good)'),
+  port_from: z.object({
+    provider: z.literal('supabase'),
+    github_repo: z.string().describe('GitHub URL of the existing app'),
+  }).optional().describe('Port an existing app from another provider'),
 }
 
 const DeployAppSchema = {
@@ -132,6 +136,15 @@ app.all('/mcp', async (c) => {
 
   server.tool('scaffold_app', ScaffoldSchema, async (input) => {
     const result = scaffoldApp(input)
+    if (input.port_from?.provider === 'supabase') {
+      const portFiles = buildPortFromFiles({
+        provider: 'supabase',
+        detectedTables: [],
+      })
+      for (const file of portFiles) {
+        result.files[file.path] = file.content
+      }
+    }
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] }
   })
 
