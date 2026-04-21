@@ -6,6 +6,7 @@ import crypto from 'crypto'
 import { SignJWT } from 'jose'
 import { scaffoldApp } from './tools/scaffold'
 import { getProvidersJson } from './tools/providers'
+import { enableCompatShim, disableCompatShim } from './tools/compat-shim'
 import { db } from './lib/db'
 import { logger } from './lib/logger'
 
@@ -624,6 +625,32 @@ app.all('/mcp', async (c) => {
           }, null, 2),
         }],
       }
+    }
+  )
+
+  server.tool(
+    'enable_compat_shim',
+    'Enable the Supabase compatibility shim for an app. Activates /compat/supabase/* gateway routes so supabase-js calls are translated to Terminal AI.',
+    {
+      app_id: z.string().uuid().describe('App UUID'),
+    },
+    async ({ app_id }) => {
+      const result = await enableCompatShim(app_id)
+      logger.info({ msg: 'enable_compat_shim_success', appId: app_id, creatorId })
+      return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
+    }
+  )
+
+  server.tool(
+    'disable_compat_shim',
+    'Disable the Supabase compatibility shim for an app. All /compat/supabase/* routes return 404.',
+    {
+      app_id: z.string().uuid().describe('App UUID'),
+    },
+    async ({ app_id }) => {
+      const result = await disableCompatShim(app_id)
+      logger.info({ msg: 'disable_compat_shim_success', appId: app_id, creatorId })
+      return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
     }
   )
 
