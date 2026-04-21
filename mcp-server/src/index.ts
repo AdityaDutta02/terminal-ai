@@ -7,6 +7,7 @@ import { SignJWT } from 'jose'
 import { scaffoldApp } from './tools/scaffold'
 import { getProvidersJson } from './tools/providers'
 import { enableCompatShim, disableCompatShim } from './tools/compat-shim'
+import { analyzeRepo } from './tools/analyze-repo'
 import { db } from './lib/db'
 import { logger } from './lib/logger'
 
@@ -651,6 +652,21 @@ app.all('/mcp', async (c) => {
       const result = await disableCompatShim(app_id)
       logger.info({ msg: 'disable_compat_shim_success', appId: app_id, creatorId })
       return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
+    }
+  )
+
+  server.tool(
+    'analyze_repo',
+    'Scan a GitHub repo for Supabase patterns before porting to Terminal AI. Returns risk flags, migration checklist, and compat_shim_coverage score. Halts with critical flags if service_role credentials are detected.',
+    {
+      github_repo: z.string().describe('Full GitHub URL (e.g. https://github.com/acme/app)'),
+      branch: z.string().optional().describe('Branch to scan (default: main)'),
+      github_token: z.string().optional().describe('Optional GitHub personal access token for private repos'),
+    },
+    async ({ github_repo, branch, github_token }) => {
+      const result = await analyzeRepo(github_repo, branch ?? 'main', github_token)
+      logger.info({ msg: 'analyze_repo_completed', github_repo, halted_on_critical: result.halted_on_critical })
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] }
     }
   )
 
