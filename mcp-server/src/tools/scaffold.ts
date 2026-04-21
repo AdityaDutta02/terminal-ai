@@ -302,6 +302,62 @@ export default config
   files['lib/db.ts'] = DB_SDK
   files['lib/storage.ts'] = STORAGE_SDK
   files['db-migrations.sql'] = DB_MIGRATIONS_TEMPLATE
+  files['README.md'] = `# ${input.app_name}
+
+Built on [Terminal AI](https://terminalai.studioionique.com).
+
+## What's Included
+
+Terminal AI provides all backend capabilities via a secure gateway — no external services needed:
+
+| Capability | File | How to use |
+|---|---|---|
+| **Viewer auth** | \`hooks/use-embed-token.ts\` | \`const token = useEmbedToken()\` in root client component |
+| **Database** | \`lib/db.ts\` | \`dbList / dbGet / dbInsert / dbUpdate / dbDelete\` — isolated per-app Postgres schema |
+| **Storage** | \`lib/storage.ts\` | \`storageUpload / storageGet / storageList / storageDelete\` — isolated per-app object store |
+| **AI gateway** | \`lib/terminal-ai.ts\` | \`callGateway(messages, embedToken, { category, tier })\` — automatic model routing |
+| **Email** | \`lib/email-sdk.ts\` | \`sendEmail(subject, html, embedToken)\` — sends to authenticated viewer |
+| **Cron tasks** | \`lib/task-sdk.ts\` | \`createTask({ schedule, callbackPath }, embedToken)\` |
+
+## Auth Pattern
+
+The Terminal AI viewer shell sends an **embed token** to your app via \`postMessage\`. Use the
+\`useEmbedToken()\` hook in your root client component, then pass the token to your API routes:
+
+\`\`\`typescript
+// In a client component
+const embedToken = useEmbedToken()
+
+// In an API route (server-side)
+const result = await dbList('items', {}, embedToken)
+\`\`\`
+
+The token identifies the app and the viewer. It expires after 15 minutes and is refreshed
+automatically by the viewer shell.
+
+## Database Schema
+
+Edit \`db-migrations.sql\` to define your tables before first deploy. The schema is applied
+once at deploy time against your app's isolated Postgres database.
+
+The database is **per-app** (all viewers share the same tables). For per-user data, add a
+\`viewer_id TEXT\` column and filter on it in application code.
+
+## Getting Started
+
+1. Edit \`db-migrations.sql\` with your table definitions
+2. Add your app logic in \`app/api/\` routes
+3. Push to GitHub
+4. Deploy: \`create_channel\` → \`deploy_app\` via Terminal AI MCP
+5. Use \`set_env_var\` for any additional environment variables (API keys, etc.)
+
+## Environment Variables
+
+| Variable | Description |
+|---|---|
+| \`TERMINAL_AI_GATEWAY_URL\` | Set automatically by Terminal AI at deploy time |
+| \`TERMINAL_AI_APP_ID\` | Your app's UUID — set via Terminal AI dashboard |
+`
   files['lib/email-sdk.ts'] = `const GATEWAY = process.env.TERMINAL_AI_GATEWAY_URL!;
 
 /** Send an email to the authenticated user. The gateway resolves the recipient
@@ -561,7 +617,7 @@ export function scaffoldApp(input: ScaffoldInput): ScaffoldOutput {
   }
   return {
     files,
-    instructions: '1. Clone this scaffold\n2. Add your logic\n3. Edit db-migrations.sql to define your tables\n4. Ensure next.config.js has output: "standalone"\n5. Push to GitHub\n6. Deploy via Terminal AI: use create_channel then deploy_app',
+    instructions: '1. Your app includes: embed token viewer auth (hooks/use-embed-token.ts), Postgres DB (lib/db.ts), file storage (lib/storage.ts), AI gateway (lib/terminal-ai.ts), email (lib/email-sdk.ts), cron tasks (lib/task-sdk.ts). No external auth or database service needed.\n2. Edit db-migrations.sql to define your tables (applied once at deploy time)\n3. Add your logic in app/api/ routes — pass the embed token from the client as the Bearer credential on all gateway calls\n4. See README.md for the auth pattern and a summary of all built-in capabilities\n5. Push to GitHub\n6. Deploy via Terminal AI: use create_channel then deploy_app',
     required_env_vars: ['TERMINAL_AI_GATEWAY_URL', 'TERMINAL_AI_APP_ID'],
     notes: [
       'CRITICAL: Use the useEmbedToken() hook in your root client component to receive the auth token from the Terminal AI viewer shell via postMessage',
