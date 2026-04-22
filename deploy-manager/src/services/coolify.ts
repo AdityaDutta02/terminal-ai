@@ -67,10 +67,9 @@ export async function updateAppFqdn(coolifyAppId: string, fqdn: string): Promise
   })
   if (!res.ok) {
     const body = await res.text()
-    logger.warn({ msg: 'coolify_update_fqdn_failed', coolifyAppId, fqdn, status: res.status, body })
-  } else {
-    logger.info({ msg: 'coolify_fqdn_updated', coolifyAppId, fqdn })
+    throw new Error(`Coolify FQDN update failed (${res.status}): ${body}`)
   }
+  logger.info({ msg: 'coolify_fqdn_updated', coolifyAppId, fqdn })
 }
 
 /** Set a single environment variable on a Coolify app. */
