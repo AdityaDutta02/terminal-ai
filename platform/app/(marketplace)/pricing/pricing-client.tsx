@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
-import { CREDIT_PACKS, type CreditPackId } from '@/lib/pricing'
+import { CREDIT_RATE_INR } from '@/lib/pricing'
 
 declare global {
   interface Window {
@@ -32,9 +32,6 @@ export interface PricingClientProps {
   defaultBilling?: 'monthly' | 'annual'
   paymentCancelled?: boolean
 }
-
-// Flat ₹1.25/credit -25% more than subscription rate
-function getCreditPrice(): number { return 1.25 }
 
 function Spinner() {
   return <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
@@ -69,7 +66,7 @@ export function PricingClient(props: PricingClientProps) {
   const activePlanId = activeSubscription?.status === 'active' ? activeSubscription.plan_id as 'monthly' | 'annual' : null
   const [billing, setBilling] = useState<'monthly' | 'annual'>(defaultBilling ?? activePlanId ?? 'annual')
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'upi'>('card')
-  const [creditAmount, setCreditAmount] = useState(500)
+  const [amountInr, setAmountInr] = useState(500)
   const [subLoading, setSubLoading] = useState(false)
   const [subError, setSubError] = useState<string | null>(null)
   const [creditLoading, setCreditLoading] = useState(false)
@@ -78,8 +75,7 @@ export function PricingClient(props: PricingClientProps) {
 
   // "Current plan" only shows when the selected tab matches the user's actual plan
   const isSubscribed = activePlanId === billing
-  const creditPrice = getCreditPrice()
-  const totalCreditPrice = Math.round(creditAmount * creditPrice)
+  const creditPreview = Math.floor(amountInr / CREDIT_RATE_INR)
 
   async function handleSubscribe(): Promise<void> {
     if (!isLoggedIn) { window.location.href = '/login?next=/pricing'; return }
@@ -119,28 +115,22 @@ export function PricingClient(props: PricingClientProps) {
 
   async function handleBuyCredits(): Promise<void> {
     if (!isLoggedIn) { window.location.href = '/login?next=/pricing'; return }
+    if (amountInr < 125) return
     setCreditLoading(true)
     setCreditError(null)
     try {
       await loadRazorpayScript()
-      const packIds = Object.keys(CREDIT_PACKS) as CreditPackId[]
-      const packId = packIds.reduce((closest, pid) => {
-        const diff = Math.abs(CREDIT_PACKS[pid].credits - creditAmount)
-        const closestDiff = Math.abs(CREDIT_PACKS[closest].credits - creditAmount)
-        return diff < closestDiff ? pid : closest
-      }, packIds[0])
-
       const res = await fetch('/api/credits', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ packId }),
+        body: JSON.stringify({ amountInr }),
       })
       if (!res.ok) throw new Error(await extractApiError(res))
-      const { orderId, amount, currency, keyId } = (await res.json()) as {
-        orderId: string; amount: number; currency: string; keyId: string
+      const { orderId, amount, credits, currency, keyId } = (await res.json()) as {
+        orderId: string; amount: number; credits: number; currency: string; keyId: string
       }
 
-      const rzpOpts = buildRazorpayOpts({ key: keyId || razorpayKeyId, currency, orderId, amount, credits: creditAmount, email: userEmail, name: userName })
+      const rzpOpts = buildRazorpayOpts({ key: keyId || razorpayKeyId, currency, orderId, amount, credits, email: userEmail, name: userName })
       const rzp = new window.Razorpay(rzpOpts)
       rzp.open()
     } catch (err) {
@@ -319,29 +309,31 @@ export function PricingClient(props: PricingClientProps) {
             <p className="text-[14px] text-[#1e1e1f]/45 mb-6">No commitment -buy only what you need</p>
 
             <div className="mb-4">
-              <div className="flex items-baseline justify-between mb-2">
-                <span className="text-[32px] font-display text-[#1e1e1f] tracking-[-0.02em]">
-                  {creditAmount.toLocaleString()}
-                </span>
-                <span className="text-[13px] text-[#1e1e1f]/35">credits</span>
+              <label className="block text-[12px] font-medium text-[#1e1e1f]/40 mb-2">Amount (min &#8377;125)</label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[18px] font-display text-[#1e1e1f]/40">&#8377;</span>
+                <input
+                  type="number"
+                  min={125}
+                  max={50000}
+                  step={1}
+                  value={amountInr}
+                  onChange={(e) => setAmountInr(Math.max(0, Math.round(Number(e.target.value))))}
+                  className="w-full pl-8 pr-4 py-3 rounded-xl bg-[#f5f5f0] border border-[#1e1e1f]/[0.06] text-[18px] font-display text-[#1e1e1f] focus:outline-none focus:border-[#1e1e1f]/20"
+                />
               </div>
-              <input
-                type="range" min={100} max={2000} step={100}
-                value={creditAmount} onChange={(e) => setCreditAmount(Number(e.target.value))}
-                className="w-full h-1.5 bg-[#1e1e1f]/10 rounded-full appearance-none cursor-pointer accent-[#1e1e1f]"
-              />
-              <div className="flex justify-between text-[11px] text-[#1e1e1f]/25 mt-1">
-                <span>100</span><span>2,000</span>
-              </div>
+              {amountInr < 125 && (
+                <p className="mt-1 text-[11px] text-red-500">Minimum is &#8377;125</p>
+              )}
             </div>
 
             <div className="bg-[#f5f5f0] rounded-xl p-4 mb-5">
               <div className="flex items-baseline justify-between">
                 <div>
-                  <span className="text-[24px] font-display text-[#1e1e1f]">&#8377;{totalCreditPrice.toLocaleString()}</span>
-                  <span className="text-[13px] text-[#1e1e1f]/35 ml-1">one-time</span>
+                  <span className="text-[24px] font-display text-[#1e1e1f]">{creditPreview.toLocaleString()}</span>
+                  <span className="text-[13px] text-[#1e1e1f]/35 ml-1">credits</span>
                 </div>
-                <span className="text-[12px] text-[#1e1e1f]/35">&#8377;{creditPrice.toFixed(2)}/credit</span>
+                <span className="text-[12px] text-[#1e1e1f]/35">&#8377;{CREDIT_RATE_INR.toFixed(2)}/credit</span>
               </div>
               <p className="text-[11px] text-[#1e1e1f]/35 mt-2">Subscribe to pay 20% less per credit</p>
             </div>
@@ -350,7 +342,7 @@ export function PricingClient(props: PricingClientProps) {
               onClick={handleBuyCredits} disabled={creditLoading}
               className="w-full py-3 rounded-full bg-[#1e1e1f] hover:bg-[#333] text-white font-medium text-[14px] transition-all duration-200 hover:shadow-lg hover:shadow-black/15 active:scale-[0.98] disabled:opacity-60"
             >
-              {creditLoading ? <><Spinner />Processing...</> : (isLoggedIn ? 'Buy credits' : 'Sign in to buy')}
+              {creditLoading ? <><Spinner />Processing...</> : (isLoggedIn ? `Buy ${creditPreview.toLocaleString()} credits` : 'Sign in to buy')}
             </button>
             {creditError && <p className="mt-2 text-[12px] text-red-500">{creditError}</p>}
 

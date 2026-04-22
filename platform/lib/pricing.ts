@@ -36,6 +36,8 @@ export const PLANS = {
 export type PlanId = keyof typeof PLANS
 
 // ₹1.25/credit flat — 25% more than the subscription rate of ₹1/credit
+export const CREDIT_RATE_INR = 1.25
+
 export const CREDIT_PACKS = {
   pack_100:  { credits: 100,  priceInr: 125  },
   pack_500:  { credits: 500,  priceInr: 625  },

@@ -4,7 +4,7 @@ import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { getBalance } from '@/lib/credits'
 import { createOrder } from '@/lib/razorpay'
-import { CREDIT_PACKS, type CreditPackId } from '@/lib/pricing'
+import { CREDIT_RATE_INR } from '@/lib/pricing'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
 import { checkRateLimit, rateLimitResponse } from '@/lib/middleware/rate-limit'
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 }
 
 const purchaseSchema = z.object({
-  packId: z.enum(['pack_100', 'pack_500', 'pack_2000']),
+  amountInr: z.number().int().min(125).max(50000),
 })
 
 export async function POST(request: NextRequest): Promise<Response> {
@@ -50,35 +50,36 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   const parsed = purchaseSchema.safeParse(await request.json())
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Invalid pack', details: parsed.error.flatten() }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid amount', details: parsed.error.flatten() }, { status: 400 })
   }
-  const { packId } = parsed.data
-  const pack = CREDIT_PACKS[packId as CreditPackId]
+  const { amountInr } = parsed.data
+  const credits = Math.floor(amountInr / CREDIT_RATE_INR)
 
   try {
     const order = await createOrder({
-      amount: pack.priceInr * 100, // paise
+      amount: amountInr * 100, // paise
       currency: 'INR',
-      notes: { userId: session.user.id, packId, credits: String(pack.credits) },
+      notes: { userId: session.user.id, credits: String(credits) },
     })
 
     await db.query(
       `INSERT INTO subscriptions.credit_pack_purchases
          (user_id, pack_id, credits, price_inr, razorpay_order_id)
        VALUES ($1, $2, $3, $4, $5)`,
-      [session.user.id, packId, pack.credits, pack.priceInr, order.id],
+      [session.user.id, 'payg', credits, amountInr, order.id],
     )
 
-    logger.info({ msg: 'credit_pack_order_created', userId: session.user.id, packId, orderId: order.id })
+    logger.info({ msg: 'credit_purchase_order_created', userId: session.user.id, amountInr, credits, orderId: order.id })
 
     return NextResponse.json({
       orderId: order.id,
-      amount: pack.priceInr * 100,
+      amount: amountInr * 100,
+      credits,
       currency: 'INR',
       keyId,
     })
   } catch (err) {
-    logger.error({ msg: 'credit_pack_order_failed', userId: session.user.id, packId, err: String(err) })
+    logger.error({ msg: 'credit_purchase_order_failed', userId: session.user.id, amountInr, err: String(err) })
     return NextResponse.json({ error: 'Failed to create order' }, { status: 500 })
   }
 }

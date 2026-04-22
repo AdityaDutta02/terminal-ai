@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Loader2, ArrowLeft } from 'lucide-react'
-import { CREDIT_PACKS, type CreditPackId } from '@/lib/pricing'
+import { CREDIT_RATE_INR } from '@/lib/pricing'
 
 // Razorpay is blocked on terminalai.studioionique.com (not an approved domain).
 // Workaround: redirect to studioionique.com/pay (approved domain) which opens the
@@ -17,45 +17,30 @@ interface TopUpClientProps {
   showInsufficientMessage?: boolean
 }
 
-const AMOUNTS = [100, 500, 1000, 2000] as const
-
-function getPrice(amount: number): number {
-  if (amount <= 100) return 89
-  if (amount <= 500) return 399
-  if (amount <= 1000) return 699
-  return 1499
-}
-
 export function TopUpClient(props: TopUpClientProps) {
   const { razorpayKeyId, userEmail, userName, showInsufficientMessage } = props
-  const [selected, setSelected] = useState(500)
+  const [amountInr, setAmountInr] = useState(500)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const price = getPrice(selected)
+  const creditPreview = Math.floor(amountInr / CREDIT_RATE_INR)
 
   async function handleBuy(): Promise<void> {
+    if (amountInr < 125) return
     setLoading(true)
     setError(null)
     try {
-      const packIds = Object.keys(CREDIT_PACKS) as CreditPackId[]
-      const packId = packIds.reduce((closest, pid) => {
-        const diff = Math.abs(CREDIT_PACKS[pid].credits - selected)
-        const closestDiff = Math.abs(CREDIT_PACKS[closest].credits - selected)
-        return diff < closestDiff ? pid : closest
-      }, packIds[0])
-
       const res = await fetch('/api/credits', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ packId }),
+        body: JSON.stringify({ amountInr }),
       })
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string }
         throw new Error(body.error ?? 'Something went wrong')
       }
-      const { orderId, amount, currency, keyId } = (await res.json()) as {
-        orderId: string; amount: number; currency: string; keyId: string
+      const { orderId, amount, credits, currency, keyId } = (await res.json()) as {
+        orderId: string; amount: number; credits: number; currency: string; keyId: string
       }
 
       // Redirect to approved domain to open Razorpay checkout
@@ -66,7 +51,7 @@ export function TopUpClient(props: TopUpClientProps) {
         currency,
         key_id: keyId || razorpayKeyId,
         name: 'Terminal AI',
-        description: `${selected.toLocaleString()} tokens top-up`,
+        description: `${credits.toLocaleString()} tokens top-up`,
         email: userEmail,
         user_name: userName,
         callback_url: callbackUrl,
@@ -105,43 +90,43 @@ export function TopUpClient(props: TopUpClientProps) {
           Pick a token pack to continue using apps.
         </p>
 
-        {/* Amount selector */}
-        <div className="grid grid-cols-4 gap-3 mb-8">
-          {AMOUNTS.map((amt) => (
-            <button
-              key={amt}
-              onClick={() => setSelected(amt)}
-              aria-pressed={selected === amt}
-              aria-label={`${amt.toLocaleString()} tokens`}
-              className={`py-3 rounded-[16px] text-center transition-all duration-200 ${
-                selected === amt
-                  ? 'bg-[#1e1e1f] text-white shadow-lg shadow-black/10'
-                  : 'bg-white border border-[#1e1e1f]/[0.06] text-[#1e1e1f] hover:border-[#1e1e1f]/20'
-              }`}
-            >
-              <span className="block text-[18px] font-semibold font-mono">{amt.toLocaleString()}</span>
-              <span className={`block text-[11px] mt-0.5 ${selected === amt ? 'text-white/50' : 'text-[#1e1e1f]/30'}`}>tokens</span>
-            </button>
-          ))}
+        {/* Amount input */}
+        <div className="mb-6">
+          <label className="block text-[12px] font-medium text-[#1e1e1f]/40 mb-2">Amount (min &#8377;125)</label>
+          <div className="relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[20px] font-display text-[#1e1e1f]/40">&#8377;</span>
+            <input
+              type="number"
+              min={125}
+              max={50000}
+              step={1}
+              value={amountInr}
+              onChange={(e) => setAmountInr(Math.max(0, Math.round(Number(e.target.value))))}
+              className="w-full pl-8 pr-4 py-3.5 rounded-xl bg-white border border-[#1e1e1f]/[0.06] text-[20px] font-display text-[#1e1e1f] focus:outline-none focus:border-[#1e1e1f]/20"
+            />
+          </div>
+          {amountInr < 125 && (
+            <p className="mt-1 text-[11px] text-red-500">Minimum is &#8377;125</p>
+          )}
         </div>
 
-        {/* Price summary */}
+        {/* Summary */}
         <div className="bg-white rounded-[20px] border border-[#1e1e1f]/[0.06] p-6 mb-6">
           <div className="flex items-baseline justify-between">
             <div>
-              <span className="text-[32px] font-display text-[#1e1e1f] tracking-[-0.02em]">&#8377;{price.toLocaleString()}</span>
-              <span className="text-[13px] text-[#1e1e1f]/35 ml-2">one-time</span>
+              <span className="text-[32px] font-display text-[#1e1e1f] tracking-[-0.02em]">{creditPreview.toLocaleString()}</span>
+              <span className="text-[13px] text-[#1e1e1f]/35 ml-2">tokens</span>
             </div>
-            <span className="text-[12px] text-[#1e1e1f]/25">&#8377;{(price / selected).toFixed(2)}/token</span>
+            <span className="text-[12px] text-[#1e1e1f]/25">&#8377;{CREDIT_RATE_INR.toFixed(2)}/token</span>
           </div>
         </div>
 
         <button
           onClick={handleBuy}
-          disabled={loading}
+          disabled={loading || amountInr < 125}
           className="w-full py-3.5 rounded-full bg-[#1e1e1f] hover:bg-[#333] text-white font-medium text-[15px] transition-all duration-200 hover:shadow-lg hover:shadow-black/15 active:scale-[0.98] disabled:opacity-60"
         >
-          {loading ? <><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Processing...</> : `Buy ${selected.toLocaleString()} tokens`}
+          {loading ? <><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Processing...</> : `Buy ${creditPreview.toLocaleString()} tokens`}
         </button>
 
         {error && (
