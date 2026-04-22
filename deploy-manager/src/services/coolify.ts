@@ -56,13 +56,14 @@ export async function getAppDetails(coolifyAppId: string): Promise<{ status: str
   return { status: data.status, fqdn: data.fqdn ?? null }
 }
 
-/** Update the FQDN (domain) for a Coolify app. Required so Traefik routes to the correct domain. */
+/** Update the FQDN (domain) for a Coolify app. Required so Traefik routes to the correct domain.
+ *  Uses force_domain_override=true to avoid 409 conflicts from stale apps holding the same domain. */
 export async function updateAppFqdn(coolifyAppId: string, fqdn: string): Promise<void> {
   const { url, token } = coolifyConfig()
   const res = await fetch(`${url}/api/v1/applications/${coolifyAppId}`, {
     method: 'PATCH',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ domains: fqdn }),
+    body: JSON.stringify({ domains: fqdn, force_domain_override: true }),
   })
   if (!res.ok) {
     const body = await res.text()
